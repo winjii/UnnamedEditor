@@ -2,6 +2,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <FontDataPicker\GsubReader.h>
+#include "Font\Font.h"
 
 using namespace FontDataPicker;
 
@@ -10,7 +11,7 @@ void Main()
 	enum RunMode {
 		GsubReaderTest,
 		FontTest
-	} runMode = RunMode::GsubReaderTest;
+	} runMode = RunMode::FontTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		FT_Library lib;
@@ -60,6 +61,22 @@ void Main()
 		}
 	}
 	else if (runMode == RunMode::FontTest) {
-		
+		using namespace UnnamedEditor::Font;
+		FT_Library lib;
+		FT_Init_FreeType(&lib);
+		UnnamedEditor::Font::Font font(lib, "C:/Windows/Fonts/msmincho.ttc", true);
+		String s = L"「山村、（mucho）。」";
+		std::vector<UnnamedEditor::Font::Glyph> v;
+		for (int i = 0; i < s.length(); i++) {
+			v.push_back(font.renderChar(s[i]));
+		}
+
+		Graphics::SetBackground(Palette::Gray);
+		while (System::Update()) {
+			Vec2 pen(100, 100);
+			for (int i = 0; i < v.size(); i++) {
+				pen = v[i].draw(pen);
+			}
+		}
 	}
 }
