@@ -26,9 +26,13 @@ private:
 
 public:
 
-	Font(FT_Library lib, std::string fontPath, bool isVertical);
+	Font(FT_Library lib, std::string fontPath, int pixelWidth, int pixelHeight, bool isVertical = false);
 
-	Glyph renderChar(wchar_t charCode);
+	void ChangeSize(int pixelWidth, int pixelHeight);
+
+	Glyph renderChar(char16_t charCode);
+
+	std::vector<Glyph> renderString(std::u16string charCodes);
 };
 
 

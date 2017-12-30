@@ -3,17 +3,25 @@
 namespace UnnamedEditor {
 namespace Font {
 
-Font::Font(FT_Library lib, std::string filePath, bool isVertical)
+Font::Font(FT_Library lib, std::string filePath, int pixelWidth, int pixelHeight, bool isVertical)
 : _isVertical(isVertical) {
+	//TODO:コレクションの場合でも適当に0番目のfaceを選択している
+	//これをちゃんとするには、そもそもフォントファイルをregisterしてから名前で呼び出す感じの実装が必要？
 	FT_New_Face(lib, filePath.c_str(), 0, &_face);
 	FT_Select_Charmap(_face, FT_Encoding_::FT_ENCODING_UNICODE);
-	int error = FT_Select_Size(_face, 3);
+	FT_Set_Pixel_Sizes(_face, pixelWidth, pixelHeight);
 	_gsubReader = SP<GsubReader>(new GsubReader(_face));
 }
 
-Glyph Font::renderChar(wchar_t charCode) {
+void Font::ChangeSize(int pixelWidth, int pixelHeight) {
+	FT_Set_Pixel_Sizes(_face, pixelWidth, pixelHeight);
+}
+
+Glyph Font::renderChar(char16_t charCode) {
 	FT_UInt gid = FT_Get_Char_Index(_face, charCode);
 	if (_isVertical) gid = _gsubReader->vertSubstitute(gid);
+	//TODO:bitmapタイプのフォントの時に死にそう
+	//FT_LOAD_NO_BITMAPを指定してRenderするのは外形指定タイプのフォントの読み込み処理
 	FT_Load_Glyph(_face, gid, FT_LOAD_NO_BITMAP);
 	FT_Render_Glyph(_face->glyph, FT_Render_Mode::FT_RENDER_MODE_NORMAL);
 	FT_GlyphSlot slot = _face->glyph;
@@ -39,6 +47,14 @@ Glyph Font::renderChar(wchar_t charCode) {
 					 slot->metrics.horiAdvance/64.0,
 					 image);
 	}
+}
+
+std::vector<Glyph> Font::renderString(std::u16string charCodes) {
+	std::vector<Glyph> ret;
+	for each (char16_t var in charCodes) {
+		ret.push_back(renderChar(var));
+	}
+	return ret;
 }
 
 
