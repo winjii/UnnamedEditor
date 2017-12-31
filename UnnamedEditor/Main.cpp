@@ -65,8 +65,8 @@ void Main()
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
 		UnnamedEditor::Font::Font font(lib, "C:/Windows/Fonts/msmincho.ttc", 30, 30, true);
-		std::u16string s = u"「山村、（mucho）。」";
-		auto v = font.renderString(s);
+		String s = L"「山村、（mucho）。」";
+		auto v = font.renderString(s.toUTF16());
 
 		Graphics::SetBackground(Palette::Gray);
 		while (System::Update()) {
