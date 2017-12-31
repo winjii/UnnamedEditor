@@ -1,10 +1,13 @@
 #pragma once
+#include <list>
+#include "Font\Font.h"
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 namespace UnnamedEditor {
 namespace FairCopyField {
 
 using DevicePos = OpaqueAlias<Vec2>;
-using LogicPos = OpaqueAlias<Vec2>;
 
 class CharPos {
 private:
@@ -27,6 +30,13 @@ public:
 		return ret;
 	}
 	
+	LLInt GetLineIndex() { return _lineIndex; }
+
+	double GetPosInLine() { return _posInLine; }
+
+	DevicePos ToDeviceDelta(double lineInterval, double lineHeight) {
+		return DevicePos(-lineInterval*_lineIndex, _posInLine);
+	}
 };
 
 class FairCopyField {
@@ -34,13 +44,21 @@ private:
 
 	DevicePos _pos, _size;
 
-	
+	Font::Font _font;
+
+	std::list<Font::Glyph> _glyphs;
+
+	String _text;
 
 public:
 
-	FairCopyField(double x, double y, double w, double h);
+	FairCopyField(double x, double y, double w, double h, FT_Library lib);
 
 	~FairCopyField();
+
+	void SetText(const String &text);
+
+	void Update();
 };
 
 }
