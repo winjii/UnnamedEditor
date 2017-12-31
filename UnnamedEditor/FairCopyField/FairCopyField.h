@@ -30,11 +30,11 @@ public:
 		return ret;
 	}
 	
-	LLInt GetLineIndex() { return _lineIndex; }
+	LLInt getLineIndex() { return _lineIndex; }
 
-	double GetPosInLine() { return _posInLine; }
+	double getPosInLine() { return _posInLine; }
 
-	DevicePos ToDeviceDelta(double lineInterval, double lineHeight) {
+	DevicePos toDeviceDelta(double lineInterval, double lineHeight) {
 		return DevicePos(-lineInterval*_lineIndex, _posInLine);
 	}
 };
@@ -56,9 +56,9 @@ public:
 
 	~FairCopyField();
 
-	void SetText(const String &text);
+	void setText(const String &text);
 
-	void Update();
+	void update();
 };
 
 }

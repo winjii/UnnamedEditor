@@ -13,7 +13,7 @@ FairCopyField::FairCopyField(double x, double y, double w, double h, FT_Library 
 
 FairCopyField::~FairCopyField() {}
 
-void FairCopyField::SetText(const String & text) {
+void FairCopyField::setText(const String & text) {
 	_text = text;
 	std::u16string u16Text = _text.toUTF16();
 	_glyphs.clear();
@@ -22,7 +22,7 @@ void FairCopyField::SetText(const String & text) {
 	}
 }
 
-void FairCopyField::Update() {
+void FairCopyField::update() {
 	DevicePos origin(_size.x - 20, 0);
 	CharPos charPos(0, 0);
 	double lineInterval = 30;
@@ -30,9 +30,9 @@ void FairCopyField::Update() {
 
 	RectF(_pos, _size).draw(Palette::White);
 	for each (Font::Glyph glyph in _glyphs) {
-		DevicePos pos = origin + charPos.ToDeviceDelta(lineInterval, lineHeight);
+		DevicePos pos = origin + charPos.toDeviceDelta(lineInterval, lineHeight);
 		glyph.draw(pos);
-		charPos = charPos.Add(glyph.GetAdvance(), lineHeight);
+		charPos = charPos.Add(glyph.getAdvance(), lineHeight);
 	}
 }
 

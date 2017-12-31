@@ -83,9 +83,9 @@ void Main()
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
 		FairCopyField fc(0, 0, Window::Width(), Window::Height(), lib);
-		fc.SetText(L"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。");
+		fc.setText(L"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。");
 		while (System::Update()) {
-			fc.Update();
+			fc.update();
 		}
 	}
 }
