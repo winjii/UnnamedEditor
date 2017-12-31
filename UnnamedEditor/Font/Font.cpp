@@ -13,6 +13,10 @@ Font::Font(FT_Library lib, std::string filePath, int pixelWidth, int pixelHeight
 	_gsubReader = SP<GsubReader>(new GsubReader(_face));
 }
 
+Font::~Font() {
+	FT_Done_Face(_face);
+}
+
 void Font::ChangeSize(int pixelWidth, int pixelHeight) {
 	FT_Set_Pixel_Sizes(_face, pixelWidth, pixelHeight);
 }

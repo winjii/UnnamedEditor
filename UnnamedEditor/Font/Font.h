@@ -28,6 +28,8 @@ public:
 
 	Font(FT_Library lib, std::string fontPath, int pixelWidth, int pixelHeight, bool isVertical = false);
 
+	~Font();
+
 	void ChangeSize(int pixelWidth, int pixelHeight);
 
 	Glyph renderChar(char16_t charCode);
