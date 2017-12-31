@@ -22,6 +22,10 @@ Vec2 Glyph::draw(const Vec2 &pen) {
 	return res;
 }
 
+double Glyph::GetAdvance() {
+	return _advance;
+}
+
 
 }
 }

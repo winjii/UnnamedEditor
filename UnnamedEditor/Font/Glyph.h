@@ -23,6 +23,8 @@ public:
 
 	Vec2 draw(const Vec2 &pen);
 
+	double GetAdvance();
+
 };
 
 
