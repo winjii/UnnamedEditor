@@ -13,8 +13,9 @@ template<class T> using WP = std::weak_ptr<T>;
 using LLInt = long long int;
 
 template<class T>
-class OpaqueAlias : T {
+class OpaqueAlias : public T {
 public:
+	using T::T; //継承コンストラクタ
 	OpaqueAlias(const T &t) : T(t) {}
 	explicit operator T() const { return this; }
 };
