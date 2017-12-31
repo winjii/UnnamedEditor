@@ -22,7 +22,7 @@ public:
 
 	CharPos Add(double addend, double lineHeight) const {
 		CharPos ret(*this);
-		ret._posInLine += lineHeight;
+		ret._posInLine += addend;
 		while (ret._posInLine >= lineHeight) {
 			ret._posInLine -= lineHeight;
 			ret._lineIndex++;

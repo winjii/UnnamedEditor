@@ -23,14 +23,16 @@ void FairCopyField::SetText(const String & text) {
 }
 
 void FairCopyField::Update() {
-	DevicePos origin(Window::Width(), 0);
+	DevicePos origin(_size.x - 20, 0);
 	CharPos charPos(0, 0);
 	double lineInterval = 30;
-	double lineHeight = Window::Height();
+	double lineHeight = _size.y;
+
+	RectF(_pos, _size).draw(Palette::White);
 	for each (Font::Glyph glyph in _glyphs) {
 		DevicePos pos = origin + charPos.ToDeviceDelta(lineInterval, lineHeight);
 		glyph.draw(pos);
-		charPos.Add(glyph.GetAdvance(), lineHeight);
+		charPos = charPos.Add(glyph.GetAdvance(), lineHeight);
 	}
 }
 
