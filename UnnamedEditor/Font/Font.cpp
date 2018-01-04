@@ -30,7 +30,8 @@ Glyph Font::renderChar(char16_t charCode) {
 	FT_Render_Glyph(_face->glyph, FT_Render_Mode::FT_RENDER_MODE_NORMAL);
 	FT_GlyphSlot slot = _face->glyph;
 	FT_Bitmap bitmap = _face->glyph->bitmap;
-	Image image(bitmap.width, bitmap.rows);
+	bool valid = (bool)(bitmap.rows*bitmap.width);
+	Image image = valid ? Image(bitmap.width, bitmap.rows) : Image();
 	for (int r = 0; r < bitmap.rows; r++) {
 		for (int c = 0; c < bitmap.width; c++) {
 			HSV gray(Color(bitmap.buffer[r*bitmap.width + c]));
