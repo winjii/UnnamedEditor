@@ -33,6 +33,10 @@ double Glyph::getFontSize() const {
 	return _fontSize;
 }
 
+bool Glyph::isVertical() const {
+	return _isVertical;
+}
+
 RectF Glyph::boundingBox(const Vec2 &pen, double angle) const {
 	Vec2 v1 = _bearing;
 	Vec2 v2 = v1 + Vec2(_texture.width(), 0);

@@ -187,6 +187,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Workspace\DraftPaper.cpp" />
     <ClCompile Include="FairCopyField\FairCopyField.cpp" />
     <ClCompile Include="Font\Font.cpp" />
     <ClCompile Include="Font\Glyph.cpp" />
@@ -259,6 +260,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Workspace\DraftPaper.h" />
     <ClInclude Include="FairCopyField\FairCopyField.h" />
     <ClInclude Include="Font\Font.h" />
     <ClInclude Include="Font\Glyph.h" />

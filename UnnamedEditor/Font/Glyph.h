@@ -30,6 +30,8 @@ public:
 
 	double getFontSize() const;
 
+	bool isVertical() const;
+
 	RectF boundingBox(const Vec2 &pen = Vec2(0, 0), double angle = 0.0) const;
 };
 
