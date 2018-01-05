@@ -33,16 +33,20 @@ void FairCopyField::setText(const String & text) {
 
 void FairCopyField::update() {
 	if (KeyUp.pressed()) {
-		_cursor += DevicePos(0, -1.0);
+		double t = Min(KeyUp.pressedDuration().count()/(long double)700, 1.0l);
+		_cursor += DevicePos(0, -5*EaseIn(Easing::Quad, t));
 	}
 	if (KeyDown.pressed()) {
-		_cursor += DevicePos(0, 1.0);
+		double t = Min(KeyDown.pressedDuration().count()/(long double)700, 1.0l);
+		_cursor += DevicePos(0, 5*EaseIn(Easing::Quad, t));
 	}
 	if (KeyLeft.pressed()) {
-		_cursor += DevicePos(-1.0, 0);
+		double t = Min(KeyLeft.pressedDuration().count()/(long double)700, 1.0l);
+		_cursor += DevicePos(-5*EaseIn(Easing::Quad, t), 0);
 	}
 	if (KeyRight.pressed()) {
-		_cursor += DevicePos(1.0, 0);
+		double t = Min(KeyRight.pressedDuration().count()/(long double)700, 1.0l);
+		_cursor += DevicePos(5*EaseIn(Easing::Quad, t), 0);
 	}
 
 	DevicePos origin(_pos.x + _size.x - _lineInterval*0.5, _pos.y);
