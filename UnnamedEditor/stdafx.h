@@ -2,9 +2,11 @@
 #include <Siv3D.hpp>
 #include <memory>
 #include <vector>
+#include <iostream>
 
 namespace UnnamedEditor {
 
+#define VAIN_STATEMENT std::cout << ""
 
 template<class T> using SP = std::shared_ptr<T>;
 template<class T> using UP = std::unique_ptr<T>;

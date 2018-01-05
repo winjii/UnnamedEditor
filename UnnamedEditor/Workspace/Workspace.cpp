@@ -30,19 +30,19 @@ void Workspace::update() {
 	addText(input);
 	if (KeyBackspace.down()) deleteText();
 
+	RectF(_pos, _size).draw(Palette::Lightgrey);
+
 	const DevicePos head(_pos.x + _size.x - _fontSize*2, _pos.y + _size.y/2);
-	
 	{
 		String unsettled = TextInput::GetMarkedText();
 		auto unsettledGlyhps = _font.renderString(unsettled.toUTF16());
 		DevicePos charPos = head;
 		for each (auto g in unsettledGlyhps) {
-			g->draw(charPos, Palette::Gray);
+			g->draw(charPos, Palette::Red);
 			charPos += g->getAdvance();
 		}
 	}
 
-	RectF(_pos, _size).draw(Palette::Lightgrey);
 	DevicePos charPos = head;
 	for (int i = _glyphs.size() - 1; i >= 0; i--) {
 		charPos -= _glyphs[i]->getAdvance();
