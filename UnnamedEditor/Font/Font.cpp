@@ -3,13 +3,14 @@
 namespace UnnamedEditor {
 namespace Font {
 
-Font::Font(FT_Library lib, std::string filePath, int pixelWidth, int pixelHeight, bool isVertical)
-: _isVertical(isVertical) {
+Font::Font(FT_Library lib, std::string filePath, int pixelSize, bool isVertical)
+: _isVertical(isVertical)
+, _fontSize(pixelSize) {
 	//TODO:コレクションの場合でも適当に0番目のfaceを選択している
 	//これをちゃんとするには、そもそもフォントファイルをregisterしてから名前で呼び出す感じの実装が必要？
 	FT_New_Face(lib, filePath.c_str(), 0, &_face);
 	FT_Select_Charmap(_face, FT_Encoding_::FT_ENCODING_UNICODE);
-	FT_Set_Pixel_Sizes(_face, pixelWidth, pixelHeight);
+	FT_Set_Pixel_Sizes(_face, _fontSize, _fontSize);
 	_gsubReader = SP<GsubReader>(new GsubReader(_face));
 }
 
@@ -40,6 +41,7 @@ SP<const Glyph> Font::renderChar(char16_t charCode) {
 	SP<Glyph> ret;
 	if (_isVertical) {
 		ret.reset(new Glyph(_isVertical,
+							_fontSize,
 							slot->metrics.vertBearingX/64.0,
 							slot->metrics.vertBearingY/64.0,
 							slot->metrics.vertAdvance/64.0,
@@ -47,6 +49,7 @@ SP<const Glyph> Font::renderChar(char16_t charCode) {
 	}
 	else {
 		ret.reset(new Glyph(_isVertical,
+							_fontSize,
 							slot->metrics.horiBearingX/64.0,
 							-slot->metrics.horiBearingY/64.0,
 							slot->metrics.horiAdvance/64.0,

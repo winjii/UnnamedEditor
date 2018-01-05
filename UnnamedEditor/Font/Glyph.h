@@ -8,6 +8,8 @@ class Glyph {
 private:
 
 	bool _isVertical;
+
+	double _fontSize;
 	
 	Vec2 _bearing;
 
@@ -17,14 +19,20 @@ private:
 
 public:
 
-	Glyph(bool isVertical, double bearingX, double bearingY, double advance, const Image &image);
+	Glyph(bool isVertical, double fontSize, double bearingX, double bearingY, double advance, const Image &image);
 
 	~Glyph();
 
-	Vec2 draw(const Vec2 &pen, const Color &color = Palette::Black) const;
+	//angle: rad
+	Vec2 draw(const Vec2 &pen, const Color &color = Palette::Black, double angle = 0.0) const;
 
-	Vec2 getAdvance() const;
+	Vec2 getAdvance(double angle = 0.0) const;
 
+	double getFontSize() const;
+
+	bool isVertical() const;
+
+	RectF boundingBox(const Vec2 &pen = Vec2(0, 0), double angle = 0.0) const;
 };
 
 

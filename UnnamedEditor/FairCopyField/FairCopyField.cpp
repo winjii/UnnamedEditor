@@ -7,7 +7,7 @@ namespace FairCopyField {
 FairCopyField::FairCopyField(double x, double y, double w, double h, FT_Library lib, int fontSize)
 : _pos(Vec2(x, y))
 , _size(Vec2(w, h))
-, _font(lib, "C:/Windows/Fonts/msmincho.ttc", fontSize, fontSize, true)
+, _font(lib, "C:/Windows/Fonts/msmincho.ttc", fontSize, true)
 , _fontSize(fontSize)
 , _lineInterval(fontSize*1.3)
 , _lineHeight(h)

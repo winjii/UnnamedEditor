@@ -14,8 +14,9 @@ void Main()
 		GsubReaderTest,
 		FontTest,
 		FairCopyFieldTest,
-		WorkspaceTest
-	} runMode = RunMode::WorkspaceTest;
+		WorkspaceTest,
+		GlyphTest
+	} runMode = RunMode::GlyphTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		FT_Library lib;
@@ -68,7 +69,7 @@ void Main()
 		using namespace UnnamedEditor::Font;
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
-		UnnamedEditor::Font::Font font(lib, "C:/Windows/Fonts/msmincho.ttc", 30, 30, true);
+		UnnamedEditor::Font::Font font(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
 		String s = L"「山村、（mucho）。」";
 		auto v = font.renderString(s.toUTF16());
 
@@ -98,6 +99,27 @@ void Main()
 		w.addText(L"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。");
 		while (System::Update()) {
 			w.update();
+		}
+	}
+	else if (runMode == RunMode::GlyphTest) {
+		using namespace UnnamedEditor::Font;
+		using namespace UnnamedEditor;
+		FT_Library lib;
+		FT_Init_FreeType(&lib);
+		UnnamedEditor::Font::Font fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
+		UnnamedEditor::Font::Font fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, false);
+		auto glyphsV = fontV.renderString(u"むーちょろくいちさん");
+		auto glyphsH = fontH.renderString(u"mucho613");
+		auto draw = [](const std::vector<SP<const UnnamedEditor::Font::Glyph>> &glyphs) {
+			Vec2 pen(100, 100);
+			for (int i = 0; i < (int)glyphs.size(); i++) {
+				glyphs[i]->boundingBox(pen, -Math::Pi/6.0).drawFrame(0.5, Palette::White);
+				pen = glyphs[i]->draw(pen, Palette::Red, -Math::Pi/6.0);
+			}
+		};
+		while (System::Update()) {
+			draw(glyphsV);
+			draw(glyphsH);
 		}
 	}
 }
