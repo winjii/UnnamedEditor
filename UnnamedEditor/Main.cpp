@@ -113,6 +113,7 @@ void Main()
 		auto draw = [](const std::vector<SP<const UnnamedEditor::Font::Glyph>> &glyphs) {
 			Vec2 pen(100, 100);
 			for (int i = 0; i < (int)glyphs.size(); i++) {
+				glyphs[i]->boundingBox(pen, -Math::Pi/6.0).drawFrame(0.5, Palette::White);
 				pen = glyphs[i]->draw(pen, Palette::Red, -Math::Pi/6.0);
 			}
 		};

@@ -28,6 +28,22 @@ Vec2 Glyph::getAdvance(double angle) const {
 	return Vec2(_advance, 0).rotate(angle);
 }
 
+RectF Glyph::boundingBox(const Vec2 &pen, double angle) const {
+	Vec2 v1 = _bearing;
+	Vec2 v2 = v1 + Vec2(_texture.width(), 0);
+	Vec2 v3 = v1 + Vec2(_texture.width(), _texture.height());
+	Vec2 v4 = v1 + Vec2(0, _texture.height());
+	v1.rotate(angle);
+	v2.rotate(angle);
+	v3.rotate(angle);
+	v4.rotate(angle);
+	Vec2 min(std::min(std::min(v1.x, v2.x), std::min(v3.x, v4.x)),
+			 std::min(std::min(v1.y, v2.y), std::min(v3.y, v4.y)));
+	Vec2 max(std::max(std::max(v1.x, v2.x), std::max(v3.x, v4.x)),
+			 std::max(std::max(v1.y, v2.y), std::max(v3.y, v4.y)));
+	return RectF(pen + min, max - min);
+}
+
 
 }
 }
