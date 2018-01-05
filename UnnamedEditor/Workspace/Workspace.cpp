@@ -11,7 +11,7 @@ Workspace::Workspace(DevicePos pos, DevicePos size, FT_Library lib)
 , _fontSize(30)
 , _font(lib, "C:/Windows/Fonts/msmincho.ttc", _fontSize, true)
 , _draftCharCount(0)
-, _draftField(pos, Vec2(size.y, size.x - _fontSize*2 - _fontSize))
+, _draftField(pos, Vec2(size.x - _fontSize*2 - _fontSize, size.y))
 , _draftFontSize(20)
 , _draftFont(lib, "C:/Windows/Fonts/msmincho.ttc", _draftFontSize, false) {
 }
@@ -32,18 +32,15 @@ void Workspace::deleteText(int count) {
 }
 
 void Workspace::update() {
-	String input;
-	TextInput::UpdateText(input);
-	addText(input);
 	String unsettled = TextInput::GetMarkedText();
 	_ju.update(unsettled.length());
 
 	if (_ju.isSettled() && KeyBackspace.down())
 		deleteText();
-	if (KeyEnter.down()) {
+	else if (_ju.isSettled() && KeyEnter.down() && _draftCharCount > 0) {
 		String draftText = _text.substr(_text.length() - (size_t)_draftCharCount, _draftCharCount);
 		deleteText(_draftCharCount);
-		double angle = Random(-Math::Pi, Math::Pi);
+		double angle = Random(-Math::Pi/2.0, Math::Pi/2.0);
 		DraftPaper dp(_draftFont.renderString(draftText.toUTF16()), angle);
 		Vec2 margin = dp.desirableMargin();
 		DevicePos end = RandomPoint(RectF(_draftField.pos + margin, _draftField.size - 2*margin));
@@ -66,6 +63,11 @@ void Workspace::update() {
 		}();
 
 		_papers.push_back(PaperManager(dp, start, end));
+	}
+	else {
+		String input;
+		TextInput::UpdateText(input);
+		addText(input);
 	}
 
 	RectF(_pos, _size).draw(Palette::White);

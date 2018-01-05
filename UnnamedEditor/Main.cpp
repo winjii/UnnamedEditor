@@ -139,10 +139,16 @@ void Main()
 		DraftPaper dpH(glyphsH, Math::Pi/6.0);
 		dpV.setPos(Window::Size()/2.0);
 		dpH.setPos(Window::Size()/2.0);
+		Vec2 marginV = dpV.desirableMargin();
+		Vec2 marginH = dpH.desirableMargin();
+		RectF rectV(dpV.getPos() - marginV, marginV*2);
+		RectF rectH(dpH.getPos() - marginH, marginH*2);
 		Graphics::SetBackground(Palette::White);
 		while (System::Update()) {
 			dpV.draw();
+			rectV.drawFrame(1, Palette::Blue);
 			dpH.draw();
+			rectH.drawFrame(1, Palette::Blue);
 		}
 	}
 }
