@@ -32,9 +32,9 @@ public:
 
 	void ChangeSize(int pixelWidth, int pixelHeight);
 
-	Glyph renderChar(char16_t charCode);
+	Glyph renderChar(char16_t charCode, const Color &color = Palette::Black);
 
-	std::vector<Glyph> renderString(std::u16string charCodes);
+	std::vector<Glyph> renderString(std::u16string charCodes, const Color &color = Palette::Black);
 };
 
 

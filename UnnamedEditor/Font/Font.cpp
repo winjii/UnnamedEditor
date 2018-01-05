@@ -21,7 +21,7 @@ void Font::ChangeSize(int pixelWidth, int pixelHeight) {
 	FT_Set_Pixel_Sizes(_face, pixelWidth, pixelHeight);
 }
 
-Glyph Font::renderChar(char16_t charCode) {
+Glyph Font::renderChar(char16_t charCode, const Color &color) {
 	FT_UInt gid = FT_Get_Char_Index(_face, charCode);
 	if (_isVertical) gid = _gsubReader->vertSubstitute(gid);
 	//TODO:bitmapタイプのフォントの時に死にそう
@@ -35,7 +35,7 @@ Glyph Font::renderChar(char16_t charCode) {
 	for (int r = 0; r < bitmap.rows; r++) {
 		for (int c = 0; c < bitmap.width; c++) {
 			HSV gray(Color(bitmap.buffer[r*bitmap.width + c]));
-			image[r][c] = Color(Palette::Black, 255*gray.v);
+			image[r][c] = Color(color, 255*gray.v);
 		}
 	}
 	if (_isVertical) {
@@ -54,10 +54,10 @@ Glyph Font::renderChar(char16_t charCode) {
 	}
 }
 
-std::vector<Glyph> Font::renderString(std::u16string charCodes) {
+std::vector<Glyph> Font::renderString(std::u16string charCodes, const Color &color) {
 	std::vector<Glyph> ret;
 	for each (char16_t var in charCodes) {
-		ret.push_back(renderChar(var));
+		ret.push_back(renderChar(var, color));
 	}
 	return ret;
 }
