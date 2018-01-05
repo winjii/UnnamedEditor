@@ -50,6 +50,10 @@ private:
 
 	JudgeUnsettled _ju;
 
+	Stopwatch _sw;
+
+	std::vector<DevicePos> _targets;
+
 public:
 
 	Workspace(DevicePos pos, DevicePos size, FT_Library lib);
