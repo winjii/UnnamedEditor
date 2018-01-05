@@ -17,13 +17,12 @@ Font::~Font() {
 	FT_Done_Face(_face);
 }
 
-void Font::ChangeSize(int pixelWidth, int pixelHeight) {
-	FT_Set_Pixel_Sizes(_face, pixelWidth, pixelHeight);
-}
-
-Glyph Font::renderChar(char16_t charCode, const Color &color) {
-	FT_UInt gid = FT_Get_Char_Index(_face, charCode);
+SP<const Glyph> Font::renderChar(char16_t charCode, const Color &color) {
+	GlyphIndex gid = FT_Get_Char_Index(_face, charCode);
 	if (_isVertical) gid = _gsubReader->vertSubstitute(gid);
+	auto itr = _glyphData.find(gid);
+	if (itr != _glyphData.end()) return itr->second;
+
 	//TODO:bitmapタイプのフォントの時に死にそう
 	//FT_LOAD_NO_BITMAPを指定してRenderするのは外形指定タイプのフォントの読み込み処理
 	FT_Load_Glyph(_face, gid, FT_LOAD_NO_BITMAP);
@@ -38,24 +37,27 @@ Glyph Font::renderChar(char16_t charCode, const Color &color) {
 			image[r][c] = Color(color, 255*gray.v);
 		}
 	}
+	SP<Glyph> ret;
 	if (_isVertical) {
-		return Glyph(_isVertical,
-					 slot->metrics.vertBearingX/64.0,
-					 slot->metrics.vertBearingY/64.0,
-					 slot->metrics.vertAdvance/64.0,
-					 image);
+		ret.reset(new Glyph(_isVertical,
+							slot->metrics.vertBearingX/64.0,
+							slot->metrics.vertBearingY/64.0,
+							slot->metrics.vertAdvance/64.0,
+							image));
 	}
 	else {
-		return Glyph(_isVertical,
-					 slot->metrics.horiBearingX/64.0,
-					 -slot->metrics.horiBearingY/64.0,
-					 slot->metrics.horiAdvance/64.0,
-					 image);
+		ret.reset(new Glyph(_isVertical,
+							slot->metrics.horiBearingX/64.0,
+							-slot->metrics.horiBearingY/64.0,
+							slot->metrics.horiAdvance/64.0,
+							image));
 	}
+	_glyphData[gid] = ret;
+	return ret;
 }
 
-std::vector<Glyph> Font::renderString(std::u16string charCodes, const Color &color) {
-	std::vector<Glyph> ret;
+std::vector<SP<const Glyph>> Font::renderString(std::u16string charCodes, const Color &color) {
+	std::vector<SP<const Glyph>> ret;
 	for each (char16_t var in charCodes) {
 		ret.push_back(renderChar(var, color));
 	}

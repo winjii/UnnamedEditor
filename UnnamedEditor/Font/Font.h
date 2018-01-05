@@ -24,17 +24,17 @@ private:
 	
 	SP<GsubReader> _gsubReader;
 
+	std::map<GlyphIndex, SP<Glyph>> _glyphData; 
+
 public:
 
 	Font(FT_Library lib, std::string fontPath, int pixelWidth, int pixelHeight, bool isVertical = false);
 
 	~Font();
 
-	void ChangeSize(int pixelWidth, int pixelHeight);
+	SP<const Glyph> renderChar(char16_t charCode, const Color &color = Palette::Black);
 
-	Glyph renderChar(char16_t charCode, const Color &color = Palette::Black);
-
-	std::vector<Glyph> renderString(std::u16string charCodes, const Color &color = Palette::Black);
+	std::vector<SP<const Glyph>> renderString(std::u16string charCodes, const Color &color = Palette::Black);
 };
 
 

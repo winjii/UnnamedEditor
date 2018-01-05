@@ -21,7 +21,7 @@ private:
 
 	String _text;
 
-	std::vector<Font::Glyph> _glyphs;
+	std::vector<SP<const Font::Glyph>> _glyphs;
 
 public:
 

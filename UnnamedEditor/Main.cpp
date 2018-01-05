@@ -76,7 +76,7 @@ void Main()
 		while (System::Update()) {
 			Vec2 pen(100, 100);
 			for (int i = 0; i < v.size(); i++) {
-				pen = v[i].draw(pen);
+				pen = v[i]->draw(pen);
 			}
 		}
 	}

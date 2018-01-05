@@ -21,9 +21,9 @@ public:
 
 	~Glyph();
 
-	Vec2 draw(const Vec2 &pen);
+	Vec2 draw(const Vec2 &pen) const;
 
-	Vec2 getAdvance();
+	Vec2 getAdvance() const;
 
 };
 
