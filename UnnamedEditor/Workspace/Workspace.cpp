@@ -9,7 +9,7 @@ Workspace::Workspace(DevicePos pos, DevicePos size, FT_Library lib)
 : _pos(pos)
 , _size(size)
 , _fontSize(20)
-, _font(lib, "C:/Windows/Fonts/msmincho.ttc", _fontSize, _fontSize, true) {
+, _font(lib, "C:/Windows/Fonts/msmincho.ttc", _fontSize, true) {
 }
 
 void Workspace::addText(const String & text) {

@@ -69,7 +69,7 @@ void Main()
 		using namespace UnnamedEditor::Font;
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
-		UnnamedEditor::Font::Font font(lib, "C:/Windows/Fonts/msmincho.ttc", 30, 30, true);
+		UnnamedEditor::Font::Font font(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
 		String s = L"「山村、（mucho）。」";
 		auto v = font.renderString(s.toUTF16());
 
@@ -106,8 +106,8 @@ void Main()
 		using namespace UnnamedEditor;
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
-		UnnamedEditor::Font::Font fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, 30, true);
-		UnnamedEditor::Font::Font fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, 30, false);
+		UnnamedEditor::Font::Font fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
+		UnnamedEditor::Font::Font fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, false);
 		auto glyphsV = fontV.renderString(u"むーちょろくいちさん");
 		auto glyphsH = fontH.renderString(u"mucho613");
 		auto draw = [](const std::vector<SP<const UnnamedEditor::Font::Glyph>> &glyphs) {

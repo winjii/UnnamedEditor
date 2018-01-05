@@ -18,6 +18,8 @@ private:
 
 	FT_Library _lib; //Š—LŒ ‚ğ‚½‚È‚¢
 	
+	int _fontSize;
+
 	FT_Face _face;
 
 	bool _isVertical;
@@ -28,7 +30,7 @@ private:
 
 public:
 
-	Font(FT_Library lib, std::string fontPath, int pixelWidth, int pixelHeight, bool isVertical = false);
+	Font(FT_Library lib, std::string fontPath, int pixelSize, bool isVertical = false);
 
 	~Font();
 
