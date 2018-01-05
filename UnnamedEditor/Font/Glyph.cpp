@@ -14,21 +14,18 @@ Glyph::Glyph(bool isVertical, double bearingX, double bearingY, double advance, 
 
 Glyph::~Glyph() {}
 
-Vec2 Glyph::draw(const Vec2 &pen, const Color &color) const {
+Vec2 Glyph::draw(const Vec2 &pen, const Color &color, double angle) const {
 	Vec2 res = pen;
-	int w = _texture.width();
-	int h = _texture.height();
 	if (!_texture.isEmpty()) {
-		_texture.draw(pen + _bearing, color);
+		_texture.rotateAt(0, 0, angle).draw(pen + _bearing.rotated(angle), color);
 	}
-	if (_isVertical) res.y += _advance;
-	else res.x += _advance;
+	res += getAdvance(angle);
 	return res;
 }
 
-Vec2 Glyph::getAdvance() const {
-	if (_isVertical) return Vec2(0, _advance);
-	return Vec2(_advance, 0);
+Vec2 Glyph::getAdvance(double angle) const {
+	if (_isVertical) return Vec2(0, _advance).rotate(angle);
+	return Vec2(_advance, 0).rotate(angle);
 }
 
 
