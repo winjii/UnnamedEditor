@@ -35,8 +35,8 @@ public:
 
 	void draw() const;
 	
-	//文字が収まるために必要なマージン
-	DevicePos desirableMargin();
+	//文字が収まるために上下と左右に必要なマージン
+	Vec2 desirableMargin();
 
 	
 };

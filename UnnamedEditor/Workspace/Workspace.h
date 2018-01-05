@@ -2,6 +2,7 @@
 #include "Font\Font.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include "DraftPaper.h"
 
 namespace UnnamedEditor {
 namespace Workspace {
@@ -35,6 +36,38 @@ public:
 };
 
 
+class PaperManager {
+private:
+
+	int animationMS = 500;
+
+	DraftPaper _paper;
+
+	DevicePos _start, _end;
+
+	Stopwatch _sw;
+
+public:
+
+	PaperManager(const DraftPaper &paper, const DevicePos &start, const DevicePos &end)
+	: _paper(paper)
+	, _start(start)
+	, _end(end) {
+
+
+		_sw.start();
+	}
+
+	void update() {
+		int ms = _sw.ms();
+		if (ms > animationMS) _sw.pause();
+		double t = std::min(1.0, ms/(double)animationMS);	
+		_paper.setPos(EaseOut(Easing::Quint, _start, _end, t));
+		_paper.draw();
+	}
+};
+
+
 class Workspace {
 private:
 
@@ -50,13 +83,23 @@ private:
 
 	JudgeUnsettled _ju;
 
+	int _draftCharCount;
+
+	RectF _draftField;
+
+	int _draftFontSize;
+
+	Font::Font _draftFont;
+
+	std::vector<PaperManager> _papers;
+
 public:
 
 	Workspace(DevicePos pos, DevicePos size, FT_Library lib);
 
 	void addText(const String &text);
 
-	void deleteText();
+	void deleteText(int count = 1);
 
 	void update();
 

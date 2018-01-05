@@ -18,7 +18,7 @@ void Main()
 		WorkspaceTest,
 		GlyphTest,
 		DraftPaperTest
-	} runMode = RunMode::DraftPaperTest;
+	} runMode = RunMode::WorkspaceTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		FT_Library lib;
@@ -95,6 +95,7 @@ void Main()
 	}
 	else if (runMode == RunMode::WorkspaceTest) {
 		using namespace UnnamedEditor::Workspace;
+		Window::Resize(Size(1280, 720));
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
 		Workspace w(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), lib);

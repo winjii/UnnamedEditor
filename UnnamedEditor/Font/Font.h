@@ -26,7 +26,7 @@ private:
 	
 	SP<GsubReader> _gsubReader;
 
-	std::map<GlyphIndex, SP<Glyph>> _glyphData; 
+	std::map<GlyphIndex, SP<Glyph>> _glyphData;
 
 public:
 

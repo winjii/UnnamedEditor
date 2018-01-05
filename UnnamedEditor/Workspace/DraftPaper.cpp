@@ -60,7 +60,7 @@ void DraftPaper::draw() const {
 	}
 }
 
-DevicePos DraftPaper::desirableMargin() {
+Vec2 DraftPaper::desirableMargin() {
 	return _desirableMargin;
 }
 
