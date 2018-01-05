@@ -5,14 +5,15 @@ namespace UnnamedEditor {
 namespace Workspace {
 
 
-DraftPaper::DraftPaper(const std::vector<SP<Font::Glyph>> &glyphs, double angle)
+DraftPaper::DraftPaper(const std::vector<SP<const Font::Glyph>> &glyphs, double angle)
 : _glyphs(glyphs)
+, _glyphPositions(glyphs.size())
 , _angle(angle) {
 	double _lineInterval = glyphs[0]->getFontSize()*1.2;
 	Vec2 toNewLine = glyphs[0]->isVertical() ? Vec2(-_lineInterval, 0) : Vec2(0, _lineInterval);
 	toNewLine.rotate(angle);
 
-	Vec2 min(0, 0), max(1e100, 1e100);
+	Vec2 min(1e100, 1e100), max(0, 0);
 	auto takeMinMax = [&](const Vec2 &pos) {
 		min.x = std::min(min.x, pos.x);
 		min.y = std::min(min.y, pos.y);
@@ -28,15 +29,35 @@ DraftPaper::DraftPaper(const std::vector<SP<Font::Glyph>> &glyphs, double angle)
 		takeMinMax(bBox.br());
 		takeMinMax(bBox.tl());
 		takeMinMax(bBox.tr());
-		
-		if (i % 15 == 0) {
+
+		_glyphPositions[i] = pen;
+
+		if ((i + 1) % 15 == 0) {
 			pen = (lineHead += toNewLine);
 		}
 		else {
 			pen += glyphs[i]->getAdvance(angle);
 		}
 	}
-	_desirableMargin = Vec2((max.x - min.x)/2.0, (max.y - min.y)/2.0);
+	Vec2 center = (max + min)/2.0;
+	_desirableMargin = (max - min)/2.0;
+	for (int i = 0; i < (int)_glyphPositions.size(); i++) {
+		_glyphPositions[i] -= center;
+	}
+}
+
+void DraftPaper::setPos(const DevicePos &pos) {
+	_pos = pos;
+}
+
+DevicePos DraftPaper::getPos() const {
+	return _pos;
+}
+
+void DraftPaper::draw() const {
+	for (int i = 0; i < (int)_glyphPositions.size(); i++) {
+		_glyphs[i]->draw(_pos + _glyphPositions[i], Palette::Black, _angle);
+	}
 }
 
 DevicePos DraftPaper::desirableMargin() {

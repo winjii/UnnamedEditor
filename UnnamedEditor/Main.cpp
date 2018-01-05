@@ -5,6 +5,7 @@
 #include "Font\Font.h"
 #include "FairCopyField\FairCopyField.h"
 #include "Workspace\Workspace.h"
+#include "Workspace\DraftPaper.h"
 
 using namespace FontDataPicker;
 
@@ -15,8 +16,9 @@ void Main()
 		FontTest,
 		FairCopyFieldTest,
 		WorkspaceTest,
-		GlyphTest
-	} runMode = RunMode::GlyphTest;
+		GlyphTest,
+		DraftPaperTest
+	} runMode = RunMode::DraftPaperTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		FT_Library lib;
@@ -120,6 +122,26 @@ void Main()
 		while (System::Update()) {
 			draw(glyphsV);
 			draw(glyphsH);
+		}
+	}
+	else if (runMode == RunMode::DraftPaperTest) {
+		using namespace UnnamedEditor::Font;
+		using namespace UnnamedEditor;
+		using namespace UnnamedEditor::Workspace;
+		FT_Library lib;
+		FT_Init_FreeType(&lib);
+		UnnamedEditor::Font::Font fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
+		UnnamedEditor::Font::Font fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, false);
+		auto glyphsV = fontV.renderString(u"むーーーーーーーーーーーーーーちょろくいちさん");
+		auto glyphsH = fontH.renderString(u"mucho613");
+		DraftPaper dpV(glyphsV, -Math::Pi/6.0);
+		DraftPaper dpH(glyphsH, Math::Pi/6.0);
+		dpV.setPos(Window::Size()/2.0);
+		dpH.setPos(Window::Size()/2.0);
+		Graphics::SetBackground(Palette::White);
+		while (System::Update()) {
+			dpV.draw();
+			dpH.draw();
 		}
 	}
 }
