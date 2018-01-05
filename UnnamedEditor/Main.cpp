@@ -95,6 +95,7 @@ void Main()
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
 		Workspace w(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), lib);
+		w.addText(L"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。");
 		while (System::Update()) {
 			w.update();
 		}

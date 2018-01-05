@@ -27,6 +27,10 @@ public:
 
 	Workspace(DevicePos pos, DevicePos size, FT_Library lib);
 
+	void addText(const String &text);
+
+	void deleteText();
+
 	void update();
 
 };

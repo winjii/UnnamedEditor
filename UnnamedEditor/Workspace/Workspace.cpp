@@ -10,13 +10,25 @@ Workspace::Workspace(DevicePos pos, DevicePos size, FT_Library lib)
 , _size(size)
 , _fontSize(20)
 , _font(lib, "C:/Windows/Fonts/msmincho.ttc", _fontSize, _fontSize, true) {
-	_text = L"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。";
-	std::vector<Font::Glyph> res = _font.renderString(_text.toUTF16());
+}
+
+void Workspace::addText(const String & text) {
+	_text += text;
+	std::vector<Font::Glyph> res = _font.renderString(text.toUTF16());
 	_glyphs.insert(_glyphs.end(), res.begin(), res.end());
 }
 
+void Workspace::deleteText() {
+	if (_text.empty()) return;
+	_text.pop_back();
+	_glyphs.pop_back();
+}
+
 void Workspace::update() {
-	//TODO: 文字列更新
+	String input;
+	TextInput::UpdateText(input);
+	addText(input);
+	if (KeyBackspace.down()) deleteText();
 
 	RectF(_pos, _size).draw(Palette::White);
 	DevicePos charPos(_pos.x + _size.x - _fontSize*2, _pos.y + _size.y/2);
