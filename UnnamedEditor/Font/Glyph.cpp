@@ -26,8 +26,9 @@ Vec2 Glyph::draw(const Vec2 &pen) {
 	return res;
 }
 
-double Glyph::getAdvance() {
-	return _advance;
+Vec2 Glyph::getAdvance() {
+	if (_isVertical) return Vec2(0, _advance);
+	return Vec2(_advance, 0);
 }
 
 

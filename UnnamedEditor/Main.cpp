@@ -4,6 +4,7 @@
 #include <FontDataPicker\GsubReader.h>
 #include "Font\Font.h"
 #include "FairCopyField\FairCopyField.h"
+#include "Workspace\Workspace.h"
 
 using namespace FontDataPicker;
 
@@ -12,8 +13,9 @@ void Main()
 	enum RunMode {
 		GsubReaderTest,
 		FontTest,
-		FairCopyFieldTest
-	} runMode = RunMode::FairCopyFieldTest;
+		FairCopyFieldTest,
+		WorkspaceTest
+	} runMode = RunMode::WorkspaceTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		FT_Library lib;
@@ -86,6 +88,15 @@ void Main()
 		fc.setText(L"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。");
 		while (System::Update()) {
 			fc.update();
+		}
+	}
+	else if (runMode == RunMode::WorkspaceTest) {
+		using namespace UnnamedEditor::Workspace;
+		FT_Library lib;
+		FT_Init_FreeType(&lib);
+		Workspace w(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), lib);
+		while (System::Update()) {
+			w.update();
 		}
 	}
 }

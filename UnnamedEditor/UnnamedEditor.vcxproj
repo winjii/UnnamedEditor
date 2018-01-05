@@ -197,6 +197,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Workspace\Workspace.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="engine\texture\box-shadow\128.png" />
@@ -262,6 +263,7 @@
     <ClInclude Include="Font\Font.h" />
     <ClInclude Include="Font\Glyph.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="Workspace\Workspace.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

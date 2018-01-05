@@ -75,6 +75,9 @@
     <ClCompile Include="FairCopyField\FairCopyField.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Workspace\Workspace.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Icon.ico">
@@ -220,6 +223,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FairCopyField\FairCopyField.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Workspace\Workspace.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
