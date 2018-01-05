@@ -28,13 +28,15 @@ void Workspace::update() {
 	String input;
 	TextInput::UpdateText(input);
 	addText(input);
-	if (KeyBackspace.down()) deleteText();
+	String unsettled = TextInput::GetMarkedText();
+	_ju.update(unsettled.length());
+	if (_ju.isSettled() && KeyBackspace.down())
+		deleteText();
 
 	RectF(_pos, _size).draw(Palette::Lightgrey);
 
 	const DevicePos head(_pos.x + _size.x - _fontSize*2, _pos.y + _size.y/2);
 	{
-		String unsettled = TextInput::GetMarkedText();
 		auto unsettledGlyhps = _font.renderString(unsettled.toUTF16());
 		DevicePos charPos = head;
 		for each (auto g in unsettledGlyhps) {
@@ -44,7 +46,7 @@ void Workspace::update() {
 	}
 
 	DevicePos charPos = head;
-	for (int i = _glyphs.size() - 1; i >= 0; i--) {
+	for (int i = (int)_glyphs.size() - 1; i >= 0; i--) {
 		charPos -= _glyphs[i]->getAdvance();
 		_glyphs[i]->draw(charPos);
 		if (charPos.y < _pos.y) break;
