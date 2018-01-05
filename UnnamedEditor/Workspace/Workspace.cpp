@@ -10,10 +10,6 @@ Workspace::Workspace(DevicePos pos, DevicePos size, FT_Library lib)
 , _size(size)
 , _fontSize(20)
 , _font(lib, "C:/Windows/Fonts/msmincho.ttc", _fontSize, _fontSize, true) {
-	_targets.resize(15);
-	for (int i = 0; i < 15; i++) {
-		_targets[i] = RandomPoint(RectF(_pos, _size));
-	}
 }
 
 void Workspace::addText(const String & text) {
@@ -37,13 +33,6 @@ void Workspace::update() {
 	if (_ju.isSettled() && KeyBackspace.down())
 		deleteText();
 
-	if (KeyDown.down()) {
-		_sw.start();
-	}
-	if (_sw.ms() > 2500) {
-		_sw.pause();
-	}
-
 	RectF(_pos, _size).draw(Palette::Lightgrey);
 
 	const DevicePos head(_pos.x + _size.x - _fontSize*2, _pos.y + _size.y/2);
@@ -59,12 +48,7 @@ void Workspace::update() {
 	DevicePos charPos = head;
 	for (int i = (int)_glyphs.size() - 1; i >= 0; i--) {
 		charPos -= _glyphs[i]->getAdvance();
-		DevicePos end = charPos;
-		int j = (int)_glyphs.size() - 1 - i;
-		if (j < _targets.size()) {
-			end = _targets[j];
-		}
-		_glyphs[i]->draw(EaseIn(Easing::Bounce, charPos, end, std::min(1.0, _sw.ms()/2500.0)));
+		_glyphs[i]->draw(charPos);
 		if (charPos.y < _pos.y) break;
 	}
 }
