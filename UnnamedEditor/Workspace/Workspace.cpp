@@ -8,11 +8,11 @@ namespace Workspace {
 Workspace::Workspace(DevicePos pos, DevicePos size, FT_Library lib)
 : _pos(pos)
 , _size(size)
-, _fontSize(30)
+, _fontSize(40)
 , _font(lib, "C:/Windows/Fonts/msmincho.ttc", _fontSize, true)
 , _draftCharCount(0)
 , _draftField(pos, Vec2(size.x - _fontSize*2 - _fontSize, size.y))
-, _draftFontSize(20)
+, _draftFontSize(30)
 , _draftFont(lib, "C:/Windows/Fonts/msmincho.ttc", _draftFontSize, false) {
 }
 
@@ -37,7 +37,10 @@ void Workspace::update() {
 
 	if (_ju.isSettled() && KeyBackspace.down())
 		deleteText();
-	else if (_ju.isSettled() && KeyEnter.down() && _draftCharCount > 0) {
+	else if (_ju.isSettled() && KeyDown.down() && _draftCharCount > 0) {
+		_draftCharCount = 0;
+	}
+	else if (_ju.isSettled() && KeyLeft.down() && _draftCharCount > 0) {
 		String draftText = _text.substr(_text.length() - (size_t)_draftCharCount, _draftCharCount);
 		deleteText(_draftCharCount);
 		double angle = Random(-Math::Pi/2.0, Math::Pi/2.0);
@@ -63,6 +66,9 @@ void Workspace::update() {
 		}();
 
 		_papers.push_back(PaperManager(dp, start, end));
+	}
+	else if (_ju.isSettled() && KeyEnter.down()) {
+		//‰½‚à‚³‚¹‚ñ‚Å
 	}
 	else {
 		String input;
