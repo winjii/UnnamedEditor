@@ -17,7 +17,7 @@ Font::~Font() {
 	FT_Done_Face(_face);
 }
 
-SP<const Glyph> Font::renderChar(char16_t charCode, const Color &color) {
+SP<const Glyph> Font::renderChar(char16_t charCode) {
 	GlyphIndex gid = FT_Get_Char_Index(_face, charCode);
 	if (_isVertical) gid = _gsubReader->vertSubstitute(gid);
 	auto itr = _glyphData.find(gid);
@@ -34,7 +34,7 @@ SP<const Glyph> Font::renderChar(char16_t charCode, const Color &color) {
 	for (int r = 0; r < bitmap.rows; r++) {
 		for (int c = 0; c < bitmap.width; c++) {
 			HSV gray(Color(bitmap.buffer[r*bitmap.width + c]));
-			image[r][c] = Color(color, 255*gray.v);
+			image[r][c] = Color(Palette::White, 255*gray.v);
 		}
 	}
 	SP<Glyph> ret;
@@ -56,10 +56,10 @@ SP<const Glyph> Font::renderChar(char16_t charCode, const Color &color) {
 	return ret;
 }
 
-std::vector<SP<const Glyph>> Font::renderString(std::u16string charCodes, const Color &color) {
+std::vector<SP<const Glyph>> Font::renderString(std::u16string charCodes) {
 	std::vector<SP<const Glyph>> ret;
 	for each (char16_t var in charCodes) {
-		ret.push_back(renderChar(var, color));
+		ret.push_back(renderChar(var));
 	}
 	return ret;
 }

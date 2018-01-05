@@ -21,7 +21,7 @@ public:
 
 	~Glyph();
 
-	Vec2 draw(const Vec2 &pen) const;
+	Vec2 draw(const Vec2 &pen, const Color &color = Palette::Black) const;
 
 	Vec2 getAdvance() const;
 

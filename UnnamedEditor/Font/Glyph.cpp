@@ -14,12 +14,12 @@ Glyph::Glyph(bool isVertical, double bearingX, double bearingY, double advance, 
 
 Glyph::~Glyph() {}
 
-Vec2 Glyph::draw(const Vec2 &pen) const {
+Vec2 Glyph::draw(const Vec2 &pen, const Color &color) const {
 	Vec2 res = pen;
 	int w = _texture.width();
 	int h = _texture.height();
 	if (!_texture.isEmpty()) {
-		_texture.draw(pen + _bearing);
+		_texture.draw(pen + _bearing, color);
 	}
 	if (_isVertical) res.y += _advance;
 	else res.x += _advance;

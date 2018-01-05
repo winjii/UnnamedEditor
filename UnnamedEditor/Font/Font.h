@@ -32,9 +32,9 @@ public:
 
 	~Font();
 
-	SP<const Glyph> renderChar(char16_t charCode, const Color &color = Palette::Black);
+	SP<const Glyph> renderChar(char16_t charCode);
 
-	std::vector<SP<const Glyph>> renderString(std::u16string charCodes, const Color &color = Palette::Black);
+	std::vector<SP<const Glyph>> renderString(std::u16string charCodes);
 };
 
 

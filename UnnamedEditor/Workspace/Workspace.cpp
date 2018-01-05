@@ -34,15 +34,15 @@ void Workspace::update() {
 	
 	{
 		String unsettled = TextInput::GetMarkedText();
-		auto unsettledGlyhps = _font.renderString(unsettled.toUTF16(), Palette::Gray);
+		auto unsettledGlyhps = _font.renderString(unsettled.toUTF16());
 		DevicePos charPos = head;
 		for each (auto g in unsettledGlyhps) {
-			g->draw(charPos);
+			g->draw(charPos, Palette::Gray);
 			charPos += g->getAdvance();
 		}
 	}
 
-	RectF(_pos, _size).draw(Palette::White);
+	RectF(_pos, _size).draw(Palette::Lightgrey);
 	DevicePos charPos = head;
 	for (int i = _glyphs.size() - 1; i >= 0; i--) {
 		charPos -= _glyphs[i]->getAdvance();
