@@ -29,9 +29,9 @@ public:
 		else _count = 5;
 	}
 
-	bool isUnsettled() { return _count == 0; }
+	bool isUnsettled() { return _count > 0; }
 
-	bool isSettled() { return _count > 0; }
+	bool isSettled() { return _count == 0; }
 };
 
 
