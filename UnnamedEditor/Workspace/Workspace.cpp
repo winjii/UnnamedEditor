@@ -46,7 +46,9 @@ void Workspace::update() {
 		double angle = Random(-Math::Pi/4.0, Math::Pi/4.0);
 		DraftPaper dp(_draftFont.renderString(draftText.toUTF16()), angle);
 		Vec2 margin = dp.desirableMargin();
-		DevicePos end = RandomPoint(RectF(_draftField.pos + margin, _draftField.size - 2*margin));
+		margin = Vec2(std::min(margin.x, _draftField.size.x/2.0 - 1e-3),
+					  std::min(margin.y, _draftField.size.y/2.0 - 1e-3));
+		DevicePos end = RandomVec2(RectF(_draftField.pos + margin, _draftField.size - 2*margin));
 		
 		DevicePos start = [&](){
 			DevicePos pos = _draftField.pos - margin, size = _draftField.size + margin*2;
