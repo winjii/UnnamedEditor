@@ -13,7 +13,7 @@ Workspace::Workspace(DevicePos pos, DevicePos size, FT_Library lib)
 , _draftCharCount(0)
 , _draftField(pos, Vec2(size.x - _fontSize*2 - _fontSize, size.y))
 , _draftFontSize(30)
-, _draftFont(lib, "C:/Windows/Fonts/msmincho.ttc", _draftFontSize, false) {
+, _draftFont(lib, "C:/Windows/Fonts/msmincho.ttc", _draftFontSize, true) {
 }
 
 void Workspace::addText(const String &text) {
@@ -69,6 +69,11 @@ void Workspace::update() {
 	}
 	else if (_ju.isSettled() && KeyEnter.down()) {
 		//‰½‚à‚³‚¹‚ñ‚Å
+	}
+	else if (_ju.isSettled() && KeyControl.pressed() && KeyV.down()) {
+		String input;
+		Clipboard::GetText(input);
+		addText(input);
 	}
 	else {
 		String input;
