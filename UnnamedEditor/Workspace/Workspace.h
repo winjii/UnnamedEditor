@@ -39,7 +39,7 @@ public:
 class PaperManager {
 private:
 
-	int animationMS = 500;
+	int animationMS = 1000;
 
 	DraftPaper _paper;
 

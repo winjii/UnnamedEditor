@@ -43,7 +43,7 @@ void Workspace::update() {
 	else if (_ju.isSettled() && KeyLeft.down() && _draftCharCount > 0) {
 		String draftText = _text.substr(_text.length() - (size_t)_draftCharCount, _draftCharCount);
 		deleteText(_draftCharCount);
-		double angle = Random(-Math::Pi/2.0, Math::Pi/2.0);
+		double angle = Random(-Math::Pi/4.0, Math::Pi/4.0);
 		DraftPaper dp(_draftFont.renderString(draftText.toUTF16()), angle);
 		Vec2 margin = dp.desirableMargin();
 		DevicePos end = RandomPoint(RectF(_draftField.pos + margin, _draftField.size - 2*margin));

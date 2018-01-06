@@ -10,39 +10,70 @@ DraftPaper::DraftPaper(const std::vector<SP<const Font::Glyph>> &glyphs, double 
 , _glyphPositions(glyphs.size())
 , _angle(angle) {
 	double _lineInterval = glyphs[0]->getFontSize()*1.2;
-	Vec2 toNewLine = glyphs[0]->isVertical() ? Vec2(-_lineInterval, 0) : Vec2(0, _lineInterval);
-	toNewLine.rotate(angle);
+	Vec2 lineDelta = glyphs[0]->isVertical() ? Vec2(-_lineInterval, 0) : Vec2(0, _lineInterval);
+	Vec2 inclinedLineDelta = lineDelta.rotated(angle);
 
-	Vec2 min(1e100, 1e100), max(0, 0);
-	auto takeMinMax = [&](const Vec2 &pos) {
-		min.x = std::min(min.x, pos.x);
-		min.y = std::min(min.y, pos.y);
-		max.x = std::max(max.x, pos.x);
-		max.y = std::max(max.y, pos.y);
-	};
+	Vec2 center;
+	{
+		Vec2 min(1e100, 1e100), max(0, 0);
+		auto takeMinMax = [&](const Vec2 &pos) {
+			min.x = std::min(min.x, pos.x);
+			min.y = std::min(min.y, pos.y);
+			max.x = std::max(max.x, pos.x);
+			max.y = std::max(max.y, pos.y);
+		};
 
-	Vec2 lineHead(0, 0);
-	Vec2 pen = lineHead;
-	for (int i = 0; i < (int)glyphs.size(); i++) {
-		RectF bBox = glyphs[i]->boundingBox(pen, angle);
-		takeMinMax(bBox.bl());
-		takeMinMax(bBox.br());
-		takeMinMax(bBox.tl());
-		takeMinMax(bBox.tr());
+		Vec2 lineHead(0, 0);
+		Vec2 pen = lineHead;
+		for (int i = 0; i < (int)glyphs.size(); i++) {
+			RectF bBox = glyphs[i]->boundingBox(pen, angle);
+			takeMinMax(bBox.bl());
+			takeMinMax(bBox.br());
+			takeMinMax(bBox.tl());
+			takeMinMax(bBox.tr());
 
-		_glyphPositions[i] = pen;
+			_glyphPositions[i] = pen;
 
-		if ((i + 1) % 15 == 0) {
-			pen = (lineHead += toNewLine);
+			if ((i + 1) % 15 == 0) {
+				pen = (lineHead += inclinedLineDelta);
+			}
+			else {
+				pen += glyphs[i]->getAdvance(angle);
+			}
 		}
-		else {
-			pen += glyphs[i]->getAdvance(angle);
+		center = (max + min)/2.0;
+		_desirableMargin = (max - min)/2.0;
+		for (int i = 0; i < (int)_glyphPositions.size(); i++) {
+			_glyphPositions[i] -= center;
 		}
 	}
-	Vec2 center = (max + min)/2.0;
-	_desirableMargin = (max - min)/2.0;
-	for (int i = 0; i < (int)_glyphPositions.size(); i++) {
-		_glyphPositions[i] -= center;
+	{
+		Vec2 min(1e100, 1e100), max(0, 0);
+		auto takeMinMax = [&](const Vec2 &pos) {
+			min.x = std::min(min.x, pos.x);
+			min.y = std::min(min.y, pos.y);
+			max.x = std::max(max.x, pos.x);
+			max.y = std::max(max.y, pos.y);
+		};
+
+		Vec2 lineHead(0, 0);
+		Vec2 pen = lineHead;
+		for (int i = 0; i < (int)glyphs.size(); i++) {
+			RectF bBox = glyphs[i]->boundingBox(pen);
+			takeMinMax(bBox.bl());
+			takeMinMax(bBox.br());
+			takeMinMax(bBox.tl());
+			takeMinMax(bBox.tr());
+
+			if ((i + 1) % 15 == 0) {
+				pen = (lineHead += lineDelta);
+			}
+			else {
+				pen += glyphs[i]->getAdvance();
+			}
+		}
+		_paper = RectF(min - center.rotated(-angle) - Vec2(_lineInterval, _lineInterval),
+					   max - min + Vec2(_lineInterval, _lineInterval)*2);
 	}
 }
 
@@ -55,6 +86,8 @@ DevicePos DraftPaper::getPos() const {
 }
 
 void DraftPaper::draw() const {
+	Color paperColor = Color(Palette::White, 220);
+	_paper.rotatedAt(Vec2(0, 0), _angle).moveBy(_pos).draw(paperColor).drawFrame(1, Palette::Black);
 	for (int i = 0; i < (int)_glyphPositions.size(); i++) {
 		_glyphs[i]->draw(_pos + _glyphPositions[i], Palette::Black, _angle);
 	}
