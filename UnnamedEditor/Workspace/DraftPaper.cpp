@@ -97,6 +97,22 @@ Vec2 DraftPaper::desirableMargin() {
 	return _desirableMargin;
 }
 
+RectF DraftPaper::boundingBox(const Vec2 & pos) {
+	Vec2 min(1e100, 1e100), max(0, 0);
+	auto takeMinMax = [&](const Vec2 &pos) {
+		min.x = std::min(min.x, pos.x);
+		min.y = std::min(min.y, pos.y);
+		max.x = std::max(max.x, pos.x);
+		max.y = std::max(max.y, pos.y);
+	};
+	Quad quad = _paper.rotatedAt(Vec2(0, 0), _angle).moveBy(_pos);
+	takeMinMax(quad.p0);
+	takeMinMax(quad.p1);
+	takeMinMax(quad.p2);
+	takeMinMax(quad.p3);
+	return RectF(min, max - min);
+}
+
 
 }
 }

@@ -11,6 +11,7 @@ using DevicePos = Vec2;
 class DraftPaper {
 private:
 
+	//(0, 0)とオブジェクトの位置が一致するように
 	RectF _paper;
 
 	std::vector<SP<const Font::Glyph>> _glyphs;
@@ -20,7 +21,7 @@ private:
 	//glyphsのboundingBoxの中心の位置が、このオブジェクトの位置
 	DevicePos _pos;
 
-	//画面下を0とするrad
+	//文字のデフォルトの角度を0とするrad
 	double _angle;
 
 	Vec2 _desirableMargin;
@@ -38,6 +39,7 @@ public:
 	//文字が収まるために上下と左右に必要なマージン
 	Vec2 desirableMargin();
 
+	RectF boundingBox(const Vec2 &pos = Vec2(0, 0));
 	
 };
 

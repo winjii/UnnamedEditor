@@ -50,10 +50,9 @@ void Workspace::update() {
 					  std::min(margin.y, _draftField.size.y/2.0 - 1e-3));
 		DevicePos end = RandomVec2(RectF(_draftField.pos + margin, _draftField.size - 2*margin));
 		
-		margin *= 4;
+		Vec2 boundingSize = dp.boundingBox().size;
 		DevicePos start = [&](){
-			//DevicePos pos = _draftField.pos - margin, size = _draftField.size + margin*2;
-			DevicePos pos = _pos - margin, size = _size + margin*2;
+			DevicePos pos = _pos - boundingSize, size = _size + boundingSize*2;
 			double rnd = Random()*(size.x + size.y)*2;
 			
 			//è„ï”
