@@ -8,11 +8,11 @@ namespace Workspace {
 Workspace::Workspace(DevicePos pos, DevicePos size, FT_Library lib)
 : _pos(pos)
 , _size(size)
-, _fontSize(40)
+, _fontSize(20)
 , _font(lib, "C:/Windows/Fonts/msmincho.ttc", _fontSize, true)
 , _draftCharCount(0)
 , _draftField(pos, Vec2(size.x - _fontSize*2 - _fontSize, size.y))
-, _draftFontSize(30)
+, _draftFontSize(15)
 , _draftFont(lib, "C:/Windows/Fonts/msmincho.ttc", _draftFontSize, true) {
 }
 
@@ -50,8 +50,10 @@ void Workspace::update() {
 					  std::min(margin.y, _draftField.size.y/2.0 - 1e-3));
 		DevicePos end = RandomVec2(RectF(_draftField.pos + margin, _draftField.size - 2*margin));
 		
+		margin *= 4;
 		DevicePos start = [&](){
-			DevicePos pos = _draftField.pos - margin, size = _draftField.size + margin*2;
+			//DevicePos pos = _draftField.pos - margin, size = _draftField.size + margin*2;
+			DevicePos pos = _pos - margin, size = _size + margin*2;
 			double rnd = Random()*(size.x + size.y)*2;
 			
 			//ã•Ó
@@ -77,6 +79,14 @@ void Workspace::update() {
 		Clipboard::GetText(input);
 		addText(input);
 	}
+	else if (KeyDelete.down()) {
+		for (auto itr = _papers.begin(); itr != _papers.end();) {
+			itr->disable();
+			_garbagePapers.push_back(*itr);
+			itr++;
+		}
+		_papers.clear();
+	}
 	else {
 		String input;
 		TextInput::UpdateText(input);
@@ -84,7 +94,6 @@ void Workspace::update() {
 	}
 
 	RectF(_pos, _size).draw(Palette::White);
-
 	const DevicePos head(_pos.x + _size.x - _fontSize*2, _pos.y + _size.y/2);
 	{
 		auto unsettledGlyhps = _font.renderString(unsettled.toUTF16());
@@ -104,8 +113,17 @@ void Workspace::update() {
 		if (charPos.y < _pos.y) break;
 	}
 
-	for (int i = 0; i < (int)_papers.size(); i++) {
-		_papers[i].update();
+	for (auto itr = _papers.begin(); itr != _papers.end();) {
+		itr->update();
+		itr++;
+	}
+	for (auto itr = _garbagePapers.begin(); itr != _garbagePapers.end();) {
+		if (!itr->isInAnimation()) {
+			itr = _garbagePapers.erase(itr);
+			continue;
+		}
+		itr->update();
+		itr++;
 	}
 }
 

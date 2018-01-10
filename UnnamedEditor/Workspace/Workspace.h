@@ -47,12 +47,15 @@ private:
 
 	Stopwatch _sw;
 
+	bool _isDisabled;
+
 public:
 
-	PaperManager(const DraftPaper &paper, const DevicePos &start, const DevicePos &end)
+	PaperManager(const DraftPaper &paper, const DevicePos &start, const DevicePos &end, bool isEnabled = true)
 	: _paper(paper)
 	, _start(start)
-	, _end(end) {
+	, _end(end)
+	, _isDisabled(!isEnabled) {
 
 
 		_sw.start();
@@ -61,9 +64,30 @@ public:
 	void update() {
 		int ms = _sw.ms();
 		if (ms > animationMS) _sw.pause();
-		double t = std::min(1.0, ms/(double)animationMS);	
-		_paper.setPos(EaseOut(Easing::Quint, _start, _end, t));
+		double t = std::min(1.0, ms/(double)animationMS);
+		if (_isDisabled)
+			_paper.setPos(EaseOut(Easing::Quint, _end, _start, t));
+		else
+			_paper.setPos(EaseOut(Easing::Quint, _start, _end, t));
 		_paper.draw();
+	}
+
+	bool isDisabled() { return _isDisabled; }
+
+	void disable() {
+		if (_isDisabled) return;
+		_isDisabled = true;
+		_sw.restart();
+	}
+
+	void enable() {
+		if (!_isDisabled) return;
+		_isDisabled = false;
+		_sw.restart();
+	}
+
+	bool isInAnimation() {
+		return _sw.ms() <= animationMS;
 	}
 };
 
@@ -91,7 +115,9 @@ private:
 
 	Font::Font _draftFont;
 
-	std::vector<PaperManager> _papers;
+	std::list<PaperManager> _papers;
+
+	std::list<PaperManager> _garbagePapers;
 
 public:
 
