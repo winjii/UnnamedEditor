@@ -9,18 +9,9 @@
 
 using namespace FontDataPicker;
 
-void Main()
-{
-	enum RunMode {
-		GsubReaderTest,
-		FontTest,
-		FairCopyFieldTest,
-		WorkspaceTest,
-		GlyphTest,
-		DraftPaperTest
-	} runMode = RunMode::WorkspaceTest;
-
-	if (runMode == RunMode::GsubReaderTest) {
+namespace UnnamedEditor {
+	
+	void GsubReaderTest() {
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
 		FT_Face face;
@@ -31,7 +22,7 @@ void Main()
 		DynamicTexture texture;
 		auto init = [&](int pw, int ph) {
 			FT_Set_Pixel_Sizes(face, pw, ph);
-		
+
 			GsubReader gr(face);
 
 			unsigned int charCode = L'。';
@@ -67,7 +58,8 @@ void Main()
 			texture.draw(pos);
 		}
 	}
-	else if (runMode == RunMode::FontTest) {
+
+	void FontTest() {
 		using namespace UnnamedEditor::Font;
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
@@ -83,27 +75,28 @@ void Main()
 			}
 		}
 	}
-	else if (runMode == RunMode::FairCopyFieldTest) {
-		using namespace UnnamedEditor::FairCopyField;
+
+	void FairCopyFieldTest() {
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
-		FairCopyField fc(0, 0, Window::Width(), Window::Height(), lib, 20);
+		FairCopyField::FairCopyField fc(0, 0, Window::Width(), Window::Height(), lib, 20);
 		fc.setText(L"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。");
 		while (System::Update()) {
 			fc.update();
 		}
 	}
-	else if (runMode == RunMode::WorkspaceTest) {
-		using namespace UnnamedEditor::Workspace;
+
+	void WorkspaceTest() {
 		Window::Resize(Size(1280, 720));
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
-		Workspace w(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), lib);
+		Workspace::Workspace w(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), lib);
 		while (System::Update()) {
 			w.update();
 		}
 	}
-	else if (runMode == RunMode::GlyphTest) {
+
+	void GlyphTest() {
 		using namespace UnnamedEditor::Font;
 		using namespace UnnamedEditor;
 		FT_Library lib;
@@ -124,7 +117,8 @@ void Main()
 			draw(glyphsH);
 		}
 	}
-	else if (runMode == RunMode::DraftPaperTest) {
+
+	void DraftPaperTest() {
 		using namespace UnnamedEditor::Font;
 		using namespace UnnamedEditor;
 		using namespace UnnamedEditor::Workspace;
@@ -149,5 +143,37 @@ void Main()
 			dpH.draw();
 			rectH.drawFrame(1, Palette::Blue);
 		}
+	}
+
+}
+
+void Main()
+{
+	enum RunMode {
+		GsubReaderTest,
+		FontTest,
+		FairCopyFieldTest,
+		WorkspaceTest,
+		GlyphTest,
+		DraftPaperTest
+	} runMode = RunMode::WorkspaceTest;
+
+	if (runMode == RunMode::GsubReaderTest) {
+		UnnamedEditor::GsubReaderTest();
+	}
+	else if (runMode == RunMode::FontTest) {
+		UnnamedEditor::FontTest();
+	}
+	else if (runMode == RunMode::FairCopyFieldTest) {
+		UnnamedEditor::FairCopyFieldTest();
+	}
+	else if (runMode == RunMode::WorkspaceTest) {
+		UnnamedEditor::WorkspaceTest();
+	}
+	else if (runMode == RunMode::GlyphTest) {
+		UnnamedEditor::GlyphTest();
+	}
+	else if (runMode == RunMode::DraftPaperTest) {
+		UnnamedEditor::DraftPaperTest();
 	}
 }
