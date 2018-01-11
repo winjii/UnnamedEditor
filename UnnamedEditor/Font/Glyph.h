@@ -24,7 +24,8 @@ public:
 	~Glyph();
 
 	//angle: rad
-	Vec2 draw(const Vec2 &pen, const Color &color = Palette::Black, double angle = 0.0) const;
+	//targetSize: •`‰æ‚É–³—–î—Lk‚·‚é
+	Vec2 draw(const Vec2 &pen, const Color &color = Palette::Black, double angle = 0.0, double scale = 1.0) const;
 
 	Vec2 getAdvance(double angle = 0.0) const;
 

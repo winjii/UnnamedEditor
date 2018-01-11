@@ -15,13 +15,12 @@ Glyph::Glyph(bool isVertical, double fontSize, double bearingX, double bearingY,
 
 Glyph::~Glyph() {}
 
-Vec2 Glyph::draw(const Vec2 &pen, const Color &color, double angle) const {
-	Vec2 res = pen;
+Vec2 Glyph::draw(const Vec2 &pen, const Color &color, double angle, double scale) const {
 	if (!_texture.isEmpty()) {
-		_texture.rotateAt(0, 0, angle).draw(pen + _bearing.rotated(angle), color);
+		Vec2 v(pen + _bearing.rotated(angle)*scale);
+		_texture.scale(scale).rotateAt(0, 0, angle).draw((pen + _bearing.rotated(angle)*scale), color);
 	}
-	res += getAdvance(angle);
-	return res;
+	return pen + getAdvance(angle)*scale;
 }
 
 Vec2 Glyph::getAdvance(double angle) const {

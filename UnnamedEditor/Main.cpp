@@ -145,6 +145,28 @@ namespace UnnamedEditor {
 		}
 	}
 
+	void Glyph_scaleTest() {
+		FT_Library lib;
+		FT_Init_FreeType(&lib);
+		UnnamedEditor::Font::Font font0(lib, "C:/Windows/Fonts/msmincho.ttc", 32, true);
+		UnnamedEditor::Font::Font font1(lib, "C:/Windows/Fonts/msmincho.ttc", 31, true);
+		String str = L"一三三三三三人寄ればソレイユ！"; //三や一などの横棒が一番上にある字体において、描画が崩れる(なんか線が入る？)
+		//描画時に座標をasPoint()すると直るが...
+		auto g0 = font0.renderString(str.toUTF16());
+		auto g1 = font1.renderString(str.toUTF16());
+		bool mode = false;
+
+		Graphics::SetBackground(Palette::White);
+		while (System::Update()) {
+			if (MouseL.down()) mode = !mode;
+			auto &glyphs = mode ? g1 : g0;
+			Vec2 pen(200, 100);
+			for each (auto g in glyphs) {
+				pen = g->draw(pen, Palette::Black, 0, 0.9);
+			}
+		}
+	}
+
 }
 
 void Main()
@@ -155,8 +177,9 @@ void Main()
 		FairCopyFieldTest,
 		WorkspaceTest,
 		GlyphTest,
-		DraftPaperTest
-	} runMode = RunMode::WorkspaceTest;
+		DraftPaperTest,
+		Glyph_scaleTest
+	} runMode = RunMode::Glyph_scaleTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -175,5 +198,8 @@ void Main()
 	}
 	else if (runMode == RunMode::DraftPaperTest) {
 		UnnamedEditor::DraftPaperTest();
+	}
+	else if (runMode == RunMode::Glyph_scaleTest) {
+		UnnamedEditor::Glyph_scaleTest();
 	}
 }

@@ -46,6 +46,12 @@ SP<const Glyph> Font::renderChar(char16_t charCode) {
 							slot->metrics.vertBearingY/64.0,
 							slot->metrics.vertAdvance/64.0,
 							image));
+		/*ret.reset(new Glyph(_isVertical,
+							_fontSize,
+							slot->metrics.vertBearingX >> 6,
+							slot->metrics.vertBearingY >> 6,
+							slot->metrics.vertAdvance >> 6,
+							image));*/
 	}
 	else {
 		ret.reset(new Glyph(_isVertical,
