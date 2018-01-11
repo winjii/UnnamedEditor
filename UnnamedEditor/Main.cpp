@@ -179,7 +179,7 @@ void OpenSiv3DBug() {
 
 	Graphics::SetBackground(Palette::White);
 	while (System::Update()) {
-		texture.scale(0.9).draw(Vec2(187.40000000000001, 102.70000000000000), Palette::Black); //変な線
+		texture.scale(0.9).draw(Vec2(187.40000000000001, 102.70000000000000), Palette::Black); //変な線が入る
 	}
 }
 
