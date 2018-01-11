@@ -167,7 +167,11 @@ void Glyph_scaleTest() {
 	}
 }
 
-void OpenSiv3DBug() {
+void NoBug() {
+	//テクスチャアドレスモードなるものをclampにすれば直るよ
+	//デフォルトではrepeatになっていて、テクスチャが循環する
+	Graphics2D::SetSamplerState(SamplerState::ClampLinear);
+
 	Image img(10, 10);
 	for (int i = 0; i < img.height(); i++) {
 		for (int j = 0; j < img.width(); j++) {
@@ -195,8 +199,8 @@ void Main()
 		GlyphTest,
 		DraftPaperTest,
 		Glyph_scaleTest,
-		OpenSiv3DBug
-	} runMode = RunMode::OpenSiv3DBug;
+		NoBug
+	} runMode = RunMode::NoBug;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -219,7 +223,7 @@ void Main()
 	else if (runMode == RunMode::Glyph_scaleTest) {
 		UnnamedEditor::Glyph_scaleTest();
 	}
-	else if (runMode == RunMode::OpenSiv3DBug) {
-		UnnamedEditor::OpenSiv3DBug();
+	else if (runMode == RunMode::NoBug) {
+		UnnamedEditor::NoBug();
 	}
 }
