@@ -168,10 +168,10 @@ void Glyph_scaleTest() {
 }
 
 void OpenSiv3DBug() {
-	Image img(32, 32);
+	Image img(10, 10);
 	for (int i = 0; i < img.height(); i++) {
 		for (int j = 0; j < img.width(); j++) {
-			if (i > 5) img[i][j] = Color(Palette::White, 255);
+			if (i >= 5) img[i][j] = Color(Palette::White, 255);
 			else img[i][j] = Color(Palette::White, 0);
 		}
 	}
@@ -179,7 +179,7 @@ void OpenSiv3DBug() {
 
 	Graphics::SetBackground(Palette::White);
 	while (System::Update()) {
-		texture.scale(0.9).draw(Vec2(187.40000000000001, 102.70000000000000), Palette::Black); //変な線が入る
+		texture.draw(Vec2(100, 100.5), Palette::Black); //変な線が入る
 	}
 }
 
