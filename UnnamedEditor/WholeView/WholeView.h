@@ -13,7 +13,9 @@ using DevicePos = Vec2;
 class WholeView {
 private:
 
-	DevicePos _pos, _size;
+	DevicePos _borderPos, _borderSize;
+
+	Vec2 _pos, _size;
 
 	SP<Font::Font> _font;
 
