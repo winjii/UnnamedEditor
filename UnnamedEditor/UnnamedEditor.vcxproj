@@ -187,6 +187,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="UnnamedEditor.cpp" />
+    <ClCompile Include="WholeView\WholeView.cpp" />
     <ClCompile Include="Workspace\DraftPaper.cpp" />
     <ClCompile Include="FairCopyField\FairCopyField.cpp" />
     <ClCompile Include="Font\Font.cpp" />
@@ -260,6 +262,8 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="UnnamedEditor.h" />
+    <ClInclude Include="WholeView\WholeView.h" />
     <ClInclude Include="Workspace\DraftPaper.h" />
     <ClInclude Include="FairCopyField\FairCopyField.h" />
     <ClInclude Include="Font\Font.h" />

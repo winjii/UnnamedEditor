@@ -1,4 +1,5 @@
 ﻿# include <Siv3D.hpp> // OpenSiv3D v0.1.7
+#include <fstream>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <FontDataPicker\GsubReader.h>
@@ -6,6 +7,7 @@
 #include "FairCopyField\FairCopyField.h"
 #include "Workspace\Workspace.h"
 #include "Workspace\DraftPaper.h"
+#include "WholeView\WholeView.h"
 
 using namespace FontDataPicker;
 
@@ -187,6 +189,20 @@ void NoBug() {
 	}
 }
 
+void WholeViewTest() {
+	String IamACat = TextReader(L"IamACat.txt").readAll();
+	
+	FT_Library lib;
+	FT_Init_FreeType(&lib);
+	SP<Font::Font> font(new Font::Font(lib, "C:/Windows/Fonts/msmincho.ttc", 24, true));
+	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), font);
+	wholeView.setText(IamACat);
+
+	while (System::Update()) {
+		wholeView.update();
+	}
+}
+
 }
 
 void Main()
@@ -199,8 +215,9 @@ void Main()
 		GlyphTest,
 		DraftPaperTest,
 		Glyph_scaleTest,
-		NoBug
-	} runMode = RunMode::NoBug;
+		NoBug,
+		WholeViewTest
+	} runMode = RunMode::WholeViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -225,5 +242,8 @@ void Main()
 	}
 	else if (runMode == RunMode::NoBug) {
 		UnnamedEditor::NoBug();
+	}
+	else if (runMode == RunMode::WholeViewTest) {
+		UnnamedEditor::WholeViewTest();
 	}
 }

@@ -34,6 +34,8 @@ public:
 
 	~Font();
 
+	int getFontSize();
+
 	SP<const Glyph> renderChar(char16_t charCode);
 
 	std::vector<SP<const Glyph>> renderString(std::u16string charCodes);

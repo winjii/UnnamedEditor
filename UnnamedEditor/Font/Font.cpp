@@ -18,6 +18,10 @@ Font::~Font() {
 	FT_Done_Face(_face);
 }
 
+int Font::getFontSize() {
+	return _fontSize;
+}
+
 SP<const Glyph> Font::renderChar(char16_t charCode) {
 	GlyphIndex gid = FT_Get_Char_Index(_face, charCode);
 	if (_isVertical) gid = _gsubReader->vertSubstitute(gid);

@@ -81,6 +81,12 @@
     <ClCompile Include="Workspace\DraftPaper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="UnnamedEditor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="WholeView\WholeView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Icon.ico">
@@ -232,6 +238,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Workspace\DraftPaper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UnnamedEditor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WholeView\WholeView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
