@@ -13,7 +13,8 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Font>
 , _size(size - Vec2(0, font->getFontSize()*2*2))
 , _font(font)
 , _pageCount(0)
-, _lineInterval(font->getFontSize()*1.2) {
+, _lineInterval(font->getFontSize()*1.2)
+, _cursorIndex(0) {
 	
 }
 
@@ -24,18 +25,27 @@ void WholeView::setText(const String &text) {
 }
 
 void WholeView::update() {
-	if (KeyLeft.down()) _pageCount++;
-	else if (KeyRight.down()) _pageCount--;
+	if (KeyControl.pressed() && KeyLeft.down()) _pageCount++;
+	else if (KeyControl.pressed() && KeyRight.down()) _pageCount--;
+	else if (KeyDown.down()) _cursorIndex++;
+	else if (KeyUp.down()) _cursorIndex--;
 
 	RectF(_borderPos, _borderSize).draw(Palette::White);
 
 	Vec2 pen = _pos + Vec2(_size.x + _pageCount*_size.x/2.0 - _lineInterval, 0);
-	for each (auto g in _glyphs) {
+	auto itr = _glyphs.begin();
+	for (int i = 0; itr != _glyphs.end(); i++, itr++) {
+		auto g = *itr;
 		if ((pen + g->getAdvance()).y > _pos.y + _size.y) pen = Vec2(pen.x - _lineInterval, _pos.y);
+		if (i == _cursorIndex) {
+			_font->getCursor(pen).draw(2, Palette::Orange);
+		}
+		//画面内に到達していなければ描画しない
 		if (_pos.x + _size.x + _font->getFontSize() < pen.x) {
 			pen += g->getAdvance();
 			continue;
 		}
+		//画面外に出てしまったらfor文を終了
 		if (pen.x < _pos.x) break;
 		pen = g->draw(pen);
 	}

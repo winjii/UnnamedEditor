@@ -1,4 +1,7 @@
 #include "Font.h"
+#include "ft2build.h"
+#include FT_FREETYPE_H
+
 
 namespace UnnamedEditor {
 namespace Font {
@@ -12,6 +15,8 @@ Font::Font(FT_Library lib, std::string filePath, int pixelSize, bool isVertical)
 	FT_Select_Charmap(_face, FT_Encoding_::FT_ENCODING_UNICODE);
 	FT_Set_Pixel_Sizes(_face, _fontSize, _fontSize);
 	_gsubReader = SP<GsubReader>(new GsubReader(_face));
+	_ascender = _face->size->metrics.ascender/64.0;
+	_descender = _face->size->metrics.descender/64.0;
 }
 
 Font::~Font() {
@@ -20,6 +25,19 @@ Font::~Font() {
 
 int Font::getFontSize() {
 	return _fontSize;
+}
+
+double Font::ascender() {
+	return _ascender;
+}
+
+double Font::descender() {
+	return _descender;
+}
+
+Line Font::getCursor(Vec2 pen) {
+	if (!_isVertical) return Line(pen.x, pen.y + _ascender, pen.x, pen.y + _descender);
+	return Line(Vec2(pen.x - _fontSize/2, pen.y), Vec2(pen.x + _fontSize/2, pen.y));
 }
 
 SP<const Glyph> Font::renderChar(char16_t charCode) {

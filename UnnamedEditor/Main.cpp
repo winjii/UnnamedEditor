@@ -198,6 +198,7 @@ void WholeViewTest() {
 	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), font);
 	wholeView.setText(IamACat);
 
+	Graphics2D::SetSamplerState(SamplerState::ClampLinear);
 	while (System::Update()) {
 		wholeView.update();
 	}

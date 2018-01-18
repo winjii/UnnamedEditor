@@ -27,6 +27,8 @@ private:
 
 	double _lineInterval;
 
+	int _cursorIndex;
+
 public:
 
 	//font: vertical‚Å‚È‚¯‚ê‚Î‚È‚ç‚È‚¢(‚±‚êİŒv‰˜‚­‚È‚¢H)

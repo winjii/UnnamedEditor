@@ -23,6 +23,10 @@ private:
 	FT_Face _face;
 
 	bool _isVertical;
+
+	double _ascender;
+
+	double _descender;
 	
 	SP<GsubReader> _gsubReader;
 
@@ -35,6 +39,12 @@ public:
 	~Font();
 
 	int getFontSize();
+
+	double ascender();
+
+	double descender();
+
+	Line getCursor(Vec2 pen);
 
 	SP<const Glyph> renderChar(char16_t charCode);
 
