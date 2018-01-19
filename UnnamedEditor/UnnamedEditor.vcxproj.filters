@@ -63,9 +63,6 @@
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Font\Font.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Font\Glyph.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -85,6 +82,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="WholeView\WholeView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Font\FontBase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Font\FixedFont.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -222,9 +225,6 @@
     </Media>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Font\Font.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Font\Glyph.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -244,6 +244,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WholeView\WholeView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Font\FontBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Font\FixedFont.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

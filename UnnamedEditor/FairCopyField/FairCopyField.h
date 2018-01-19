@@ -1,6 +1,6 @@
 #pragma once
 #include <list>
-#include "Font\Font.h"
+#include "Font\FixedFont.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
@@ -57,7 +57,7 @@ private:
 
 	DevicePos _pos, _size;
 
-	Font::Font _font;
+	Font::FixedFont _font;
 
 	int _fontSize;
 

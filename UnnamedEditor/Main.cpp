@@ -3,7 +3,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <FontDataPicker\GsubReader.h>
-#include "Font\Font.h"
+#include "Font\FixedFont.h"
 #include "FairCopyField\FairCopyField.h"
 #include "Workspace\Workspace.h"
 #include "Workspace\DraftPaper.h"
@@ -65,7 +65,7 @@ void FontTest() {
 	using namespace UnnamedEditor::Font;
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
-	UnnamedEditor::Font::Font font(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
+	UnnamedEditor::Font::FixedFont font(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
 	String s = L"「山村、（mucho）。」";
 	auto v = font.renderString(s.toUTF16());
 
@@ -103,8 +103,8 @@ void GlyphTest() {
 	using namespace UnnamedEditor;
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
-	UnnamedEditor::Font::Font fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
-	UnnamedEditor::Font::Font fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, false);
+	UnnamedEditor::Font::FixedFont fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
+	UnnamedEditor::Font::FixedFont fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, false);
 	auto glyphsV = fontV.renderString(u"むーちょろくいちさん");
 	auto glyphsH = fontH.renderString(u"mucho613");
 	auto draw = [](const std::vector<SP<const UnnamedEditor::Font::Glyph>> &glyphs) {
@@ -126,8 +126,8 @@ void DraftPaperTest() {
 	using namespace UnnamedEditor::Workspace;
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
-	UnnamedEditor::Font::Font fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
-	UnnamedEditor::Font::Font fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, false);
+	UnnamedEditor::Font::FixedFont fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
+	UnnamedEditor::Font::FixedFont fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, false);
 	auto glyphsV = fontV.renderString(u"むーーーーーーーーーーーーーーちょろくいちさん");
 	auto glyphsH = fontH.renderString(u"mucho613");
 	DraftPaper dpV(glyphsV, -Math::Pi/6.0);
@@ -150,8 +150,8 @@ void DraftPaperTest() {
 void Glyph_scaleTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
-	UnnamedEditor::Font::Font font0(lib, "C:/Windows/Fonts/msmincho.ttc", 32, true);
-	UnnamedEditor::Font::Font font1(lib, "C:/Windows/Fonts/msmincho.ttc", 31, true);
+	UnnamedEditor::Font::FixedFont font0(lib, "C:/Windows/Fonts/msmincho.ttc", 32, true);
+	UnnamedEditor::Font::FixedFont font1(lib, "C:/Windows/Fonts/msmincho.ttc", 31, true);
 	String str = L"三人寄ればソレイユ！"; //OpenSiv3Dのバグにより変な線が入る
 	//描画時に座標をasPoint()すると直るが...
 	auto g0 = font0.renderString(str.toUTF16());
@@ -194,7 +194,7 @@ void WholeViewTest() {
 	
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
-	SP<Font::Font> font(new Font::Font(lib, "C:/Windows/Fonts/msmincho.ttc", 24, true));
+	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 24, true));
 	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), font);
 	wholeView.setText(IamACat);
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "Font\Font.h"
+#include "Font\FixedFont.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include "DraftPaper.h"
@@ -99,7 +99,7 @@ private:
 
 	int _fontSize;
 
-	Font::Font _font;
+	Font::FixedFont _font;
 
 	String _text;
 
@@ -113,7 +113,7 @@ private:
 
 	int _draftFontSize;
 
-	Font::Font _draftFont;
+	Font::FixedFont _draftFont;
 
 	std::list<PaperManager> _papers;
 

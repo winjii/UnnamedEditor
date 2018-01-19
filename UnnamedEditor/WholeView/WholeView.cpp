@@ -6,7 +6,7 @@ namespace UnnamedEditor {
 namespace WholeView {
 
 
-WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Font> font)
+WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font)
 : _borderPos(pos)
 , _borderSize(size)
 , _pos(pos + Vec2(0, font->getFontSize()*2))
@@ -47,6 +47,7 @@ void WholeView::update() {
 		}
 		//âÊñ äOÇ…èoÇƒÇµÇ‹Ç¡ÇΩÇÁforï∂ÇèIóπ
 		if (pen.x < _pos.x) break;
+
 		pen = g->draw(pen);
 	}
 }

@@ -6,43 +6,24 @@
 #include <string>
 #include <FontDataPicker\GsubReader.h>
 #include "Glyph.h"
-
-using namespace FontDataPicker;
+#include "FontBase.h"
 
 namespace UnnamedEditor {
 namespace Font {
 
 
-class Font {
+class FixedFont : FontBase {
 private:
-
-	FT_Library _lib; //èäóLå†ÇéùÇΩÇ»Ç¢
 	
 	int _fontSize;
 
-	FT_Face _face;
-
-	bool _isVertical;
-
-	double _ascender;
-
-	double _descender;
-	
-	SP<GsubReader> _gsubReader;
-
-	std::map<GlyphIndex, SP<Glyph>> _glyphData;
+	std::map<FontDataPicker::GlyphIndex, SP<Glyph>> _glyphMemo;
 
 public:
 
-	Font(FT_Library lib, std::string fontPath, int pixelSize, bool isVertical = false);
-
-	~Font();
+	FixedFont(FT_Library lib, std::string fontPath, int pixelSize, bool isVertical = false);
 
 	int getFontSize();
-
-	double ascender();
-
-	double descender();
 
 	Line getCursor(Vec2 pen);
 

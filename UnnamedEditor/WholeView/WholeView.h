@@ -1,5 +1,5 @@
 #pragma once
-#include "Font\Font.h"
+#include "Font\FixedFont.h"
 #include <list>
 
 
@@ -17,7 +17,7 @@ private:
 
 	Vec2 _pos, _size;
 
-	SP<Font::Font> _font;
+	SP<Font::FixedFont> _font;
 
 	String _text;
 
@@ -32,7 +32,7 @@ private:
 public:
 
 	//font: verticalÇ≈Ç»ÇØÇÍÇŒÇ»ÇÁÇ»Ç¢(Ç±ÇÍê›åvâòÇ≠Ç»Ç¢ÅH)
-	WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Font> font);
+	WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font);
 
 	void setText(const String &text);
 
