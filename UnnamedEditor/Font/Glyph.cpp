@@ -4,7 +4,7 @@ namespace UnnamedEditor {
 namespace Font {
 
 
-Glyph::Glyph(bool isVertical, double fontSize, double bearingX, double bearingY, double advance, const Image &image)
+Glyph::Glyph(bool isVertical, int fontSize, double bearingX, double bearingY, double advance, const Image &image)
 : _isVertical(isVertical)
 , _fontSize(fontSize)
 , _bearing(bearingX, bearingY)
@@ -28,7 +28,7 @@ Vec2 Glyph::getAdvance(double angle) const {
 	return Vec2(_advance, 0).rotate(angle);
 }
 
-double Glyph::getFontSize() const {
+int Glyph::getFontSize() const {
 	return _fontSize;
 }
 

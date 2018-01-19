@@ -90,6 +90,9 @@
     <ClCompile Include="Font\FixedFont.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Font\ChangeableFont.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Icon.ico">
@@ -250,6 +253,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Font\FixedFont.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Font\ChangeableFont.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

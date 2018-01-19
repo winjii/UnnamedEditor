@@ -9,7 +9,7 @@ private:
 
 	bool _isVertical;
 
-	double _fontSize;
+	int _fontSize;
 	
 	Vec2 _bearing;
 
@@ -19,17 +19,16 @@ private:
 
 public:
 
-	Glyph(bool isVertical, double fontSize, double bearingX, double bearingY, double advance, const Image &image);
+	Glyph(bool isVertical, int fontSize, double bearingX, double bearingY, double advance, const Image &image);
 
 	~Glyph();
 
 	//angle: rad
-	//targetSize: •`‰æ‚É–³—–î—Lk‚·‚é
 	Vec2 draw(const Vec2 &pen, const Color &color = Palette::Black, double angle = 0.0, double scale = 1.0) const;
 
 	Vec2 getAdvance(double angle = 0.0) const;
 
-	double getFontSize() const;
+	int getFontSize() const;
 
 	bool isVertical() const;
 

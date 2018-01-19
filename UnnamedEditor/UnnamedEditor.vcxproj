@@ -187,6 +187,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Font\ChangeableFont.cpp" />
     <ClCompile Include="Font\FontBase.cpp" />
     <ClCompile Include="UnnamedEditor.cpp" />
     <ClCompile Include="WholeView\WholeView.cpp" />
@@ -263,6 +264,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Font\ChangeableFont.h" />
     <ClInclude Include="Font\FontBase.h" />
     <ClInclude Include="UnnamedEditor.h" />
     <ClInclude Include="WholeView\WholeView.h" />

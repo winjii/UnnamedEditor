@@ -8,6 +8,7 @@
 #include "Workspace\Workspace.h"
 #include "Workspace\DraftPaper.h"
 #include "WholeView\WholeView.h"
+#include "Font\ChangeableFont.h"
 
 using namespace FontDataPicker;
 
@@ -204,6 +205,22 @@ void WholeViewTest() {
 	}
 }
 
+void ChangeableFontTest() {
+	FT_Library lib;
+	FT_Init_FreeType(&lib);
+	Font::ChangeableFont font(lib, "C:/Windows/Fonts/msmincho.ttc", true);
+	
+	Graphics2D::SetSamplerState(SamplerState::ClampLinear);
+	Graphics::SetBackground(Palette::White);
+	s3d::Font sfont(30);
+	while (System::Update()) {
+		double scale;
+		SP<const Font::Glyph> g = font.renderChar(L'ぽ', 4 + 20*(1 + Math::Sin(System::FrameCount()/60.0*2*Math::Pi)), scale);
+		sfont(scale).draw(Vec2(100, 100), Palette::Black);
+		g->draw(Window::Center(), Palette::Black, 0, scale);
+	}
+}
+
 }
 
 void Main()
@@ -217,8 +234,9 @@ void Main()
 		DraftPaperTest,
 		Glyph_scaleTest,
 		NoBug,
-		WholeViewTest
-	} runMode = RunMode::WholeViewTest;
+		WholeViewTest,
+		ChangeableFontTest
+	} runMode = RunMode::ChangeableFontTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -246,5 +264,8 @@ void Main()
 	}
 	else if (runMode == RunMode::WholeViewTest) {
 		UnnamedEditor::WholeViewTest();
+	}
+	else if (runMode == RunMode::ChangeableFontTest) {
+		UnnamedEditor::ChangeableFontTest();
 	}
 }
