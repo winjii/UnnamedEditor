@@ -5,6 +5,17 @@
 namespace UnnamedEditor {
 namespace WholeView {
 
+/*
+//TODO: size‚ð‚¿‚á‚ñ‚ÆŽæ“¾
+WholeView::TranslationIntoWorkspace::TranslationIntoWorkspace(const WholeView &wv, double endSize, const Vec2 &endHead)
+: _startRect(wv._pos, wv._size)
+, _startSize(wv._font->getFontSize())
+, _endSize(endSize)
+, _startHead(wv.getCharPos(wv._cursorIndex))
+, _endHead(endHead)
+, _lineInterval(wv._lineInterval) {
+	
+}*/
 
 WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font)
 : _borderPos(pos)
@@ -52,6 +63,16 @@ void WholeView::update() {
 	}
 }
 
+Vec2 WholeView::getCharPos(int charIndex) const {
+	Vec2 pen = _pos + Vec2(_size.x + _pageCount*_size.x/2.0 - _lineInterval, 0);
+	auto itr = _glyphs.begin();
+	for (int i = 0; itr != _glyphs.end(); i++, itr++) {
+		auto g = *itr;
+		if ((pen + g->getAdvance()).y > _pos.y + _size.y) pen = Vec2(pen.x - _lineInterval, _pos.y);
+		if (i == charIndex) return pen;
+		pen += g->getAdvance();
+	}
+}
 
 }
 }

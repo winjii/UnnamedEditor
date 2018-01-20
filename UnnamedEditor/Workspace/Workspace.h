@@ -129,6 +129,10 @@ public:
 
 	void update();
 
+	double getFontSize() const;
+
+	Vec2 getHead() const;
+
 };
 
 

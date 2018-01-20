@@ -12,6 +12,28 @@ using DevicePos = Vec2;
 
 class WholeView {
 private:
+	/*
+	class TranslationIntoWorkspace {
+	private:
+
+		RectF _startRect;
+
+		double _startSize, _endSize;
+
+		Vec2 _startHead, _endHead;
+
+		double _lineInterval;
+
+		Stopwatch _sw;
+
+		const int _animationMS = 2000;
+
+	public:
+
+		TranslationIntoWorkspace(const WholeView &wv, double endSize, const Vec2 &endHead);
+	};*/
+
+private:
 
 	DevicePos _borderPos, _borderSize;
 
@@ -37,6 +59,8 @@ public:
 	void setText(const String &text);
 
 	void update();
+
+	Vec2 getCharPos(int charIndex) const;
 
 };
 
