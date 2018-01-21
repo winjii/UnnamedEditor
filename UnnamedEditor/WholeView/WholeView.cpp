@@ -17,6 +17,13 @@ WholeView::TranslationIntoWorkspace::TranslationIntoWorkspace(const WholeView &w
 	
 }*/
 
+int WholeView::deleteChar(int cursorIndex) {
+	if (cursorIndex <= 0 || _text.size() < cursorIndex) return cursorIndex;
+	_text.erase(_text.begin() + cursorIndex - 1);
+	_glyphs.erase(_glyphs.begin() + cursorIndex - 1);
+	return cursorIndex - 1;
+}
+
 WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font)
 : _borderPos(pos)
 , _borderSize(size)
@@ -25,7 +32,8 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _font(font)
 , _pageCount(0)
 , _lineInterval(font->getFontSize()*1.2)
-, _cursorIndex(0) {
+, _cursorIndex(0)
+, _ju() {
 	
 }
 
@@ -36,17 +44,34 @@ void WholeView::setText(const String &text) {
 }
 
 void WholeView::update() {
+	String updated, unsettled;
+	TextInput::UpdateText(updated);
+	unsettled = TextInput::GetMarkedText();
+	_ju.update(unsettled.length());
+
 	if (KeyControl.pressed() && KeyLeft.down()) _pageCount++;
 	else if (KeyControl.pressed() && KeyRight.down()) _pageCount--;
 	else if (KeyDown.down()) _cursorIndex++;
 	else if (KeyUp.down()) _cursorIndex--;
 
+	bool deleted = _ju.isSettled() && KeyBackspace.down();
+
+	if ((unsettled.length() > 0 || deleted) && _insertMode == nullptr) {
+		_insertMode.reset(new InsertMode(RectF(_pos, _size), _lineInterval, _cursorIndex, getCursorPos(_cursorIndex), _font));
+	}
+	if (_insertMode != nullptr) {
+		if (!_insertMode->isActive() && !_insertMode->isAnimating()) _insertMode.reset();
+		else _insertMode->update(updated, unsettled, _cursorIndex, deleted);
+	}
+
 	RectF(_borderPos, _borderSize).draw(Palette::White);
 
 	Vec2 pen = _pos + Vec2(_size.x + _pageCount*_size.x/2.0 - _lineInterval, 0);
-	auto itr = _glyphs.begin();
-	for (int i = 0; itr != _glyphs.end(); i++, itr++) {
-		auto g = *itr;
+	for (int i = 0; i < (int)_glyphs.size(); i++) {
+		if (_insertMode != nullptr && i == _insertMode->getInsertIndex()) {
+			pen = _insertMode->getNextPen();
+		}
+		auto g = _glyphs[i];
 		if ((pen + g->getAdvance()).y > _pos.y + _size.y) pen = Vec2(pen.x - _lineInterval, _pos.y);
 		if (i == _cursorIndex) {
 			_font->getCursor(pen).draw(2, Palette::Orange);
@@ -61,17 +86,22 @@ void WholeView::update() {
 
 		pen = g->draw(pen);
 	}
+	if (_insertMode != nullptr) _insertMode->draw();
 }
 
 Vec2 WholeView::getCharPos(int charIndex) const {
 	Vec2 pen = _pos + Vec2(_size.x + _pageCount*_size.x/2.0 - _lineInterval, 0);
-	auto itr = _glyphs.begin();
-	for (int i = 0; itr != _glyphs.end(); i++, itr++) {
-		auto g = *itr;
+	for (int i = 0; i < (int)_glyphs.size(); i++) {
+		auto g = _glyphs[i];
 		if ((pen + g->getAdvance()).y > _pos.y + _size.y) pen = Vec2(pen.x - _lineInterval, _pos.y);
 		if (i == charIndex) return pen;
 		pen += g->getAdvance();
 	}
+	return pen;
+}
+
+Vec2 WholeView::getCursorPos(int cursorIndex) const {
+	return getCharPos(cursorIndex);
 }
 
 }

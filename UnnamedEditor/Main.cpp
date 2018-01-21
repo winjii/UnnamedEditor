@@ -236,7 +236,7 @@ void Main()
 		NoBug,
 		WholeViewTest,
 		ChangeableFontTest
-	} runMode = RunMode::ChangeableFontTest;
+	} runMode = RunMode::WholeViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
