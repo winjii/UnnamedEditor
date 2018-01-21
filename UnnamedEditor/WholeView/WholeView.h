@@ -45,6 +45,8 @@ private:
 
 	int _insertIndex;
 
+	int _cursorIndex;
+
 	SP<Font::FixedFont> _font;
 
 	String _text, _unsettled;
@@ -63,23 +65,24 @@ public:
 	, _pos(pos)
 	, _tail()
 	, _insertIndex(insertIndex)
+	, _cursorIndex(0)
 	, _font(font)
 	, _text()
 	, _unsettled()
 	, _sw()
 	, _isActive(true) {
-		
+		_sw.start();
 	}
 
 	int getInsertIndex() { return _insertIndex; }
 	
-	void update(const String &addend, const String &unsettled, int cursorIndex, bool deleteSettledText) {
+	void update(const String &addend, const String &unsettled, int cursorDelta, bool backspace) {
+		if (_sw.ms() >= animationMS) _sw.pause();
 		if (!isActive()) return;
 
 		_text += addend;
 		_unsettled = unsettled;
-		cursorIndex -= _insertIndex;
-		if (_sw.ms() >= animationMS) _sw.pause();
+		_cursorIndex += cursorDelta;
 
 
 		std::vector<SP<const Font::Glyph>> ret = _font->renderString((_text + _unsettled).toUTF16());
@@ -91,25 +94,26 @@ public:
 			_tail += ret[i]->getAdvance();
 		}
 
-		if (cursorIndex < 0 || _text.length() + _unsettled.length() < cursorIndex) {
+		if (backspace && 0 < _cursorIndex && _cursorIndex <= _text.length()) {
+			_text.erase(_cursorIndex - 1, 1);
+			_cursorIndex--;
+		}
+		if (_cursorIndex < 0 || _text.length() + _unsettled.length() < _cursorIndex) {
 			_isActive = false;
 			_sw.restart();
 			return;
-		}
-		if (deleteSettledText && 0 < cursorIndex && cursorIndex <= _text.length()) {
-			_text.erase(cursorIndex - 1, 1);
 		}
 	}
 
 	//アニメーション中でもfalseになるので注意
 	bool isActive() { return _isActive; }
 
-	bool isAnimating() { return _sw.isRunning(); }
+	bool isAnimating() { return !_sw.isPaused(); }
 
 	Vec2 getNextPen() {
-		Vec2 start = _tail, end = _pos + Vec2(-_lineInterval*2, 0);
+		Vec2 start = _pos, end = _pos + Vec2(-_lineInterval*2, 0);
 		if (!isActive()) std::swap(start, end);
-		double t = std::max(1.0, _sw.ms()/(double)animationMS);
+		double t = std::min(1.0, _sw.ms()/(double)animationMS);
 		return EaseOut(Easing::Back, start, end, t);
 	}
 
@@ -120,9 +124,11 @@ public:
 			if (_textArea.y + _textArea.size.y < (pen + ret[i]->getAdvance()).y) {
 				pen += Vec2(-_lineInterval, 0);
 			}
-			Color color = i < _text.length() ? Palette::Red : Color(Palette::Red, 50);
+			if (i == _cursorIndex) _font->getCursor(pen).draw(2, Palette::Black);
+			Color color = i < _text.length() ? Palette::Red : Color(Palette::Red, 100);
 			pen = ret[i]->draw(pen, color);
 		}
+		if ((int)ret.size() == _cursorIndex) _font->getCursor(pen).draw(2, Palette::Black);
 	}
 };
 

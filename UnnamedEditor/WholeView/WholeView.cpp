@@ -49,10 +49,11 @@ void WholeView::update() {
 	unsettled = TextInput::GetMarkedText();
 	_ju.update(unsettled.length());
 
+	int cursorDelta = 0;
 	if (KeyControl.pressed() && KeyLeft.down()) _pageCount++;
 	else if (KeyControl.pressed() && KeyRight.down()) _pageCount--;
-	else if (KeyDown.down()) _cursorIndex++;
-	else if (KeyUp.down()) _cursorIndex--;
+	else if (KeyDown.down()) cursorDelta++;
+	else if (KeyUp.down()) cursorDelta--;
 
 	bool deleted = _ju.isSettled() && KeyBackspace.down();
 
@@ -61,7 +62,10 @@ void WholeView::update() {
 	}
 	if (_insertMode != nullptr) {
 		if (!_insertMode->isActive() && !_insertMode->isAnimating()) _insertMode.reset();
-		else _insertMode->update(updated, unsettled, _cursorIndex, deleted);
+		else _insertMode->update(updated, unsettled, cursorDelta, deleted);
+	}
+	if (_insertMode == nullptr) {
+		_cursorIndex += cursorDelta;
 	}
 
 	RectF(_borderPos, _borderSize).draw(Palette::White);
@@ -73,7 +77,7 @@ void WholeView::update() {
 		}
 		auto g = _glyphs[i];
 		if ((pen + g->getAdvance()).y > _pos.y + _size.y) pen = Vec2(pen.x - _lineInterval, _pos.y);
-		if (i == _cursorIndex) {
+		if (_insertMode == nullptr && i == _cursorIndex) {
 			_font->getCursor(pen).draw(2, Palette::Orange);
 		}
 		//‰æ–Ê“à‚É“ž’B‚µ‚Ä‚¢‚È‚¯‚ê‚Î•`‰æ‚µ‚È‚¢
