@@ -18,7 +18,8 @@ Glyph::~Glyph() {}
 Vec2 Glyph::draw(const Vec2 &pen, const Color &color, double angle, double scale) const {
 	if (!_texture.isEmpty()) {
 		Vec2 v(pen + _bearing.rotated(angle)*scale);
-		_texture.scale(scale).rotateAt(0, 0, angle).draw((pen + _bearing.rotated(angle)*scale), color);
+		//_texture.scale(scale).rotateAt(0, 0, angle).draw((pen + _bearing.rotated(angle)*scale), color);
+		_texture.scaled(scale).rotatedAt(0, 0, angle).draw((pen + _bearing.rotated(angle)*scale), color);
 	}
 	return pen + getAdvance(angle)*scale;
 }

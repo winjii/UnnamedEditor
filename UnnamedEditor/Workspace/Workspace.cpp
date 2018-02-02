@@ -32,7 +32,7 @@ void Workspace::deleteText(int count) {
 }
 
 void Workspace::update() {
-	String unsettled = TextInput::GetMarkedText();
+	String unsettled = TextInput::GetEditingText();
 	_ju.update(unsettled.length());
 
 	if (_ju.isSettled() && KeyBackspace.down())

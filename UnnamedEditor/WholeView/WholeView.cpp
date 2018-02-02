@@ -46,7 +46,7 @@ void WholeView::setText(const String &text) {
 void WholeView::update() {
 	String updated, unsettled;
 	TextInput::UpdateText(updated);
-	unsettled = TextInput::GetMarkedText();
+	unsettled = TextInput::GetEditingText();
 	_ju.update(unsettled.length());
 
 	int cursorDelta = 0;

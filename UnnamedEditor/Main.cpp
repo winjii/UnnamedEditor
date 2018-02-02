@@ -67,7 +67,7 @@ void FontTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
 	UnnamedEditor::Font::FixedFont font(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
-	String s = L"「山村、（mucho）。」";
+	String s = U"「山村、（mucho）。」";
 	auto v = font.renderString(s.toUTF16());
 
 	Graphics::SetBackground(Palette::Gray);
@@ -83,7 +83,7 @@ void FairCopyFieldTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
 	FairCopyField::FairCopyField fc(0, 0, Window::Width(), Window::Height(), lib, 20);
-	fc.setText(L"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。");
+	fc.setText(U"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。");
 	while (System::Update()) {
 		fc.update();
 	}
@@ -153,7 +153,7 @@ void Glyph_scaleTest() {
 	FT_Init_FreeType(&lib);
 	UnnamedEditor::Font::FixedFont font0(lib, "C:/Windows/Fonts/msmincho.ttc", 32, true);
 	UnnamedEditor::Font::FixedFont font1(lib, "C:/Windows/Fonts/msmincho.ttc", 31, true);
-	String str = L"三人寄ればソレイユ！"; //OpenSiv3Dのバグにより変な線が入る
+	String str = U"三人寄ればソレイユ！"; //OpenSiv3Dのバグにより変な線が入る
 	//描画時に座標をasPoint()すると直るが...
 	auto g0 = font0.renderString(str.toUTF16());
 	auto g1 = font1.renderString(str.toUTF16());
@@ -191,7 +191,7 @@ void NoBug() {
 }
 
 void WholeViewTest() {
-	String IamACat = TextReader(L"IamACat.txt").readAll();
+	String IamACat = TextReader(U"IamACat.txt").readAll();
 	
 	FT_Library lib;
 	FT_Init_FreeType(&lib);

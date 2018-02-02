@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{396BF707-68A5-48BD-BF52-4EFE99C03D8E}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>OpenSiv3D_0_1_7_</RootNamespace>
+    <RootNamespace>OpenSiv3D_0_2_1_1</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -71,40 +71,46 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SIV3D_0_1_7)\Include;$(IncludePath);</IncludePath>
-    <LibraryPath>$(SIV3D_0_1_7)\Lib;$(LibraryPath)</LibraryPath>
-    <OutDir>$(SolutionDir)$(ProjectName)\Debug-x86\</OutDir>
-    <IntDir>$(SolutionDir)$(ProjectName)\Intermediate\Debug-x86\</IntDir>
-    <ReferencePath>$(VC_ReferencesPath_x86);</ReferencePath>
+    <IncludePath>$(SIV3D_0_2_1)\include;$(SIV3D_0_2_1)\include\ThirdParty;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SIV3D_0_2_1)\lib\Windows(x86);$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)Intermediate\$(ProjectName)\Debug-x86\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\Debug-x86\Intermediate\</IntDir>
+    <TargetName>$(ProjectName)(debug_32-bit)</TargetName>
+    <LocalDebuggerWorkingDirectory>$(ProjectDir)App</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SIV3D_0_1_7)\Include;$(IncludePath);</IncludePath>
-    <LibraryPath>$(SIV3D_0_1_7)\Lib;$(LibraryPath)</LibraryPath>
-    <OutDir>$(SolutionDir)$(ProjectName)\Debug-x64\</OutDir>
-    <IntDir>$(SolutionDir)$(ProjectName)\Intermediate\Debug-x64\</IntDir>
-    <ReferencePath>$(VC_ReferencesPath_x64);</ReferencePath>
+    <IncludePath>$(SIV3D_0_2_1)\include;$(SIV3D_0_2_1)\include\ThirdParty;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SIV3D_0_2_1)\lib\Windows(x64);$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)Intermediate\$(ProjectName)\Debug-x64\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\Debug-x64\Intermediate\</IntDir>
+    <TargetName>$(ProjectName)(debug_64-bit)</TargetName>
+    <LocalDebuggerWorkingDirectory>$(ProjectDir)App</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SIV3D_0_1_7)\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SIV3D_0_1_7)\Lib;$(LibraryPath)</LibraryPath>
-    <OutDir>$(SolutionDir)$(ProjectName)\Release-x86\</OutDir>
-    <IntDir>$(SolutionDir)$(ProjectName)\Intermediate\Release-x86\</IntDir>
+    <IncludePath>$(SIV3D_0_2_1)\include;$(SIV3D_0_2_1)\include\ThirdParty;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SIV3D_0_2_1)\lib\Windows(x86);$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)Intermediate\$(ProjectName)\Release-x86\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\Release-x86\Intermediate\</IntDir>
+    <TargetName>$(ProjectName)(32-bit)</TargetName>
+    <LocalDebuggerWorkingDirectory>$(ProjectDir)App</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SIV3D_0_1_7)\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SIV3D_0_1_7)\Lib;$(LibraryPath)</LibraryPath>
-    <OutDir>$(SolutionDir)$(ProjectName)\Release-x64\</OutDir>
-    <IntDir>$(SolutionDir)$(ProjectName)\Intermediate\Release-x64\</IntDir>
+    <IncludePath>$(SIV3D_0_2_1)\include;$(SIV3D_0_2_1)\include\ThirdParty;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SIV3D_0_2_1)\lib\Windows(x64);$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)Intermediate\$(ProjectName)\Release-x64\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\Release-x64\Intermediate\</IntDir>
+    <TargetName>$(ProjectName)(64-bit)</TargetName>
+    <LocalDebuggerWorkingDirectory>$(ProjectDir)App</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;_SILENCE_CXX17_UNCAUGHT_EXCEPTION_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -120,13 +126,16 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /I /D /Y "$(OutDir)$(TargetFileName)" "$(ProjectDir)App"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions);_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;_SILENCE_CXX17_UNCAUGHT_EXCEPTION_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -141,6 +150,9 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /I /D /Y "$(OutDir)$(TargetFileName)" "$(ProjectDir)App"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -149,7 +161,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions);_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;_SILENCE_CXX17_UNCAUGHT_EXCEPTION_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -163,6 +175,9 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /I /D /Y "$(OutDir)$(TargetFileName)" "$(ProjectDir)App"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -171,7 +186,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions);_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING;_SILENCE_CXX17_UNCAUGHT_EXCEPTION_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -185,6 +200,9 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /I /D /Y "$(OutDir)$(TargetFileName)" "$(ProjectDir)App"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Font\ChangeableFont.cpp" />
@@ -205,57 +223,6 @@
     <ClCompile Include="Workspace\Workspace.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="engine\texture\box-shadow\128.png" />
-    <Image Include="engine\texture\box-shadow\16.png" />
-    <Image Include="engine\texture\box-shadow\256.png" />
-    <Image Include="engine\texture\box-shadow\32.png" />
-    <Image Include="engine\texture\box-shadow\64.png" />
-    <Image Include="engine\texture\box-shadow\8.png" />
-    <Image Include="example\siv3d-kun.png" />
-    <Image Include="example\windmill.png" />
-    <Image Include="Icon.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Resource.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="engine\engine.txt" />
-    <Text Include="engine\font\fontawesome\LICENSE_OFL.txt" />
-    <Text Include="engine\font\noto\LICENSE_OFL.txt" />
-    <Text Include="example\LICENSE.txt" />
-    <Text Include="example\script.txt" />
-    <Text Include="example\test.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="dll_x64\d3d\d3dcompiler_47.dll" />
-    <None Include="dll_x64\tobii\tobii_stream_engine.dll" />
-    <None Include="dll_x86\d3d\d3dcompiler_47.dll" />
-    <None Include="dll_x86\tobii\tobii_stream_engine.dll" />
-    <None Include="engine\font\fontawesome\FontAwesome.otf.zst" />
-    <None Include="engine\font\mplus\LICENSE_E" />
-    <None Include="engine\font\mplus\mplus-1p-black.ttf.zst" />
-    <None Include="engine\font\mplus\mplus-1p-bold.ttf.zst" />
-    <None Include="engine\font\mplus\mplus-1p-heavy.ttf.zst" />
-    <None Include="engine\font\mplus\mplus-1p-light.ttf.zst" />
-    <None Include="engine\font\mplus\mplus-1p-medium.ttf.zst" />
-    <None Include="engine\font\mplus\mplus-1p-regular.ttf.zst" />
-    <None Include="engine\font\mplus\mplus-1p-thin.ttf.zst" />
-    <None Include="engine\font\noto\NotoColorEmoji.ttf.zst" />
-    <None Include="engine\font\noto\NotoEmoji-Regular.ttf.zst" />
-    <None Include="engine\shader\line_dot.ps" />
-    <None Include="engine\shader\line_round_dot.ps" />
-    <None Include="engine\shader\shape.ps" />
-    <None Include="engine\shader\sprite.ps" />
-    <None Include="engine\shader\sprite.vs" />
-    <None Include="engine\shader\sprite_sdf.ps" />
-    <None Include="example\empty.bin" />
-    <None Include="example\test.ini" />
-    <None Include="example\test.json" />
-  </ItemGroup>
-  <ItemGroup>
-    <Media Include="example\test.mp3" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\FontDataPicker\FontDataPicker.vcxproj">
       <Project>{366d130f-897e-4e63-a650-b7dcd6a92d7a}</Project>
     </ProjectReference>
@@ -274,6 +241,57 @@
     <ClInclude Include="Font\Glyph.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Workspace\Workspace.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="App\engine\texture\box-shadow\128.png" />
+    <Image Include="App\engine\texture\box-shadow\16.png" />
+    <Image Include="App\engine\texture\box-shadow\256.png" />
+    <Image Include="App\engine\texture\box-shadow\32.png" />
+    <Image Include="App\engine\texture\box-shadow\64.png" />
+    <Image Include="App\engine\texture\box-shadow\8.png" />
+    <Image Include="App\example\siv3d-kun.png" />
+    <Image Include="App\example\windmill.png" />
+    <Image Include="App\icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="App\Resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="App\example\shot.mp3" />
+    <Media Include="App\example\test.mp3" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App\engine\emoji\noto7_dictionary.dat" />
+    <None Include="App\engine\font\fontawesome\FontAwesome.otf.zst" />
+    <None Include="App\engine\font\mplus\LICENSE_E" />
+    <None Include="App\engine\font\mplus\mplus-1p-black.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-bold.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-heavy.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-light.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-medium.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-regular.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-thin.ttf.zst" />
+    <None Include="App\engine\font\noto\NotoColorEmoji.ttf.zst" />
+    <None Include="App\engine\font\noto\NotoEmoji-Regular.ttf.zst" />
+    <None Include="App\engine\shader\line_dot.ps" />
+    <None Include="App\engine\shader\line_round_dot.ps" />
+    <None Include="App\engine\shader\shape.ps" />
+    <None Include="App\engine\shader\sprite.ps" />
+    <None Include="App\engine\shader\sprite.vs" />
+    <None Include="App\engine\shader\sprite_sdf.ps" />
+    <None Include="App\example\a1a_testing" />
+    <None Include="App\example\a1a_training" />
+    <None Include="App\example\empty.bin" />
+    <None Include="App\example\test.ini" />
+    <None Include="App\example\test.json" />
+    <None Include="App\example\test.toml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="App\engine\font\fontawesome\LICENSE_OFL.txt" />
+    <Text Include="App\engine\font\noto\LICENSE_OFL.txt" />
+    <Text Include="App\example\LICENSE.txt" />
+    <Text Include="App\example\script.txt" />
+    <Text Include="App\example\test.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
