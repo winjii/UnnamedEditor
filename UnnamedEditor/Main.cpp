@@ -213,11 +213,15 @@ void ChangeableFontTest() {
 	Graphics2D::SetSamplerState(SamplerState::ClampLinear);
 	Graphics::SetBackground(Palette::White);
 	s3d::Font sfont(30);
+	std::u16string str = String(U"星宮いちご").toUTF16();
 	while (System::Update()) {
-		double scale;
-		SP<const Font::Glyph> g = font.renderChar(L'ぽ', 4 + 20*(1 + Math::Sin(System::FrameCount()/60.0*2*Math::Pi)), scale);
-		sfont(scale).draw(Vec2(100, 100), Palette::Black);
-		g->draw(Window::Center(), Palette::Black, 0, scale);
+		Vec2 pen(Window::ClientRect().topCenter());
+		for (int i = 0; i < str.length(); i++) {
+			double scale;
+			SP<const Font::Glyph> g = font.renderChar(str[i], 4 + 20*(1 + Math::Sin(System::FrameCount()/(60.0*5)*2*Math::Pi)), scale);
+			sfont(scale).draw(Vec2(100, 100), Palette::Black);
+			pen = g->draw(pen, Palette::Black, 0, scale);
+		}
 	}
 }
 
@@ -236,7 +240,7 @@ void Main()
 		NoBug,
 		WholeViewTest,
 		ChangeableFontTest
-	} runMode = RunMode::WholeViewTest;
+	} runMode = RunMode::ChangeableFontTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
