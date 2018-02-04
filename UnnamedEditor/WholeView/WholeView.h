@@ -34,101 +34,143 @@ public:
 	bool isSettled() { return _count == 0; }
 };
 
-class InsertMode {
+class FloatingText {
+public:
+
+	enum State {
+		Inactive,
+		AnimatingIn,
+		AnimatingOut,
+		Stable
+	};
+
 private:
 
-	RectF _textArea;
+	const RectF _area;
+
+	const std::vector<SP<const Font::Glyph>> _glyphs;
 
 	double _lineInterval;
 
-	Vec2 _pos, _tail;
+	Vec2 _start, _end;
 
-	int _insertIndex;
-
-	int _cursorIndex;
-
-	SP<Font::FixedFont> _font;
-
-	String _text, _unsettled;
+	std::vector<Vec2> _startGlyphPos, _endGlyphPos;
 
 	Stopwatch _sw;
 
-	bool _isActive;
+	State _state;
+
+	const double _animationMSIn = 700, _animationMSOut = 1000;
+
 	
-	const int animationMS = 700;
+	Vec2 getStartGlyphPos(int index) {
+		if (_startGlyphPos.size() > index) return _startGlyphPos[index];
+		Vec2 ret = getStartGlyphPos(index - 1) + _glyphs[index - 1]->getAdvance();
+		if (ret.y + _glyphs[index - 1]->getAdvance().y > _area.y + _area.h)
+			ret = Vec2(ret.x - _lineInterval, _area.y);
+		_startGlyphPos.push_back(ret);
+		return ret;
+	}
+
+	Vec2 getEndGlyphPos(int index) {
+		if (_endGlyphPos.size() > index) return _endGlyphPos[index];
+		Vec2 ret = getEndGlyphPos(index - 1) + _glyphs[index - 1]->getAdvance();
+		if (ret.y + _glyphs[index - 1]->getAdvance().y > _area.y + _area.h)
+			ret = Vec2(ret.x - _lineInterval, _area.y);
+		_endGlyphPos.push_back(ret);
+		return ret;
+	}
+
+	void drawAnimationIn(double ms) {
+		double t = ms/_animationMSIn;
+		Vec2 delta = EaseOut(Easing::Back, _start, _end, t) - _end;
+		for (int i = 0; i < _glyphs.size(); i++) {
+			Vec2 pos = getEndGlyphPos(i) + delta;
+			if (_area.x + _area.w + _lineInterval < pos.x) continue;
+			if (pos.x < _area.x) break;
+			_glyphs[i]->draw(pos);
+		}
+	}
+
+	void drawAnimationOut(double ms) {
+		double t = ms/_animationMSOut;
+		for (int i = 0; i < _glyphs.size(); i++) {
+			Vec2 s = getStartGlyphPos(i), e = getEndGlyphPos(i);
+			if (_area.x + _area.w + _lineInterval < s.x) continue;
+			if (e.x < _area.x) break;
+			double d1 = s.y - _area.y;
+			double d2 = _area.h;
+			double d3 = _area.y + _area.h - e.y;
+			double delta = EaseOut(Easing::Quad, t)*(d1 + d2 + d3);
+			Vec2 pos = [&](){
+				if (delta <= d1) return Vec2(s.x, s.y - delta);
+				delta -= d1;
+				if (delta <= d2) return Vec2((s.x + e.x)/2.0, _area.y + _area.h - delta);
+				delta -= d2;
+				return Vec2(e.x, _area.y + _area.h - delta);
+			}();
+			_glyphs[i]->draw(pos);
+		}
+	}
 
 public:
 
-	InsertMode(RectF textArea, double lineInterval, int insertIndex, Vec2 pos, SP<Font::FixedFont> font)
-	: _textArea(textArea)
+	FloatingText(const RectF &area, const std::vector<SP<const Font::Glyph>> &glyphs, double lineInterval, Vec2 pos)
+	: _area(area)
+	, _glyphs(glyphs)
 	, _lineInterval(lineInterval)
-	, _pos(pos)
-	, _tail()
-	, _insertIndex(insertIndex)
-	, _cursorIndex(0)
-	, _font(font)
-	, _text()
-	, _unsettled()
+	, _start(pos)
+	, _end()
+	, _startGlyphPos(0)
+	, _endGlyphPos(1)
 	, _sw()
-	, _isActive(true) {
-		_sw.start();
+	, _state(State::Inactive) {
+		_startGlyphPos.reserve(_glyphs.size());
+		_endGlyphPos.reserve(_glyphs.size());
 	}
 
-	int getInsertIndex() { return _insertIndex; }
-	
-	void update(const String &addend, const String &unsettled, int cursorDelta, bool backspace) {
-		if (_sw.ms() >= animationMS) _sw.pause();
-		if (!isActive()) return;
+	State getState() { return _state; }
 
-		_text += addend;
-		_unsettled = unsettled;
-		_cursorIndex += cursorDelta;
-
-
-		std::vector<SP<const Font::Glyph>> ret = _font->renderString((_text + _unsettled).toUTF16());
-		_tail = _pos;
-		for (int i = 0; i < (int)ret.size(); i++) {
-			if (_textArea.y + _textArea.size.y < (_tail + ret[i]->getAdvance()).y) {
-				_tail += Vec2(-_lineInterval, 0);
-			}
-			_tail += ret[i]->getAdvance();
-		}
-
-		if (backspace && 0 < _cursorIndex && _cursorIndex <= _text.length()) {
-			_text.erase(_cursorIndex - 1, 1);
-			_cursorIndex--;
-		}
-		if (_cursorIndex < 0 || _text.length() + _unsettled.length() < _cursorIndex) {
-			_isActive = false;
-			_sw.restart();
-			return;
-		}
+	void transitIn(double deltaX) {
+		if (_state != State::Inactive) throw "not inactive";
+		_state = State::AnimatingIn;
+		_end = Vec2(_start.x + deltaX, _start.y);
+		_startGlyphPos.clear();
+		_endGlyphPos.assign(1, _end);
+		_sw.restart();
 	}
 
-	//アニメーション中でもfalseになるので注意
-	bool isActive() { return _isActive; }
-
-	bool isAnimating() { return !_sw.isPaused(); }
-
-	Vec2 getNextPen() {
-		Vec2 start = _pos, end = _pos + Vec2(-_lineInterval*2, 0);
-		if (!isActive()) std::swap(start, end);
-		double t = std::min(1.0, _sw.ms()/(double)animationMS);
-		return EaseOut(Easing::Back, start, end, t);
+	void transitOut(Vec2 end) {
+		if (_state != State::Stable) throw "not stable";
+		_state = State::AnimatingOut;
+		_end = end;
+		_endGlyphPos.assign(1, _end);
+		_sw.restart();
 	}
 
-	void draw() {
-		Vec2 pen(_pos);
-		std::vector<SP<const Font::Glyph>> ret = _font->renderString((_text + _unsettled).toUTF16());
-		for (int i = 0; i < (int)ret.size(); i++) {
-			if (_textArea.y + _textArea.size.y < (pen + ret[i]->getAdvance()).y) {
-				pen += Vec2(-_lineInterval, 0);
-			}
-			if (i == _cursorIndex) _font->getCursor(pen).draw(2, Palette::Black);
-			Color color = i < _text.length() ? Palette::Red : Color(Palette::Red, 100);
-			pen = ret[i]->draw(pen, color);
+	void update() {
+		double ms = _sw.ms();
+		if (_state == State::AnimatingIn && ms > _animationMSIn) {
+			_sw.reset();
+			_state = State::Stable;
+			std::swap(_startGlyphPos, _endGlyphPos);
+			_start = _end;
 		}
-		if ((int)ret.size() == _cursorIndex) _font->getCursor(pen).draw(2, Palette::Black);
+		else if (_state == State::AnimatingOut && ms > _animationMSOut) {
+			_sw.reset();
+			_state = State::Inactive;
+			_startGlyphPos.clear();
+			_endGlyphPos.clear();
+			_start = _end;
+		}
+		
+		if (_state == State::Inactive) return;
+		if (_state == State::AnimatingIn) drawAnimationIn(ms);
+		else if (_state == State::AnimatingOut) drawAnimationOut(ms);
+		else {
+			for (int i = 0; i < _glyphs.size(); i++)
+				_glyphs[i]->draw(getStartGlyphPos(i));
+		}
 	}
 };
 
@@ -153,8 +195,6 @@ private:
 	int _cursorIndex;
 
 	JudgeUnsettled _ju;
-
-	SP<InsertMode> _insertMode;
 
 
 
