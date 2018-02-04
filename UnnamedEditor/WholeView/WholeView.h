@@ -84,7 +84,8 @@ private:
 	void drawAnimationIn(double ms) {
 		double t = ms/_animationMSIn;
 		Vec2 delta = EaseOut(Easing::Back, _start, _end, t) - _end;
-		for (int i = 0; i < _glyphs.size(); i++) {
+		for (int i = 0; i < (int)_glyphs.size(); i++) {
+
 			Vec2 pos = getEndGlyphPos(i) + delta;
 			if (_area.x + _area.w + _lineInterval < pos.x) continue;
 			if (pos.x < _area.x) break;
@@ -93,15 +94,17 @@ private:
 	}
 
 	void drawAnimationOut(double ms) {
-		double t = ms/_animationMSOut;
-		for (int i = 0; i < _glyphs.size(); i++) {
+		for (int i = 0; i < (int)_glyphs.size(); i++) {
+			double animationMS = EaseOut(Easing::Circ, _animationMSOut/3.0, _animationMSOut, std::min(i, 200)/200.0);
+			double t = std::min(1.0, ms/animationMS);
+
 			Vec2 s = getStartGlyphPos(i), e = getEndGlyphPos(i);
 			if (_area.x + _area.w + _lineInterval < s.x) continue;
 			if (e.x < _area.x) break;
 			double d1 = s.y - _area.y;
 			double d2 = _area.h;
 			double d3 = _area.y + _area.h - e.y;
-			double delta = EaseOut(Easing::Quad, t)*(d1 + d2 + d3);
+			double delta = EaseOut(Easing::Quint, t)*(d1 + d2 + d3);
 			Vec2 pos = [&](){
 				if (delta <= d1) return Vec2(s.x, s.y - delta);
 				delta -= d1;
@@ -168,7 +171,7 @@ public:
 		if (_state == State::AnimatingIn) drawAnimationIn(ms);
 		else if (_state == State::AnimatingOut) drawAnimationOut(ms);
 		else {
-			for (int i = 0; i < _glyphs.size(); i++)
+			for (int i = 0; i < (int)_glyphs.size(); i++)
 				_glyphs[i]->draw(getStartGlyphPos(i));
 		}
 	}
