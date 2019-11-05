@@ -61,8 +61,37 @@ FontDataPicker/**/*.sbr
 FontDataPicker/**/*.xml
 FontDataPicker/**/*.metagen
 FontDataPicker/**/*.bi
-
-
+freetype-2.8.1/**/*.cdf
+freetype-2.8.1/**/*.cache
+freetype-2.8.1/**/*.obj
+freetype-2.8.1/**/*.obj.enc
+freetype-2.8.1/**/*.ilk
+freetype-2.8.1/**/*.ipdb
+freetype-2.8.1/**/*.iobj
+freetype-2.8.1/**/*.resources
+freetype-2.8.1/**/*.tlb
+freetype-2.8.1/**/*.tli
+freetype-2.8.1/**/*.tlh
+freetype-2.8.1/**/*.tmp
+freetype-2.8.1/**/*.rsp
+freetype-2.8.1/**/*.pgc
+freetype-2.8.1/**/*.pgd
+freetype-2.8.1/**/*.meta
+freetype-2.8.1/**/*.tlog
+freetype-2.8.1/**/*.manifest
+freetype-2.8.1/**/*.res
+freetype-2.8.1/**/*.pch
+freetype-2.8.1/**/*.exp
+freetype-2.8.1/**/*.idb
+freetype-2.8.1/**/*.rep
+freetype-2.8.1/**/*.xdc
+freetype-2.8.1/**/*.pdb
+freetype-2.8.1/**/*_manifest.rc
+freetype-2.8.1/**/*.bsc
+freetype-2.8.1/**/*.sbr
+freetype-2.8.1/**/*.xml
+freetype-2.8.1/**/*.metagen
+freetype-2.8.1/**/*.bi
 
 
 

@@ -95,7 +95,7 @@ private:
 
 	void drawAnimationOut(double ms) {
 		for (int i = 0; i < (int)_glyphs.size(); i++) {
-			double animationMS = EaseOut(Easing::Circ, _animationMSOut/3.0, _animationMSOut, std::min(i, 200)/200.0);
+			double animationMS = EaseOut(Easing::Expo, _animationMSOut/3.0, _animationMSOut, std::min(i, 200)/200.0);
 			double t = std::min(1.0, ms/animationMS);
 
 			Vec2 s = getStartGlyphPos(i), e = getEndGlyphPos(i);
@@ -153,6 +153,15 @@ public:
 
 	void update() {
 		double ms = _sw.ms();
+		
+		if (_state == State::Inactive) return;
+		if (_state == State::AnimatingIn) drawAnimationIn(ms);
+		else if (_state == State::AnimatingOut) drawAnimationOut(ms);
+		else {
+			for (int i = 0; i < (int)_glyphs.size(); i++)
+				_glyphs[i]->draw(getStartGlyphPos(i));
+		}
+
 		if (_state == State::AnimatingIn && ms > _animationMSIn) {
 			_sw.reset();
 			_state = State::Stable;
@@ -165,14 +174,6 @@ public:
 			_startGlyphPos.clear();
 			_endGlyphPos.clear();
 			_start = _end;
-		}
-		
-		if (_state == State::Inactive) return;
-		if (_state == State::AnimatingIn) drawAnimationIn(ms);
-		else if (_state == State::AnimatingOut) drawAnimationOut(ms);
-		else {
-			for (int i = 0; i < (int)_glyphs.size(); i++)
-				_glyphs[i]->draw(getStartGlyphPos(i));
 		}
 	}
 };

@@ -95,137 +95,77 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Icon.ico">
+    <Image Include="App\engine\texture\box-shadow\128.png">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="example\siv3d-kun.png">
-      <Filter>Resource Files\example</Filter>
+    <Image Include="App\engine\texture\box-shadow\16.png">
+      <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="example\windmill.png">
-      <Filter>Resource Files\example</Filter>
+    <Image Include="App\engine\texture\box-shadow\256.png">
+      <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="engine\texture\box-shadow\64.png">
-      <Filter>Resource Files\engine\texture\box-shadow</Filter>
+    <Image Include="App\engine\texture\box-shadow\32.png">
+      <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="engine\texture\box-shadow\128.png">
-      <Filter>Resource Files\engine\texture\box-shadow</Filter>
+    <Image Include="App\engine\texture\box-shadow\64.png">
+      <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="engine\texture\box-shadow\256.png">
-      <Filter>Resource Files\engine\texture\box-shadow</Filter>
+    <Image Include="App\engine\texture\box-shadow\8.png">
+      <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="engine\texture\box-shadow\8.png">
-      <Filter>Resource Files\engine\texture\box-shadow</Filter>
+    <Image Include="App\example\siv3d-kun.png">
+      <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="engine\texture\box-shadow\16.png">
-      <Filter>Resource Files\engine\texture\box-shadow</Filter>
+    <Image Include="App\example\windmill.png">
+      <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="engine\texture\box-shadow\32.png">
-      <Filter>Resource Files\engine\texture\box-shadow</Filter>
+    <Image Include="App\icon.ico">
+      <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Resource.rc">
+    <ResourceCompile Include="App\Resource.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="example\LICENSE.txt">
-      <Filter>Resource Files\example</Filter>
-    </Text>
-    <Text Include="example\test.txt">
-      <Filter>Resource Files\example</Filter>
-    </Text>
-    <Text Include="engine\font\fontawesome\LICENSE_OFL.txt">
-      <Filter>Resource Files\engine\font\fontawesome</Filter>
-    </Text>
-    <Text Include="engine\font\noto\LICENSE_OFL.txt">
-      <Filter>Resource Files\engine\font\noto</Filter>
-    </Text>
-    <Text Include="engine\engine.txt">
-      <Filter>Resource Files\engine</Filter>
-    </Text>
-    <Text Include="example\script.txt">
-      <Filter>Resource Files\example</Filter>
-    </Text>
+    <Text Include="App\engine\font\fontawesome\LICENSE_OFL.txt" />
+    <Text Include="App\engine\font\noto\LICENSE_OFL.txt" />
+    <Text Include="App\example\LICENSE.txt" />
+    <Text Include="App\example\script.txt" />
+    <Text Include="App\example\test.txt" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="example\test.ini">
-      <Filter>Resource Files\example</Filter>
+    <None Include="App\engine\emoji\noto7_dictionary.dat" />
+    <None Include="App\engine\font\fontawesome\FontAwesome.otf.zst" />
+    <None Include="App\engine\font\mplus\LICENSE_E" />
+    <None Include="App\engine\font\mplus\mplus-1p-black.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-bold.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-heavy.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-light.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-medium.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-regular.ttf.zst" />
+    <None Include="App\engine\font\mplus\mplus-1p-thin.ttf.zst" />
+    <None Include="App\engine\font\noto\NotoColorEmoji.ttf.zst" />
+    <None Include="App\engine\font\noto\NotoEmoji-Regular.ttf.zst" />
+    <None Include="App\engine\shader\line_dot.ps" />
+    <None Include="App\engine\shader\line_round_dot.ps" />
+    <None Include="App\engine\shader\shape.ps" />
+    <None Include="App\engine\shader\sprite.ps" />
+    <None Include="App\engine\shader\sprite.vs" />
+    <None Include="App\engine\shader\sprite_sdf.ps" />
+    <None Include="App\example\a1a_testing" />
+    <None Include="App\example\a1a_training" />
+    <None Include="App\example\empty.bin">
+      <Filter>Resource Files</Filter>
     </None>
-    <None Include="example\empty.bin">
-      <Filter>Resource Files\example</Filter>
-    </None>
-    <None Include="example\test.json">
-      <Filter>Resource Files\example</Filter>
-    </None>
-    <None Include="engine\shader\shape.ps">
-      <Filter>Resource Files\engine\shader</Filter>
-    </None>
-    <None Include="engine\shader\sprite.ps">
-      <Filter>Resource Files\engine\shader</Filter>
-    </None>
-    <None Include="engine\shader\sprite_sdf.ps">
-      <Filter>Resource Files\engine\shader</Filter>
-    </None>
-    <None Include="engine\shader\sprite.vs">
-      <Filter>Resource Files\engine\shader</Filter>
-    </None>
-    <None Include="engine\shader\line_dot.ps">
-      <Filter>Resource Files\engine\shader</Filter>
-    </None>
-    <None Include="engine\shader\line_round_dot.ps">
-      <Filter>Resource Files\engine\shader</Filter>
-    </None>
-    <None Include="engine\font\fontawesome\FontAwesome.otf.zst">
-      <Filter>Resource Files\engine\font\fontawesome</Filter>
-    </None>
-    <None Include="engine\font\mplus\mplus-1p-heavy.ttf.zst">
-      <Filter>Resource Files\engine\font\mplus</Filter>
-    </None>
-    <None Include="engine\font\mplus\mplus-1p-light.ttf.zst">
-      <Filter>Resource Files\engine\font\mplus</Filter>
-    </None>
-    <None Include="engine\font\mplus\mplus-1p-medium.ttf.zst">
-      <Filter>Resource Files\engine\font\mplus</Filter>
-    </None>
-    <None Include="engine\font\mplus\mplus-1p-regular.ttf.zst">
-      <Filter>Resource Files\engine\font\mplus</Filter>
-    </None>
-    <None Include="engine\font\mplus\mplus-1p-thin.ttf.zst">
-      <Filter>Resource Files\engine\font\mplus</Filter>
-    </None>
-    <None Include="engine\font\mplus\LICENSE_E">
-      <Filter>Resource Files\engine\font\mplus</Filter>
-    </None>
-    <None Include="engine\font\mplus\mplus-1p-black.ttf.zst">
-      <Filter>Resource Files\engine\font\mplus</Filter>
-    </None>
-    <None Include="engine\font\mplus\mplus-1p-bold.ttf.zst">
-      <Filter>Resource Files\engine\font\mplus</Filter>
-    </None>
-    <None Include="engine\font\noto\NotoColorEmoji.ttf.zst">
-      <Filter>Resource Files\engine\font\noto</Filter>
-    </None>
-    <None Include="engine\font\noto\NotoEmoji-Regular.ttf.zst">
-      <Filter>Resource Files\engine\font\noto</Filter>
-    </None>
-    <None Include="dll_x64\d3d\d3dcompiler_47.dll">
-      <Filter>Resource Files\dll_x64\d3d</Filter>
-    </None>
-    <None Include="dll_x64\tobii\tobii_stream_engine.dll">
-      <Filter>Resource Files\dll_x64\tobii</Filter>
-    </None>
-    <None Include="dll_x86\tobii\tobii_stream_engine.dll">
-      <Filter>Resource Files\dll_x86\tobii</Filter>
-    </None>
-    <None Include="dll_x86\d3d\d3dcompiler_47.dll">
-      <Filter>Resource Files\dll_x86\d3d</Filter>
-    </None>
+    <None Include="App\example\test.ini" />
+    <None Include="App\example\test.json" />
+    <None Include="App\example\test.toml" />
   </ItemGroup>
   <ItemGroup>
-    <Media Include="example\test.mp3">
-      <Filter>Resource Files\example</Filter>
-    </Media>
+    <Media Include="App\example\shot.mp3" />
+    <Media Include="App\example\test.mp3" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Font\Glyph.h">
