@@ -71,6 +71,8 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MinimalRebuild>false</MinimalRebuild>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir);$(SolutionDir)freetype-2.10.1\include</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -92,6 +94,9 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(ProjectDir);$(SolutionDir)freetype-2.10.1\include</AdditionalIncludeDirectories>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -228,7 +233,9 @@
     <ClCompile Include="Font\FontBase.cpp" />
     <ClCompile Include="Font\Glyph.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="UnnamedEditor.cpp" />
     <ClCompile Include="WholeView\WholeView.cpp" />
     <ClCompile Include="Workspace\DraftPaper.cpp" />
@@ -245,6 +252,14 @@
     <ClInclude Include="WholeView\WholeView.h" />
     <ClInclude Include="Workspace\DraftPaper.h" />
     <ClInclude Include="Workspace\Workspace.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FontDataPicker\FontDataPicker.vcxproj">
+      <Project>{56baa270-50db-4ac9-9fbe-776d302fd7d9}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\freetype-2.10.1\builds\windows\vc2010\freetype.vcxproj">
+      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
