@@ -97,7 +97,7 @@ void Workspace::update() {
 	{
 		auto unsettledGlyhps = _font.renderString(unsettled.toUTF16());
 		DevicePos charPos = head;
-		for each (auto g in unsettledGlyhps) {
+		for (auto g : unsettledGlyhps) {
 			g->draw(charPos, Palette::Gray);
 			charPos += g->getAdvance();
 		}

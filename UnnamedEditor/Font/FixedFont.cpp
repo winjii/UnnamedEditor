@@ -33,7 +33,7 @@ SP<const Glyph> FixedFont::renderChar(char16_t charCode) {
 
 std::vector<SP<const Glyph>> FixedFont::renderString(std::u16string charCodes) {
 	std::vector<SP<const Glyph>> ret;
-	for each (char16_t var in charCodes) {
+	for (char16_t var : charCodes) {
 		ret.push_back(renderChar(var));
 	}
 	return ret;

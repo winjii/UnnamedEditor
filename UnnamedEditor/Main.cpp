@@ -54,7 +54,7 @@ void GsubReaderTest() {
 			pw = Max(1, pw - 1); ph = Max(1, ph - 1);
 			init(pw, ph);
 		}
-		Rect(0, 0, Window::Size()).draw(Palette::White);
+		Rect(0, 0, Window::ClientSize()).draw(Palette::White);
 		Point pos(100 - (slot->metrics.horiBearingX >> 6), 100 - (slot->metrics.horiBearingY >> 6));
 		//Rect(pos, bitmap.width, bitmap.rows).drawFrame(0, 5, Palette::Blue);
 		texture.fill(image);
@@ -70,7 +70,7 @@ void FontTest() {
 	String s = U"「山村、（mucho）。」";
 	auto v = font.renderString(s.toUTF16());
 
-	Graphics::SetBackground(Palette::Gray);
+	Scene::SetBackground(Palette::Gray);
 	while (System::Update()) {
 		Vec2 pen(100, 100);
 		for (int i = 0; i < v.size(); i++) {
@@ -82,7 +82,7 @@ void FontTest() {
 void FairCopyFieldTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
-	FairCopyField::FairCopyField fc(0, 0, Window::Width(), Window::Height(), lib, 20);
+	FairCopyField::FairCopyField fc(0, 0, Window::ClientWidth(), Window::ClientHeight(), lib, 20);
 	fc.setText(U"　吾輩は猫である。名前はまだない。　どこで生れたか頓と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。");
 	while (System::Update()) {
 		fc.update();
@@ -93,7 +93,7 @@ void WorkspaceTest() {
 	Window::Resize(Size(1280, 720));
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
-	Workspace::Workspace w(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), lib);
+	Workspace::Workspace w(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), lib);
 	while (System::Update()) {
 		w.update();
 	}
@@ -133,13 +133,13 @@ void DraftPaperTest() {
 	auto glyphsH = fontH.renderString(u"mucho613");
 	DraftPaper dpV(glyphsV, -Math::Pi/6.0);
 	DraftPaper dpH(glyphsH, Math::Pi/6.0);
-	dpV.setPos(Window::Size()/2.0);
-	dpH.setPos(Window::Size()/2.0);
+	dpV.setPos(Window::ClientSize()/2.0);
+	dpH.setPos(Window::ClientSize()/2.0);
 	Vec2 marginV = dpV.desirableMargin();
 	Vec2 marginH = dpH.desirableMargin();
 	RectF rectV(dpV.getPos() - marginV, marginV*2);
 	RectF rectH(dpH.getPos() - marginH, marginH*2);
-	Graphics::SetBackground(Palette::White);
+	Scene::SetBackground(Palette::White);
 	while (System::Update()) {
 		dpV.draw();
 		rectV.drawFrame(1, Palette::Blue);
@@ -159,12 +159,12 @@ void Glyph_scaleTest() {
 	auto g1 = font1.renderString(str.toUTF16());
 	bool mode = false;
 
-	Graphics::SetBackground(Palette::White);
+	Scene::SetBackground(Palette::White);
 	while (System::Update()) {
 		if (MouseL.down()) mode = !mode;
 		auto &glyphs = mode ? g1 : g0;
 		Vec2 pen(200, 100);
-		for each (auto g in glyphs) {
+		for (auto g : glyphs) {
 			pen = g->draw(pen, Palette::Black, 0, 0.9);
 		}
 	}
@@ -173,7 +173,7 @@ void Glyph_scaleTest() {
 void NoBug() {
 	//テクスチャアドレスモードなるものをclampにすれば直るよ
 	//デフォルトではrepeatになっていて、テクスチャが循環する
-	Graphics2D::SetSamplerState(SamplerState::ClampLinear);
+	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 
 	Image img(10, 10);
 	for (int i = 0; i < img.height(); i++) {
@@ -184,7 +184,7 @@ void NoBug() {
 	}
 	Texture texture(img);
 
-	Graphics::SetBackground(Palette::White);
+	Scene::SetBackground(Palette::White);
 	while (System::Update()) {
 		texture.draw(Vec2(100, 100.5), Palette::Black); //変な線が入る
 	}
@@ -196,10 +196,10 @@ void WholeViewTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 24, true));
-	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::Width(), Window::Height()), font);
+	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
 	wholeView.setText(IamACat);
 
-	Graphics2D::SetSamplerState(SamplerState::ClampLinear);
+	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	while (System::Update()) {
 		wholeView.update();
 	}
@@ -209,16 +209,16 @@ void ChangeableFontTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
 	Font::ChangeableFont font(lib, "C:/Windows/Fonts/msmincho.ttc", true);
-	
-	Graphics2D::SetSamplerState(SamplerState::ClampLinear);
-	Graphics::SetBackground(Palette::White);
+
+	const ScopedRenderStates2D state(SamplerState::ClampLinear);
+	Scene::SetBackground(Palette::White);
 	s3d::Font sfont(30);
 	std::u16string str = String(U"星宮いちご").toUTF16();
 	while (System::Update()) {
-		Vec2 pen(Window::ClientRect().topCenter());
+		Vec2 pen(Window::GetState().bounds.topCenter());
 		for (int i = 0; i < str.length(); i++) {
 			double scale;
-			SP<const Font::Glyph> g = font.renderChar(str[i], 4 + 20*(1 + Math::Sin(System::FrameCount()/(60.0*5)*2*Math::Pi)), scale);
+			SP<const Font::Glyph> g = font.renderChar(str[i], 4 + 20*(1 + Math::Sin(Scene::FrameCount()/(60.0*5)*2*Math::Pi)), scale);
 			sfont(scale).draw(Vec2(100, 100), Palette::Black);
 			pen = g->draw(pen, Palette::Black, 0, scale);
 		}
@@ -232,11 +232,11 @@ void FloatingTextTest() {
 	Font::FixedFont font(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true);
 	std::u16string s = String(U"星宮いちごは、ごくごくフツーの中学1年生の女の子。ところが、親友のあおいに誘われてアイドル養成の名門校「スターライト学園」に編入したことで、いちごをとりまく世界がガラリと変わってしまう。様々なライバルたちと出会い、アイドルとしての心得を学びながら、いちごはアイカツ！カードを使って数々のオーディションに挑戦していくことに。新人アイドルいちごの、明るく元気なアイドル活動が幕を開ける…！").toUTF16(); 
 	auto glyphs = font.renderString(s);
-	Vec2 origin = Window::Center() + Vec2(50, 0);
-	FloatingText ft(Window::ClientRect(), glyphs, 25, origin);
+	Vec2 origin = Window::ClientCenter() + Vec2(50, 0);
+	FloatingText ft(Window::GetState().bounds, glyphs, 25, origin);
 
-	Graphics2D::SetSamplerState(SamplerState::ClampLinear);
-	Graphics::SetBackground(Palette::White);
+	const ScopedRenderStates2D state(SamplerState::ClampLinear);
+	Scene::SetBackground(Palette::White);
 	while (System::Update()) {
 		if (ft.getState() == FloatingText::Inactive) {
 			ft.transitIn(-50);
