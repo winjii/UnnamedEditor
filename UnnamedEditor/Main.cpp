@@ -264,7 +264,7 @@ void Main()
 		WholeViewTest,
 		ChangeableFontTest,
 		FloatingTextTest
-	} runMode = RunMode::FloatingTextTest;
+	} runMode = RunMode::FairCopyFieldTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();

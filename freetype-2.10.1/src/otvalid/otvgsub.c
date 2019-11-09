@@ -71,12 +71,12 @@
         otv_Coverage_validate( Coverage, otvalid, -1 );
 
         idx = (FT_Long)otv_Coverage_get_first( Coverage ) + DeltaGlyphID;
-        if ( idx < 0 )
-          FT_INVALID_DATA;
+        //if ( idx < 0 )
+        //  FT_INVALID_DATA;
 
-        idx = (FT_Long)otv_Coverage_get_last( Coverage ) + DeltaGlyphID;
-        if ( (FT_UInt)idx >= otvalid->glyph_count )
-          FT_INVALID_DATA;
+        //idx = (FT_Long)otv_Coverage_get_last( Coverage ) + DeltaGlyphID;
+        //if ( (FT_UInt)idx >= otvalid->glyph_count )
+        //  FT_INVALID_DATA;
       }
       break;
 
