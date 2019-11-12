@@ -215,7 +215,7 @@ void ChangeableFontTest() {
 	s3d::Font sfont(30);
 	std::u16string str = String(U"星宮いちご").toUTF16();
 	while (System::Update()) {
-		Vec2 pen(Window::GetState().bounds.topCenter());
+		Vec2 pen(RectF(Window::ClientSize()).topCenter());
 		for (int i = 0; i < str.length(); i++) {
 			double scale;
 			SP<const Font::Glyph> g = font.renderChar(str[i], 4 + 20*(1 + Math::Sin(Scene::FrameCount()/(60.0*5)*2*Math::Pi)), scale);
@@ -233,7 +233,7 @@ void FloatingTextTest() {
 	std::u16string s = String(U"星宮いちごは、ごくごくフツーの中学1年生の女の子。ところが、親友のあおいに誘われてアイドル養成の名門校「スターライト学園」に編入したことで、いちごをとりまく世界がガラリと変わってしまう。様々なライバルたちと出会い、アイドルとしての心得を学びながら、いちごはアイカツ！カードを使って数々のオーディションに挑戦していくことに。新人アイドルいちごの、明るく元気なアイドル活動が幕を開ける…！").toUTF16(); 
 	auto glyphs = font.renderString(s);
 	Vec2 origin = Window::ClientCenter() + Vec2(50, 0);
-	FloatingText ft(Window::GetState().bounds, glyphs, 25, origin);
+	FloatingText ft(RectF(Window::ClientSize()), glyphs, 25, origin);
 
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	Scene::SetBackground(Palette::White);
@@ -264,7 +264,7 @@ void Main()
 		WholeViewTest,
 		ChangeableFontTest,
 		FloatingTextTest
-	} runMode = RunMode::FairCopyFieldTest;
+	} runMode = RunMode::FloatingTextTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
