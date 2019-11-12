@@ -33,7 +33,8 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _pageCount(0)
 , _lineInterval(font->getFontSize()*1.2)
 , _cursorIndex(0)
-, _ju() {
+, _ju()
+, _ft() {
 	
 }
 
@@ -51,13 +52,20 @@ void WholeView::update() {
 
 	int cursorDelta = 0;
 	if (KeyControl.pressed() && KeyLeft.down()) _pageCount++;
-	else if (KeyControl.pressed() && KeyRight.down()) _pageCount--;
-	else if (KeyDown.down()) cursorDelta++;
-	else if (KeyUp.down()) cursorDelta--;
+	if (KeyControl.pressed() && KeyRight.down()) _pageCount--;
+	if (KeyDown.down()) cursorDelta++;
+	if (KeyUp.down()) cursorDelta--;
 
 	bool deleted = _ju.isSettled() && KeyBackspace.down();
 
 	RectF(_borderPos, _borderSize).draw(Palette::White);
+
+	auto drawer = [&](int idx, Vec2 pen) {
+		if (_pos.x + _size.x + _font->getFontSize() < pen.x) return true;
+		if (pen.x < _pos.x) return false;
+		_glyphs[idx]->draw(pen);
+		return true;
+	};
 
 	Vec2 pen = _pos + Vec2(_size.x + _pageCount*_size.x/2.0 - _lineInterval, 0);
 	for (int i = 0; i < (int)_glyphs.size(); i++) {
@@ -72,6 +80,12 @@ void WholeView::update() {
 		if (pen.x < _pos.x) break;
 
 		pen = g->draw(pen);
+	}
+	{
+		Vec2 c = getCharPos(_cursorIndex);
+		Vec2 a(_lineInterval/2, 0);
+		double t = Scene::Time()*2*Math::Pi/2.5;
+		Line(c - a, c + a).draw(1, Color(Palette::Black, (Sin(t) + 1)/2*255));
 	}
 }
 

@@ -200,6 +200,8 @@ private:
 
 	JudgeUnsettled _ju;
 
+	SP<FloatingText> _ft;
+
 
 
 	int deleteChar(int index);
