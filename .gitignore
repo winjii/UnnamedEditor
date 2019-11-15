@@ -30,6 +30,7 @@ UnnamedEditor/**/*.sbr
 UnnamedEditor/**/*.xml
 UnnamedEditor/**/*.metagen
 UnnamedEditor/**/*.bi
+UnnamedEditor/App/*.exe
 FontDataPicker/**/*.cdf
 FontDataPicker/**/*.cache
 FontDataPicker/**/*.obj
@@ -91,8 +92,7 @@ freetype-2.10.1/**/*.bsc
 freetype-2.10.1/**/*.sbr
 freetype-2.10.1/**/*.xml
 freetype-2.10.1/**/*.metagen
-freetype-2.10.1/**/*.bi
-
+freetype-2.10.1/objs/*
 
 
 
