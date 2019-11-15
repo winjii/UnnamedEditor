@@ -238,10 +238,10 @@ void FloatingTextTest() {
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	Scene::SetBackground(Palette::White);
 	while (System::Update()) {
-		if (ft.getState() == FloatingText::Inactive) {
+		if (ft.getState() == FloatingText::State::Inactive) {
 			ft.transitIn(-50);
 		}
-		else if (ft.getState() == FloatingText::Stable) {
+		else if (ft.getState() == FloatingText::State::Stable) {
 			ft.transitOut(origin);
 		}
 		ft.update();
@@ -264,7 +264,7 @@ void Main()
 		WholeViewTest,
 		ChangeableFontTest,
 		FloatingTextTest
-	} runMode = RunMode::FloatingTextTest;
+	} runMode = RunMode::WholeViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();

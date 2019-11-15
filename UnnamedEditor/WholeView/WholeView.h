@@ -34,10 +34,70 @@ public:
 	bool isSettled() { return _count == 0; }
 };
 
+class GlyphMoveAnimation {
+public:
+
+	enum class State {
+		Inactive,
+		Animating,
+		Stable,
+	};
+
+private:
+
+	std::function<Vec2(Vec2, Vec2, double, int)> _ease;
+
+	Stopwatch _sw;
+
+	const std::vector<Vec2> &_sourcePos, &_targetPos;
+
+	double _animationTime, _progress;
+
+	State _state;
+
+public:
+
+	GlyphMoveAnimation(
+		std::vector<Vec2> &sourcePos,
+		std::vector<Vec2> &targetPos,
+		double animationTime,
+		std::function<Vec2(Vec2, Vec2, double, int)> ease)
+	: _sourcePos(sourcePos)
+	, _targetPos(targetPos)
+	, _animationTime(animationTime)
+	, _ease(ease)
+	, _sw()
+	, _progress(0)
+	, _state(State::Inactive) {
+	}
+
+	State getState() { return _state; }
+
+	void start() {
+		if (_state != State::Inactive) throw "not inactive";
+		_sw.restart();
+		_state = State::Animating;
+	}
+
+	void update() {
+		if (_state != State::Animating) return;
+		_progress = _sw.sF() / _animationTime;
+		if (_progress > 1) {
+			_progress = 1;
+			_sw.reset();
+			_state = State::Stable;
+		}
+	}
+
+	Vec2 getPos(int i) {
+		return _ease(_sourcePos[i], _targetPos[i], _progress, i);
+	}
+};
+
 class FloatingText {
 public:
 
-	enum State {
+	enum class State {
 		Inactive,
 		AnimatingIn,
 		AnimatingOut,
@@ -198,13 +258,20 @@ private:
 
 	int _cursorIndex;
 
+	int _floatingIndex;
+
 	JudgeUnsettled _ju;
 
-	SP<FloatingText> _ft;
+	SP<GlyphMoveAnimation> _glyphAnimation;
 
+	std::vector<Vec2> _normalGlyphPos, _floatingGlyphPos;
 
 
 	int deleteChar(int index);
+
+	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
+
+	Vec2 floatingTextOut(Vec2 source, Vec2 target, double t, int i);
 
 public:
 
