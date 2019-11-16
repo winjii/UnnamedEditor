@@ -248,6 +248,30 @@ void FloatingTextTest() {
 	}
 }
 
+void FontScaleTest() {
+	using namespace UnnamedEditor::Font;
+	FT_Library lib;
+	FT_Init_FreeType(&lib);
+	std::string path = "C:/Windows/Fonts/msmincho.ttc";
+	std::vector<int> s{ 32, 37, 41, 43, 47, 53, 49, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107 };
+	std::vector<FixedFont> fonts;
+	//const ScopedRenderStates2D state(SamplerState::ClampLinear);
+	Scene::SetBackground(Palette::White);
+	for (int i = 0; i < s.size(); i++) {
+		fonts.push_back(FixedFont(lib, path, s[i], true));
+	}
+	s3d::Font sf(32, U"C:/Windows/Fonts/msmincho.ttc");
+	while (System::Update()) {
+		
+		for (int i = 0; i < fonts.size(); i++) {
+			Vec2 p = Window::ClientCenter() + Vec2(-32*(int)fonts.size()/2 + 32*i, -16);
+			fonts[i].renderChar(U'鬱')->draw(p, Palette::Black, 0, 32.0/s[i]);
+		}
+		DrawableText t = sf(U"鬱");
+		t.draw(Window::ClientCenter() - Vec2(0, 32 + 16), Palette::Black);
+	}
+}
+
 }
 
 void Main()
@@ -263,8 +287,9 @@ void Main()
 		NoBug,
 		WholeViewTest,
 		ChangeableFontTest,
-		FloatingTextTest
-	} runMode = RunMode::WholeViewTest;
+		FloatingTextTest,
+		FontScaleTest,
+	} runMode = RunMode::FontScaleTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -298,5 +323,8 @@ void Main()
 	}
 	else if (runMode == RunMode::FloatingTextTest) {
 		UnnamedEditor::FloatingTextTest();
+	}
+	else if (runMode == RunMode::FontScaleTest) {
+		UnnamedEditor::FontScaleTest();
 	}
 }

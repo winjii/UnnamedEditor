@@ -70,7 +70,7 @@ FontBase::FontBase(FT_Library lib, std::string fontPath, bool isVertical)
 }
 
 FontBase::~FontBase() {
-	FT_Done_Face(_face);
+	// FT_Done_Face(_face);
 }
 
 double FontBase::ascender() {
