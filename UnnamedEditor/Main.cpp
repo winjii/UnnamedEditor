@@ -2,6 +2,10 @@
 #include <fstream>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_IMAGE_H
+#include FT_OUTLINE_H
+#include FT_BITMAP_H
+#include FT_GLYPH_H
 #include <FontDataPicker\GsubReader.h>
 #include "Font\FixedFont.h"
 #include "FairCopyField\FairCopyField.h"
@@ -37,7 +41,7 @@ void GsubReaderTest() {
 		for (int r = 0; r < bitmap.rows; r++) {
 			for (int c = 0; c < bitmap.width; c++) {
 				HSV gray(Color(bitmap.buffer[r*bitmap.width + c]));
-				image[r][c] = HSV(0, 0, 1 - gray.v);
+				image[r][c] = Color(Palette::White, 255 * gray.v);
 			}
 		}
 		texture = DynamicTexture(image);
@@ -272,6 +276,68 @@ void FontScaleTest() {
 	}
 }
 
+void FontShiftTest() {
+	using namespace UnnamedEditor::Font;
+	FT_Library lib;
+	FT_Init_FreeType(&lib);
+	FixedFont f(lib, "D:/Data/Source/Repos/UnnamedEditor/UnnamedEditor/App/SourceHanSerif-Regular.otf", 32, false);
+	const ScopedRenderStates2D state(SamplerState::ClampNearest);
+	Scene::SetBackground(Palette::White);
+	s3d::Font sf(32, U"D:/Data/Source/Repos/UnnamedEditor/UnnamedEditor/App/SourceHanSerif-Regular.otf");
+	while (System::Update()) {
+
+		for (int i = 0; i < 16; i++) {
+			Vec2 p = Window::ClientCenter() + Vec2(-32*16/2 + 32*i, 0);
+			auto g = f.renderChar(U'鬱');
+			g->draw(p + Vec2(i / 16.0, -32), Palette::Black);
+			sf(U'鬱').draw(p + Vec2(i/16.0, 0), Palette::Black);
+			Circle(p + Vec2(i / 16.0, -32), 3).draw(Palette::Red);
+		}
+	}
+}
+
+void RasterizeTest() {
+	FT_Library lib;
+	FT_Init_FreeType(&lib);
+	FT_Face face;
+	FT_New_Face(lib, "C:/Windows/Fonts/msmincho.ttc", 0, &face);
+	
+	FT_GlyphSlot slot = face->glyph;
+
+	unsigned int charCode = L'あ';
+	FT_UInt gid = FT_Get_Char_Index(face, charCode);
+
+	FT_Set_Pixel_Sizes(face, 64, 64);
+	FT_Load_Glyph(face, gid, FT_LOAD_NO_BITMAP);
+	/*FT_Bitmap bitmap;
+	bitmap.buffer = new unsigned char[64 * 64];
+	memset(bitmap.buffer, 0, 64*64);
+	bitmap.rows = 64;
+	bitmap.width = 64;
+	bitmap.pitch = 64;
+	bitmap.pixel_mode = FT_PIXEL_MODE_GRAY;
+	FT_Raster_Params rparams;
+	rparams.flags = FT_RASTER_FLAG_AA;
+	rparams.target = &bitmap;
+	int err = FT_Outline_Render(lib, &(slot->outline), &rparams);*/
+	FT_Glyph g;
+	FT_Get_Glyph(slot, &g);
+	FT_Glyph_To_Bitmap(&g, FT_RENDER_MODE_NORMAL, nullptr, true);
+	const FT_Bitmap &bitmap = ((FT_BitmapGlyph)g)->bitmap;
+	Image image = Image(bitmap.width, bitmap.rows);
+	for (int r = 0; r < bitmap.rows; r++) {
+		for (int c = 0; c < bitmap.width; c++) {
+			HSV gray(Color(bitmap.buffer[r * bitmap.width + c]));
+			image[r][c] = Color(Palette::White, 255 * gray.v);
+		}
+	}
+	auto texture = DynamicTexture(image);
+	Scene::SetBackground(Palette::White);
+	while (System::Update()) {
+		texture.draw(Window::ClientCenter(), Palette::Black);
+	}
+}
+
 }
 
 void Main()
@@ -289,7 +355,9 @@ void Main()
 		ChangeableFontTest,
 		FloatingTextTest,
 		FontScaleTest,
-	} runMode = RunMode::FontScaleTest;
+		RasterizeTest,
+		FontShiftTest,
+	} runMode = RunMode::RasterizeTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -326,5 +394,11 @@ void Main()
 	}
 	else if (runMode == RunMode::FontScaleTest) {
 		UnnamedEditor::FontScaleTest();
+	}
+	else if (runMode == RunMode::RasterizeTest) {
+		UnnamedEditor::RasterizeTest();
+	}
+	else if (runMode == RunMode::FontShiftTest) {
+		UnnamedEditor::FontShiftTest();
 	}
 }
