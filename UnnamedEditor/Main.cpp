@@ -338,6 +338,28 @@ void RasterizeTest() {
 	}
 }
 
+void GlyphLoadTest() {
+	using namespace UnnamedEditor::Font;
+	FT_Library lib;
+	FT_Init_FreeType(&lib);
+	FixedFont f(lib, "C:/Windows/Fonts/msmincho.ttc", 32, false);
+	String IamACat = TextReader(U"IamACat.txt").readAll();
+	Console.open();
+	Stopwatch sw;
+	sw.start();
+	int cnt = 0;
+	for (char16_t c : IamACat) {
+		if (cnt % 10000 == 0) {
+			printf("%d%%\n", 100*cnt/(int)IamACat.size());
+		}
+		f.renderChar(c);
+		cnt++;
+	}
+	sw.pause();
+	printf("end: %f s", sw.sF());
+	system("pause");
+}
+
 }
 
 void Main()
@@ -357,7 +379,8 @@ void Main()
 		FontScaleTest,
 		RasterizeTest,
 		FontShiftTest,
-	} runMode = RunMode::RasterizeTest;
+		GlyphLoadTest,
+	} runMode = RunMode::GlyphLoadTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -400,5 +423,8 @@ void Main()
 	}
 	else if (runMode == RunMode::FontShiftTest) {
 		UnnamedEditor::FontShiftTest();
+	}
+	else if (runMode == RunMode::GlyphLoadTest) {
+		UnnamedEditor::GlyphLoadTest();
 	}
 }
