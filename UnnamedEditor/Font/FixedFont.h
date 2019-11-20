@@ -17,7 +17,7 @@ private:
 	
 	int _fontSize;
 
-	std::map<FontDataPicker::GlyphIndex, SP<Glyph>> _glyphMemo;
+	std::unordered_map<FontDataPicker::GlyphIndex, SP<Glyph>> _glyphMemo;
 
 public:
 
