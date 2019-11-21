@@ -17,13 +17,6 @@ WholeView::TranslationIntoWorkspace::TranslationIntoWorkspace(const WholeView &w
 	
 }*/
 
-int WholeView::deleteChar(int cursorIndex) {
-	if (cursorIndex <= 0 || _text.size() < cursorIndex) return cursorIndex;
-	_text.erase(_text.begin() + cursorIndex - 1);
-	_glyphs.erase(_glyphs.begin() + cursorIndex - 1);
-	return cursorIndex - 1;
-}
-
 Vec2 WholeView::floatingTextIn(Vec2 source, Vec2 target, double t, int i)
 {
 	return EaseOut(Easing::Back, source, target, t);
@@ -50,18 +43,22 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _borderSize(size)
 , _pos(pos + Vec2(0, font->getFontSize()*2))
 , _size(size - Vec2(0, font->getFontSize()*2*2))
+, _startPos(_pos + Vec2(_size.x, 0))
 , _font(font)
-, _pageCount(0)
 , _lineInterval(font->getFontSize()*1.2)
-, _cursorIndex(0)
+, _cursorItr(_text.begin())
+, _startItr(_text.begin())
 , _ju()
 , _glyphAnimation()
-, _floatingIndex(-1) {
+, _floatingItr(_text.end()) {
 	
 }
 
 void WholeView::setText(const String &text) {
-	_text = text;
+	_text.clear();
+	for (char16_t c : text) {
+		_text.push_back(c);
+	}
 	auto res = _font->renderString(text.toUTF16());
 	_glyphs.assign(res.begin(), res.end());
 }
@@ -73,8 +70,6 @@ void WholeView::update() {
 	_ju.update(unsettled.length());
 
 	int cursorDelta = 0;
-	if (KeyControl.pressed() && KeyLeft.down()) _pageCount++;
-	if (KeyControl.pressed() && KeyRight.down()) _pageCount--;
 	if (KeyDown.down()) cursorDelta++;
 	if (KeyUp.down()) cursorDelta--;
 
@@ -84,8 +79,8 @@ void WholeView::update() {
 		(updated.size() > 0 || unsettled.size() > 0)) {
 		_normalGlyphPos.resize(0);
 		_floatingGlyphPos.resize(0);
-		Vec2 pen = _pos + Vec2(_size.x + _pageCount * _size.x / 2.0 - _lineInterval, 0);
-		for (int i = 0; i < (int)_glyphs.size(); i++) {
+		Vec2 pen = _startPos;
+		for (auto itr = _startItr; itr != _text.end(); itr++)
 			auto g = _glyphs[i];
 			//‰æ–ÊŠO‚Éo‚Ä‚µ‚Ü‚Á‚½‚çfor•¶‚ðI—¹
 			if (pen.x < _pos.x) break;
