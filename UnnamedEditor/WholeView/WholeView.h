@@ -239,26 +239,28 @@ public:
 };
 
 
+struct CharData {
+	char16_t code;
+	SP<const Font::Glyph> glyph;
+};
+
+
 class WholeView {
 private:
 
 	DevicePos _borderPos, _borderSize;
 
 	Vec2 _pos, _size;
+	
+	Vec2 _startPos;
 
 	SP<Font::FixedFont> _font;
 
-	String _text;
-
-	std::vector<SP<const Font::Glyph>> _glyphs;
-
-	int _pageCount;
+	std::list<CharData> _glyphs;
 
 	double _lineInterval;
 
-	int _cursorIndex;
-
-	int _floatingIndex;
+	std::list<CharData>::iterator _cursorItr, _startItr, _floatingItr;
 
 	JudgeUnsettled _ju;
 
@@ -267,7 +269,6 @@ private:
 	std::vector<Vec2> _normalGlyphPos, _floatingGlyphPos;
 
 
-	int deleteChar(int index);
 
 	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
 
