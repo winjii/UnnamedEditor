@@ -62,7 +62,8 @@ public:
 	Text::Iterator origin() const;
 	Iterator begin() const;
 	Iterator end() const;
-	Iterator window
+	Iterator windowStart() const;
+	Iterator isOnWindow() const;
 	Iterator ensurePrev(Iterator itr);
 	Iterator ensureNext(Iterator itr);
 	void rejectFront(Iterator itr);
