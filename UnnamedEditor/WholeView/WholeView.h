@@ -34,7 +34,55 @@ public:
 	bool isSettled() { return _count == 0; }
 };
 
-class GlyphMoveAnimation {
+
+struct CharData {
+	char16_t code;
+	SP<const Font::Glyph> glyph;
+};
+class Text {
+public:
+	using Iterator = std::list<CharData>::iterator;
+	Iterator begin();
+	Iterator end();
+	Iterator next(Iterator itr);
+	Iterator prev(Iterator itr);
+	void insert(Iterator itr, String s);
+	void erase(Iterator first, Iterator last);
+
+};
+
+
+//TODO: reject関数要らない説(テキストの更新くるまでメモリに乗っけっぱなしでもテキスト本体以上のメモリは食わない)
+//テキストを表示するためのグリフ配置を計算する
+//テキスト更新すると壊れるので破棄すべし（更新するにはTextWindowを使う）
+class GlyphArrangement {
+public:
+	using Iterator = std::pair<Text::Iterator, std::deque<Vec2>::iterator>;
+	int originIndex() const;
+	Text::Iterator origin() const;
+	Iterator begin() const;
+	Iterator end() const;
+	Iterator window
+	Iterator ensurePrev(Iterator itr);
+	Iterator ensureNext(Iterator itr);
+	void rejectFront(Iterator itr);
+	void translate(Vec2 delta);
+};
+
+
+//テキストのうちある範囲（窓内）におけるグリフ配置と内容編集を担い、整合性を保つ
+//実際に窓内のテキストを表示するには窓の範囲に応じた描画コストが最大毎フレームかかるため、それと比べてネックにならないコストで働けばいい
+class TextWindow : GlyphArrangement {
+public:
+	void rejectFront(Iterator itr);
+	void translate(Vec2 delta);
+	void insertText(Iterator itr, String s);
+	void eraseText(Iterator first, Iterator last);
+};
+
+
+//TODO: startまで空でもよくないか
+class Animation {
 public:
 
 	enum class State {
@@ -45,11 +93,7 @@ public:
 
 private:
 
-	std::function<Vec2(Vec2, Vec2, double, int)> _ease;
-
 	Stopwatch _sw;
-
-	const std::vector<Vec2> &_sourcePos, &_targetPos;
 
 	double _animationTime, _progress;
 
@@ -57,21 +101,19 @@ private:
 
 public:
 
-	GlyphMoveAnimation(
+	Animation(
 		std::vector<Vec2> &sourcePos,
 		std::vector<Vec2> &targetPos,
-		double animationTime,
-		std::function<Vec2(Vec2, Vec2, double, int)> ease)
-	: _sourcePos(sourcePos)
-	, _targetPos(targetPos)
-	, _animationTime(animationTime)
-	, _ease(ease)
+		double animationTime)
+	: _animationTime(animationTime)
 	, _sw()
 	, _progress(0)
 	, _state(State::Inactive) {
 	}
 
 	State getState() { return _state; }
+
+	double getProgress() { return _progress; }
 
 	void start() {
 		if (_state != State::Inactive) throw "not inactive";
@@ -87,10 +129,6 @@ public:
 			_sw.reset();
 			_state = State::Stable;
 		}
-	}
-
-	Vec2 getPos(int i) {
-		return _ease(_sourcePos[i], _targetPos[i], _progress, i);
 	}
 };
 
@@ -239,39 +277,18 @@ public:
 };
 
 
-struct CharData {
-	char16_t code;
-	SP<const Font::Glyph> glyph;
-};
-
-
 class WholeView {
 private:
 
-	DevicePos _borderPos, _borderSize;
-
-	Vec2 _pos, _size;
-	
-	Vec2 _startPos;
-
+	RectF _area;
 	SP<Font::FixedFont> _font;
-
-	std::list<CharData> _glyphs;
-
+	GlyphArrangement _floatingArrangement;
+	TextWindow _textWindow;
 	double _lineInterval;
-
-	std::list<CharData>::iterator _cursorItr, _startItr, _floatingItr;
-
 	JudgeUnsettled _ju;
-
-	SP<GlyphMoveAnimation> _glyphAnimation;
-
-	std::vector<Vec2> _normalGlyphPos, _floatingGlyphPos;
-
-
+	SP<Animation> _floatingAnimation;
 
 	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
-
 	Vec2 floatingTextOut(Vec2 source, Vec2 target, double t, int i);
 
 public:
@@ -280,12 +297,7 @@ public:
 	WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font);
 
 	void setText(const String &text);
-
 	void update();
-
-	Vec2 getCharPos(int charIndex) const;
-
-	Vec2 getCursorPos(int cursorIndex) const;
 
 };
 

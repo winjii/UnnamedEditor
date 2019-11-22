@@ -46,12 +46,9 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _startPos(_pos + Vec2(_size.x, 0))
 , _font(font)
 , _lineInterval(font->getFontSize()*1.2)
-, _cursorItr(_text.begin())
-, _startItr(_text.begin())
 , _ju()
-, _glyphAnimation()
-, _floatingItr(_text.end()) {
-	
+, _floatingAnimation() {
+	throw "全部初期化すべし";
 }
 
 void WholeView::setText(const String &text) {
@@ -75,13 +72,12 @@ void WholeView::update() {
 
 	bool deleted = _ju.isSettled() && KeyBackspace.down();
 
-	if (!_glyphAnimation &&
+	if (!_floatingAnimation &&
 		(updated.size() > 0 || unsettled.size() > 0)) {
 		_normalGlyphPos.resize(0);
 		_floatingGlyphPos.resize(0);
 		Vec2 pen = _startPos;
-		for (auto itr = _startItr; itr != _text.end(); itr++)
-			auto g = _glyphs[i];
+		for (auto itr = _startItr; itr != _text.end(); itr++) {
 			//画面外に出てしまったらfor文を終了
 			if (pen.x < _pos.x) break;
 
@@ -93,52 +89,44 @@ void WholeView::update() {
 			if (pen.y > _pos.y + _size.y) pen = Vec2(pen.x - _lineInterval, _pos.y);
 		}
 		auto f = [&](Vec2 vs, Vec2 vt, double t, int i) { return floatingTextIn(vs, vt, t, i); };
-		_glyphAnimation = SP<GlyphMoveAnimation>(new GlyphMoveAnimation(_normalGlyphPos, _floatingGlyphPos, 1.5, f));
+		_glyphAnimation = SP<Animation>(new Animation(_normalGlyphPos, _floatingGlyphPos, 1.5, f));
 		_glyphAnimation->start();
 	}
-	bool isFloating = _glyphAnimation && _glyphAnimation->getState() != GlyphMoveAnimation::State::Inactive;
-	if (isFloating) _glyphAnimation->update();
+	bool isFloating = _floatingAnimation && _floatingAnimation->getState() != Animation::State::Inactive;
+	if (isFloating) _floatingAnimation->update();
 
 	RectF(_borderPos, _borderSize).draw(Palette::White);
-
-	Vec2 pen = _pos + Vec2(_size.x + _pageCount*_size.x/2.0 - _lineInterval, 0);
-	for (int i = 0; i < (int)_glyphs.size(); i++) {
-		auto g = _glyphs[i];
-		//画面内に到達していなければ描画しない
-		if (_pos.x + _size.x + _font->getFontSize() < pen.x) {
-			pen += g->getAdvance();
-			continue;
+	if (_normalArrangement.originIndex() < _floatingArrangement.originIndex()) {
+		auto posItr = _normalArrangement.begin();
+		auto textItr = _normalArrangement.origin();
+		while (_pos.x + _size.x <= posItr->x) {
+			posItr = _normalArrangement.ensureNext(posItr);
+			textItr = _text.next(textItr);
 		}
-		//画面外に出てしまったらfor文を終了
-		if (pen.x < _pos.x) break;
-
-		Vec2 pen_ = pen;
-		if (isFloating && _cursorIndex <= i) pen_ = _glyphAnimation->getPos(i - _cursorIndex);
-		g->draw(pen_);
-		pen += g->getAdvance();
-		if (pen.y > _pos.y + _size.y) pen = Vec2(pen.x - _lineInterval, _pos.y);
+		_normalArrangement.rejectFront(posItr);
+		while (posItr != _floatingArrangement.begin() && posItr != _normalArrangement.end()) {
+			if (posItr->x < _pos.x) break;
+			textItr->glyph->draw(*posItr);
+			posItr = _normalArrangement.ensureNext(posItr);
+			textItr = _text.next(textItr);
+		}
 	}
-	{
+	if (isFloating) {
+		auto posItr = _floatingArrangement.begin();
+		auto textItr = _floatingArrangement.origin();
+		while (_pos.x < posItr->x) {
+			if (posItr->x < _pos.x + _size.x)
+				textItr->glyph->draw(*posItr);
+			posItr = _floatingArrangement.ensureNext(posItr);
+			textItr = _text.next(textItr);
+		}
+	}
+	/*{
 		Vec2 c = getCharPos(_cursorIndex);
 		Vec2 a(_lineInterval/2, 0);
 		double t = Scene::Time()*2*Math::Pi/2.5;
 		Line(c - a, c + a).draw(1, Color(Palette::Black, (Sin(t) + 1)/2*255));
-	}
-}
-
-Vec2 WholeView::getCharPos(int charIndex) const {
-	Vec2 pen = _pos + Vec2(_size.x + _pageCount*_size.x/2.0 - _lineInterval, 0);
-	for (int i = 0; i < (int)_glyphs.size(); i++) {
-		auto g = _glyphs[i];
-		if ((pen + g->getAdvance()).y > _pos.y + _size.y) pen = Vec2(pen.x - _lineInterval, _pos.y);
-		if (i == charIndex) return pen;
-		pen += g->getAdvance();
-	}
-	return pen;
-}
-
-Vec2 WholeView::getCursorPos(int cursorIndex) const {
-	return getCharPos(cursorIndex);
+	}*/
 }
 
 }
