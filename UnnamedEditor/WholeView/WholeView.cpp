@@ -255,20 +255,6 @@ void GlyphArrangement::disable() {
 	_begin = _end = std::make_pair(_text.end(), _pos.end());
 }
 
-void GlyphArrangement::deleteTo(Iterator itr) {
-	//内部データはbeginより前の改行位置まで削除
-	_begin = itr;
-	auto [tmp, idx] = _text.lineHead(itr.first);
-	_pos.erase(_pos.begin(), itr.second - idx);
-}
-
-void GlyphArrangement::deleteFrom(Iterator itr) {
-	//内部データはendより後の改行位置から先を削除
-	_end = itr;
-	auto [tmp, cnt] = _text.nextLineHead(itr.first);
-	_pos.erase(itr.second + cnt, _pos.end());
-}
-
 GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr) {
 	if (itr.first == _text.begin()) throw "out of range";
 	if (itr.second != _pos.begin()) return { _text.prev(itr.first), --itr.second }; //グリフ位置キャッシュ済み

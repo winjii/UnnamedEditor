@@ -66,7 +66,7 @@ public:
 //TODO: ↑本来は型で制限すべき←このクラスを介さないとアクセスできない独自イテレータを定義
 //見かけ上の窓（_beginから_endまで）はXXXExtendedによってしか広がらない（内部で勝手に伸縮しない）
 //ある文字の位置を決めるのに絶対にその前の改行までは遡らなければいけないから折り返し文字量に応じて計算量が増えるのは仕方ない
-//TODO: Textに挿入操作がされたときにText::Iteratorとdeque::iteratorの対応壊れるやんけ
+//TODO: Textに挿入操作がされたときにText::Iteratorとdeque::iteratorの対応壊れるやんけ←Textを永続化すれば？
 class GlyphArrangement {
 public:
 	using Iterator = std::pair<Text::Iterator, std::deque<Vec2>::iterator>;
@@ -87,11 +87,6 @@ public:
 	bool lowerTextArea(Iterator itr) const;
 	void scroll(double delta); //内部で持ってる要素分時間かかる
 	void disable();
-
-	//TODO: これはTextWindowクラスにしか必要ない
-	//削除された部分も内部的には使える限り取っておくので無駄な計算が発生することはない
-	void deleteTo(Iterator itr);
-	void deleteFrom(Iterator itr);
 
 	//XXXExtended:テキストをはみ出さない限りは窓を拡張して有効なIteratorを返すことを保証する
 	//（Iterator::firstがend()でないのにIterator::secondがend()であるようなイテレータを返すことはない）
