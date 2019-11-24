@@ -66,7 +66,7 @@ public:
 //TODO: ↑本来は型で制限すべき←このクラスを介さないとアクセスできない独自イテレータを定義
 //見かけ上の窓（_beginから_endまで）はXXXExtendedによってしか広がらない（内部で勝手に伸縮しない）
 //ある文字の位置を決めるのに絶対にその前の改行までは遡らなければいけないから折り返し文字量に応じて計算量が増えるのは仕方ない
-//TODO: Textに挿入操作がされたときにText::Iteratorとdeque::iteratorの対応壊れるやんけ←Textを永続化すれば？
+//TODO: Textに挿入操作がされたときにText::Iteratorとdeque::iteratorの対応壊れるやんけ←Textを永続化すれば？←双方向連結リストは永続化できません
 class GlyphArrangement {
 public:
 	using Iterator = std::pair<Text::Iterator, std::deque<Vec2>::iterator>;
