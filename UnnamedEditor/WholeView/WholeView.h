@@ -40,53 +40,88 @@ struct CharData {
 	SP<const Font::Glyph> glyph;
 };
 class Text {
+private:
+	std::list<CharData> _data;
+	SP<Font::FixedFont> _font;
 public:
-	using Iterator = std::list<CharData>::iterator;
-	Iterator begin();
-	Iterator end();
-	Iterator next(Iterator itr);
-	Iterator prev(Iterator itr);
-	void insert(Iterator itr, String s);
-	void erase(Iterator first, Iterator last);
+	using Iterator = std::list<CharData>::const_iterator;
 
+	Text(SP<Font::FixedFont> font);
+
+	Iterator begin() const;
+	Iterator end() const;
+	Iterator next(Iterator itr) const;
+	Iterator prev(Iterator itr) const;
+	Iterator insert(Iterator itr, String s);
+	Iterator erase(Iterator first, Iterator last);
+	bool isNewline(Iterator itr) const;
+	std::pair<Iterator, int> lineHead(Iterator itr) const; //[先頭文字のIterator, 先頭文字までの距離]
+	std::pair<Iterator, int> nextLineHead(Iterator itr) const;
 };
 
 
-//TODO: reject関数要らない説(テキストの更新くるまでメモリに乗っけっぱなしでもテキスト本体以上のメモリは食わない)
 //テキストを表示するためのグリフ配置を計算する
-//テキスト更新すると壊れるので破棄すべし（更新するにはTextWindowを使う）
+//テキストの更新はできず、テキストが削除された部分のText::Iteratorは壊れる（更新に対応するにはTextWindowを使う）
+//外部で勝手にiteratorを動かしたり参照先に書き込んだりしちゃいけない
+//TODO: ↑本来は型で制限すべき←このクラスを介さないとアクセスできない独自イテレータを定義
+//見かけ上の窓（_beginから_endまで）はXXXExtendedによってしか広がらない（内部で勝手に伸縮しない）
+//ある文字の位置を決めるのに絶対にその前の改行までは遡らなければいけないから折り返し文字量に応じて計算量が増えるのは仕方ない
+//TODO: Textに挿入操作がされたときにText::Iteratorとdeque::iteratorの対応壊れるやんけ
 class GlyphArrangement {
 public:
 	using Iterator = std::pair<Text::Iterator, std::deque<Vec2>::iterator>;
-	int originIndex() const;
-	Text::Iterator origin() const;
-	Iterator begin() const;
+private:
+	const Text& _text;
+protected:
+	RectF _area;
+	std::deque<Vec2> _pos; //改行で区切られたブロック単位でキャッシュされている
+	Iterator _begin, _end;
+	double _lineInterval;
+	void arrange(Iterator first, Iterator last, Vec2 origin);
+public:
+	GlyphArrangement(const Text& text, const RectF &area, Vec2 origin, )
+
 	Iterator end() const;
-	Iterator windowStart() const;
-	Iterator isOnWindow() const;
-	Iterator ensurePrev(Iterator itr);
-	Iterator ensureNext(Iterator itr);
-	void rejectFront(Iterator itr);
-	void translate(Vec2 delta);
+	bool onTextArea(Iterator itr) const; //描画エリア内に被る可能性があればon
+	bool upperTextArea(Iterator itr) const;
+	bool lowerTextArea(Iterator itr) const;
+	void scroll(double delta); //内部で持ってる要素分時間かかる
+	void disable();
+
+	//TODO: これはTextWindowクラスにしか必要ない
+	//削除された部分も内部的には使える限り取っておくので無駄な計算が発生することはない
+	void deleteTo(Iterator itr);
+	void deleteFrom(Iterator itr);
+
+	//XXXExtended:テキストをはみ出さない限りは窓を拡張して有効なIteratorを返すことを保証する
+	//（Iterator::firstがend()でないのにIterator::secondがend()であるようなイテレータを返すことはない）
+	Iterator prevExtended(Iterator itr);
+	Iterator nextExtended(Iterator itr);
+	Iterator prevExtended(Iterator itr, int cnt);
+	Iterator nextExtended(Iterator itr, int cnt);
+	Iterator beginExtended();
+
+	//描画の開始位置までbeginを移動させる
+	void fitBegin();
 };
 
 
 //テキストのうちある範囲（窓内）におけるグリフ配置と内容編集を担い、整合性を保つ
 //実際に窓内のテキストを表示するには窓の範囲に応じた描画コストが最大毎フレームかかるため、それと比べてネックにならないコストで働けばいい
-class TextWindow : GlyphArrangement {
+class TextWindow : public GlyphArrangement {
+	Text _text;
 public:
-	void rejectFront(Iterator itr);
-	void translate(Vec2 delta);
-	void insertText(Iterator itr, String s);
-	void eraseText(Iterator first, Iterator last);
+	Iterator insertText(Iterator itr, String s);
+	Iterator eraseText(Iterator first, Iterator last);
+	Text text();
 };
 
 
 //TODO: startまで空でもよくないか
-class Animation {
+class AnimationProgress {
 public:
 
-	enum class State {
+	enum class Step {
 		Inactive,
 		Animating,
 		Stable,
@@ -98,37 +133,35 @@ private:
 
 	double _animationTime, _progress;
 
-	State _state;
+	Step _step;
 
 public:
 
-	Animation(
-		std::vector<Vec2> &sourcePos,
-		std::vector<Vec2> &targetPos,
-		double animationTime)
-	: _animationTime(animationTime)
+	AnimationProgress()
+	: _animationTime()
 	, _sw()
 	, _progress(0)
-	, _state(State::Inactive) {
+	, _step(Step::Inactive) {
 	}
 
-	State getState() { return _state; }
+	Step getStep() { return _step; }
 
 	double getProgress() { return _progress; }
 
-	void start() {
-		if (_state != State::Inactive) throw "not inactive";
+	void start(double animationTime) {
+		if (_step != Step::Inactive) throw "not inactive";
+		_animationTime = animationTime;
 		_sw.restart();
-		_state = State::Animating;
+		_step = Step::Animating;
 	}
 
 	void update() {
-		if (_state != State::Animating) return;
+		if (_step != Step::Animating) return;
 		_progress = _sw.sF() / _animationTime;
 		if (_progress > 1) {
 			_progress = 1;
 			_sw.reset();
-			_state = State::Stable;
+			_step = Step::Stable;
 		}
 	}
 };
@@ -281,13 +314,21 @@ public:
 class WholeView {
 private:
 
+	enum class FloatingStep {
+		Inactive, AnimatingIn, Stable, AnimatingOut
+	};
+	const char16_t ZERO_WIDTH_SPACE = U'\u200B';
+
 	RectF _area;
 	SP<Font::FixedFont> _font;
-	GlyphArrangement _floatingArrangement;
 	TextWindow _textWindow;
+	GlyphArrangement _floatingArrangement;
+	TextWindow::Iterator _cursor;
 	double _lineInterval;
 	JudgeUnsettled _ju;
-	SP<Animation> _floatingAnimation;
+	FloatingStep _floatingStep;
+	AnimationProgress _floatingProgress;
+	const Text& _text;
 
 	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
 	Vec2 floatingTextOut(Vec2 source, Vec2 target, double t, int i);
@@ -299,7 +340,6 @@ public:
 
 	void setText(const String &text);
 	void update();
-
 };
 
 
