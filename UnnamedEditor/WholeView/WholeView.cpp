@@ -113,7 +113,6 @@ void WholeView::update() {
 	_textWindow.fitBegin();
 
 	_area.draw(Palette::White);
-	int cnt = 0;
 	auto itr = _textWindow.beginExtended();
 	if (!isFloating || !_floatingArrangement->lowerTextArea(_floatingArrangement->beginExtended())) {
 		while (itr.first != _textWindow.endConstraints() && _textWindow.onTextArea(itr)) {
@@ -121,7 +120,6 @@ void WholeView::update() {
 			itr.first->glyph->draw(*(itr.second));
 			drawCursor(itr);
 			itr = _textWindow.nextExtended(itr);
-			cnt++;
 		}
 	}
 	if (isFloating) {
@@ -230,7 +228,7 @@ GlyphArrangement::GlyphArrangement(SP<const Text> text, const RectF& area, doubl
 	auto [nlhead, cnt] = _text->nextLineHead(_beginConstraints);
 	_pos = decltype(_pos)(cnt, Vec2());
 	_begin = { _beginConstraints, _pos.begin() };
-	arrange(_begin, { nlhead, _begin.second + cnt }, originPos);
+	arrange(_begin, { nlhead, std::next( _begin.second, cnt) }, originPos);
 }
 
 GlyphArrangement::GlyphArrangement(const GlyphArrangement& ga, Iterator beginConstraints)
@@ -241,10 +239,31 @@ GlyphArrangement::GlyphArrangement(const GlyphArrangement& ga, Iterator beginCon
 , _lineInterval(ga._lineInterval) {
 	auto [lhead, d0] = ga._text->lineHead(beginConstraints.first);
 	auto [nlhead, d1] = ga._text->nextLineHead(beginConstraints.first);
-	_pos = { beginConstraints.second - d0, beginConstraints.second + d1 };
+	_pos = { std::prev(beginConstraints.second, d0), std::prev(beginConstraints.second, d1) };
 	_begin = { lhead, _pos.begin() };
 
 	//begin側がブロックの途中で切れるがbeginConstraintsによってbegin側の拡張が制限されるので問題ない
+}
+
+GlyphArrangement::Iterator GlyphArrangement::nextUnsafe(Iterator itr)
+{
+	return { _text->next(itr.first), ++itr.second};
+}
+
+GlyphArrangement::Iterator GlyphArrangement::prevUnsafe(Iterator itr)
+{
+	return { _text->prev(itr.first), --itr.second };
+}
+
+GlyphArrangement::Iterator GlyphArrangement::advancedUnsafe(Iterator itr, int d)
+{
+	if (0 <= d) {
+		for (int i = 0; i < d; i++) itr = nextUnsafe(itr);
+	}
+	else {
+		for (int i = 0; i < -d; i++) itr = prevUnsafe(itr);
+	}
+	return itr;
 }
 
 void GlyphArrangement::arrange(Iterator first, Iterator last, Vec2 origin) {
@@ -312,9 +331,7 @@ GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr) {
 	arrange(first, itr, Vec2(0, 0));
 	Iterator prev(_text->prev(itr.first), std::prev(itr.second));
 	Vec2 d = (*itr.second + Vec2(_lineInterval, 0)) - *prev.second;
-	for (int i = 0; i < cnt + 1; i++) {
-		_pos[i] += d;
-	}
+	std::transform(_pos.begin(), prev.second, _pos.begin(), [d](Vec2 v) { return v + d; });
 	return prev;
 }
 
@@ -325,7 +342,7 @@ GlyphArrangement::Iterator GlyphArrangement::nextExtended(Iterator itr) {
 	auto [nlhead, cnt] = _text->nextLineHead(_text->next(itr.first));
 	Vec2 origin = Vec2(itr.second->x - _lineInterval, _area.y);
 	_pos.insert(_pos.end(), cnt, origin);
-	Iterator next(_text->next(itr.first), _pos.end() - cnt);
+	Iterator next(_text->next(itr.first), std::prev(_pos.end(), cnt));
 	Iterator last(nlhead, _pos.end());
 	arrange(next, last, origin);
 	return next;
@@ -359,21 +376,23 @@ TextWindow::TextWindow(SP<Text> text, const RectF& area, double lineInterval, Ve
 , _text(text) {
 }
 
+//TODO: 無駄なイテレータ計算が多い
 TextWindow::Iterator TextWindow::insertText(Iterator itr, String s) {
 	bool changedB = itr.first == _begin.first;
 	bool changedBC = itr.first == _beginConstraints;
 	auto inserted = _text->insert(itr.first, s);
 	auto [lhead, d0] = _text->lineHead(inserted);
-	Vec2 origin = *(itr.second - d0);
-	_pos.erase(itr.second - d0, _pos.end());
+	auto lheadPos = std::prev(itr.second, d0);
+	Vec2 origin = *lheadPos;
+	_pos.erase(lheadPos, _pos.end());
 	auto [nlhead, d1] = _text->nextLineHead(inserted);
 	_pos.insert(_pos.end(), d0 + d1, Vec2());
 
-	if (changedB) _begin = { inserted, _pos.end() - d1 }; //begin.secondはeraseで壊れるため
+	if (changedB) _begin = { inserted, std::prev(_pos.end(), d1) }; //begin.secondはeraseで壊れるため
 	if (changedBC) _beginConstraints = inserted;
 
-	arrange({ lhead, _pos.end() - d0 - d1 }, { nlhead, _pos.end() }, origin);
-	return { inserted, _pos.end() - d1 };
+	arrange({ lhead, std::prev(_pos.end(), d0 + d1) }, { nlhead, _pos.end() }, origin);
+	return { inserted, std::prev(_pos.end(), d1) };
 }
 
 TextWindow::Iterator TextWindow::eraseText(Iterator first, Iterator last) {
@@ -381,16 +400,17 @@ TextWindow::Iterator TextWindow::eraseText(Iterator first, Iterator last) {
 	bool changedBC = first.first == _beginConstraints;
 	auto erased = _text->erase(first.first, last.first);
 	auto [lhead, d0] = _text->lineHead(erased);
-	Vec2 origin = *(first.second - d0);
-	_pos.erase(first.second - d0, _pos.end());
+	auto lheadPos = std::prev(first.second, d0);
+	Vec2 origin = *lheadPos;
+	_pos.erase(lheadPos, _pos.end());
 	auto [nlhead, d1] = _text->nextLineHead(erased);
 	_pos.insert(_pos.end(), d0 + d1, Vec2());
 
-	if (changedB) _begin = { erased, _pos.end() - d1 }; //begin.secondはeraseで壊れるため
+	if (changedB) _begin = { erased, std::prev(_pos.end(), d1) }; //begin.secondはeraseで壊れるため
 	if (changedBC) _beginConstraints = erased;
 
-	arrange({ lhead, _pos.end() - d0 - d1 }, { nlhead, _pos.end() }, origin);
-	return { erased, _pos.end() - d1 };
+	arrange({ lhead, std::prev(_pos.end(), d0 + d1) }, { nlhead, _pos.end() }, origin);
+	return { erased, std::prev(_pos.end(), d1) };
 }
 
 SP<const Text> TextWindow::text() {

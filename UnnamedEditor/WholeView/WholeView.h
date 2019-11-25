@@ -71,13 +71,17 @@ public:
 //ある文字の位置を決めるのに絶対にその前の改行までは遡らなければいけないから折り返し文字量に応じて計算量が増えるのは仕方ない
 class GlyphArrangement {
 public:
-	using Iterator = std::pair<Text::Iterator, std::deque<Vec2>::iterator>;
+	using Iterator = std::pair<Text::Iterator, std::list<Vec2>::iterator>;
 private:
 	SP<const Text> _text;
 	RectF _area;
 	double _lineInterval;
+
+	Iterator nextUnsafe(Iterator itr);
+	Iterator prevUnsafe(Iterator itr);
+	Iterator advancedUnsafe(Iterator itr, int d);
 protected:
-	std::deque<Vec2> _pos; //改行で区切られたブロック単位でキャッシュされている
+	std::list<Vec2> _pos; //改行で区切られたブロック単位でキャッシュされている
 	Iterator _begin;
 	Text::Iterator _beginConstraints, _endConstraints;
 
