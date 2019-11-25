@@ -373,7 +373,7 @@ TextWindow::Iterator TextWindow::insertText(Iterator itr, String s) {
 	return { inserted, _pos.end() - d1 };
 }
 
-TextWindow::Iterator TextWindow::eraseText(Iterator first, Iterator last) {\
+TextWindow::Iterator TextWindow::eraseText(Iterator first, Iterator last) {
 	auto [lhead, d0] = _text->lineHead(first.first);
 	Vec2 origin = *(first.second - d0);
 	_pos.erase(first.second - d0, _pos.end());
