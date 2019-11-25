@@ -66,32 +66,34 @@ public:
 //TODO: ↑本来は型で制限すべき←このクラスを介さないとアクセスできない独自イテレータを定義
 //見かけ上の窓（_beginから_endまで）はXXXExtendedによってしか広がらない（内部で勝手に伸縮しない）
 //ある文字の位置を決めるのに絶対にその前の改行までは遡らなければいけないから折り返し文字量に応じて計算量が増えるのは仕方ない
-//TODO: Textに挿入操作がされたときにText::Iteratorとdeque::iteratorの対応壊れるやんけ
 class GlyphArrangement {
 public:
 	using Iterator = std::pair<Text::Iterator, std::deque<Vec2>::iterator>;
 private:
-	const Text& _text;
-protected:
+	SP<const Text> _text;
 	RectF _area;
+	double _lineInterval;
+protected:
 	std::deque<Vec2> _pos; //改行で区切られたブロック単位でキャッシュされている
 	Iterator _begin, _end;
-	double _lineInterval;
+	Text::Iterator _beginConstraints, _endConstraints;
+
 	void arrange(Iterator first, Iterator last, Vec2 origin);
 public:
-	GlyphArrangement(const Text& text, const RectF &area, Vec2 origin, )
-
+	GlyphArrangement(SP<const Text> text, const RectF& area, double lineInterval, Vec2 originPos);
+	GlyphArrangement(const GlyphArrangement& ga, Iterator beginConstraints);
+	GlyphArrangement(GlyphArrangement&&) = default;
+	GlyphArrangement& operator=(GlyphArrangement&&) = default;
+	Text::Iterator beginConstraints() const;
+	Text::Iterator endConstraints() const;
+	RectF area() const;
+	double lineInterval() const;
 	Iterator end() const;
 	bool onTextArea(Iterator itr) const; //描画エリア内に被る可能性があればon
 	bool upperTextArea(Iterator itr) const;
 	bool lowerTextArea(Iterator itr) const;
 	void scroll(double delta); //内部で持ってる要素分時間かかる
 	void disable();
-
-	//TODO: これはTextWindowクラスにしか必要ない
-	//削除された部分も内部的には使える限り取っておくので無駄な計算が発生することはない
-	void deleteTo(Iterator itr);
-	void deleteFrom(Iterator itr);
 
 	//XXXExtended:テキストをはみ出さない限りは窓を拡張して有効なIteratorを返すことを保証する
 	//（Iterator::firstがend()でないのにIterator::secondがend()であるようなイテレータを返すことはない）
@@ -109,11 +111,14 @@ public:
 //テキストのうちある範囲（窓内）におけるグリフ配置と内容編集を担い、整合性を保つ
 //実際に窓内のテキストを表示するには窓の範囲に応じた描画コストが最大毎フレームかかるため、それと比べてネックにならないコストで働けばいい
 class TextWindow : public GlyphArrangement {
-	Text _text;
+	SP<Text> _text;
 public:
+	TextWindow(SP<Text> text, const RectF& area, double lineInterval, Vec2 originPos);
 	Iterator insertText(Iterator itr, String s);
 	Iterator eraseText(Iterator first, Iterator last);
-	Text text();
+	SP<const Text> text();
+	UP<GlyphArrangement> detachBack(Iterator partition);
+	void undetatch(UP<GlyphArrangement> ga);
 };
 
 
@@ -320,15 +325,15 @@ private:
 	const char16_t ZERO_WIDTH_SPACE = U'\u200B';
 
 	RectF _area;
+	double _lineInterval;
 	SP<Font::FixedFont> _font;
 	TextWindow _textWindow;
-	GlyphArrangement _floatingArrangement;
+	UP<GlyphArrangement> _floatingArrangement;
 	TextWindow::Iterator _cursor;
-	double _lineInterval;
 	JudgeUnsettled _ju;
 	FloatingStep _floatingStep;
 	AnimationProgress _floatingProgress;
-	const Text& _text;
+	SP<const Text> _text;
 
 	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
 	Vec2 floatingTextOut(Vec2 source, Vec2 target, double t, int i);
