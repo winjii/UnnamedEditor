@@ -43,7 +43,7 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 : _area(pos, size)
 , _lineInterval(font->getFontSize())
 , _font(font)
-, _textWindow(SP<Text>(new Text(font)), _area, _lineInterval, Vec2(0, 0))
+, _textWindow(SP<Text>(new Text(font)), _area, _lineInterval, _area.tr())
 , _floatingArrangement()
 , _cursor(_textWindow.beginExtended())
 , _ju()
@@ -113,19 +113,21 @@ void WholeView::update() {
 	_textWindow.fitBegin();
 
 	_area.draw(Palette::White);
+	int cnt = 0;
 	auto itr = _textWindow.beginExtended();
 	if (!isFloating || !_floatingArrangement->lowerTextArea(_floatingArrangement->beginExtended())) {
-		while (itr != _textWindow.end() && _textWindow.onTextArea(itr)) {
+		while (itr.first != _textWindow.endConstraints() && _textWindow.onTextArea(itr)) {
 			if (isFloating && itr.first == _floatingArrangement->beginExtended().first) break;
 			itr.first->glyph->draw(*(itr.second));
 			drawCursor(itr);
 			itr = _textWindow.nextExtended(itr);
+			cnt++;
 		}
 	}
 	if (isFloating) {
 		auto fitr = _floatingArrangement->beginExtended();
 		int cnt = 0;
-		while (fitr != _floatingArrangement->end() && !_floatingArrangement->upperTextArea(fitr)) {
+		while (fitr.first != _floatingArrangement->endConstraints() && !_floatingArrangement->upperTextArea(fitr)) {
 			if (_floatingArrangement->onTextArea(fitr)) {
 				Vec2 p; 
 				double t = _floatingProgress.getProgress();
@@ -228,8 +230,7 @@ GlyphArrangement::GlyphArrangement(SP<const Text> text, const RectF& area, doubl
 	auto [nlhead, cnt] = _text->nextLineHead(_beginConstraints);
 	_pos = decltype(_pos)(cnt, Vec2());
 	_begin = { _beginConstraints, _pos.begin() };
-	_end = { _endConstraints, _pos.end() };
-	arrange(_begin, _end, originPos);
+	arrange(_begin, { nlhead, _begin.second + cnt }, originPos);
 }
 
 GlyphArrangement::GlyphArrangement(const GlyphArrangement& ga, Iterator beginConstraints)
@@ -242,7 +243,6 @@ GlyphArrangement::GlyphArrangement(const GlyphArrangement& ga, Iterator beginCon
 	auto [nlhead, d1] = ga._text->nextLineHead(beginConstraints.first);
 	_pos = { beginConstraints.second - d0, beginConstraints.second + d1 };
 	_begin = { lhead, _pos.begin() };
-	_end = { nlhead, _pos.end() };
 
 	//begin側がブロックの途中で切れるがbeginConstraintsによってbegin側の拡張が制限されるので問題ない
 }
@@ -277,10 +277,6 @@ double GlyphArrangement::lineInterval() const {
 	return _lineInterval;
 }
 
-GlyphArrangement::Iterator GlyphArrangement::end() const {
-	return _end;
-}
-
 bool GlyphArrangement::onTextArea(Iterator itr) const {
 	return !upperTextArea(itr) && !lowerTextArea(itr);
 }
@@ -303,7 +299,7 @@ void GlyphArrangement::scroll(double delta) {
 
 void GlyphArrangement::disable() {
 	_pos.clear();
-	_begin = _end = std::make_pair(_text->end(), _pos.end());
+	_endConstraints = _beginConstraints;
 }
 
 GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr) {
@@ -323,19 +319,8 @@ GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr) {
 }
 
 GlyphArrangement::Iterator GlyphArrangement::nextExtended(Iterator itr) {
-	auto extendBack = [&](Iterator next) {
-		if (next != _end) return;
-		_end.first = _text->next(_end.first);
-		_end.second++;
-	};
-
 	if (itr.first == _endConstraints) throw "out of range";
-	if (itr.second != --_pos.end()) {
-		//グリフ位置キャッシュ済み
-		Iterator next(_text->next(itr.first), ++itr.second);
-		extendBack(next);
-		return next;
-	}
+	if (itr.second != --_pos.end()) return { _text->next(itr.first), ++itr.second }; //グリフ位置キャッシュ済み
 
 	auto [nlhead, cnt] = _text->nextLineHead(_text->next(itr.first));
 	Vec2 origin = Vec2(itr.second->x - _lineInterval, _area.y);
@@ -343,7 +328,6 @@ GlyphArrangement::Iterator GlyphArrangement::nextExtended(Iterator itr) {
 	Iterator next(_text->next(itr.first), _pos.end() - cnt);
 	Iterator last(nlhead, _pos.end());
 	arrange(next, last, origin);
-	extendBack(next);
 	return next;
 }
 
@@ -358,10 +342,6 @@ GlyphArrangement::Iterator GlyphArrangement::nextExtended(Iterator itr, int cnt)
 }
 
 GlyphArrangement::Iterator GlyphArrangement::beginExtended() {
-	if (_begin == _end && _begin.first != _endConstraints) {
-		_end.first = _text->next(_end.first);
-		_end.second++;
-	}
 	return _begin;
 }
 
@@ -370,7 +350,6 @@ void GlyphArrangement::fitBegin() {
 		_begin = prevExtended(_begin);
 	}
 	while (_begin.first != _endConstraints && lowerTextArea(_begin)) {
-		if (_begin == _end) _begin = _end = nextExtended(_begin);
 		_begin = nextExtended(_begin);
 	}
 }
@@ -392,7 +371,6 @@ TextWindow::Iterator TextWindow::insertText(Iterator itr, String s) {
 
 	if (changedB) _begin = { inserted, _pos.end() - d1 }; //begin.secondはeraseで壊れるため
 	if (changedBC) _beginConstraints = inserted;
-	_end = _begin;
 
 	arrange({ lhead, _pos.end() - d0 - d1 }, { nlhead, _pos.end() }, origin);
 	return { inserted, _pos.end() - d1 };
@@ -410,7 +388,6 @@ TextWindow::Iterator TextWindow::eraseText(Iterator first, Iterator last) {
 
 	if (changedB) _begin = { erased, _pos.end() - d1 }; //begin.secondはeraseで壊れるため
 	if (changedBC) _beginConstraints = erased;
-	_end = _begin;
 
 	arrange({ lhead, _pos.end() - d0 - d1 }, { nlhead, _pos.end() }, origin);
 	return { erased, _pos.end() - d1 };

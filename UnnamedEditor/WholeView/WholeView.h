@@ -78,7 +78,7 @@ private:
 	double _lineInterval;
 protected:
 	std::deque<Vec2> _pos; //改行で区切られたブロック単位でキャッシュされている
-	Iterator _begin, _end;
+	Iterator _begin;
 	Text::Iterator _beginConstraints, _endConstraints;
 
 	void arrange(Iterator first, Iterator last, Vec2 origin);
@@ -91,7 +91,6 @@ public:
 	Text::Iterator endConstraints() const;
 	RectF area() const;
 	double lineInterval() const;
-	Iterator end() const;
 	bool onTextArea(Iterator itr) const; //描画エリア内に被る可能性があればon
 	bool upperTextArea(Iterator itr) const;
 	bool lowerTextArea(Iterator itr) const;
@@ -111,8 +110,9 @@ public:
 };
 
 
-//テキストのうちある範囲（窓内）におけるグリフ配置と内容編集を担い、整合性を保つ
-//実際に窓内のテキストを表示するには窓の範囲に応じた描画コストが最大毎フレームかかるため、それと比べてネックにならないコストで働けばいい
+//グリフ配置と内容編集を担い、整合性を保つ
+//遅延評価的に働きなるべく必要最小限の労力で配置を計算する
+//実際にテキストを表示するには描画範囲に応じた描画コストが最大毎フレームかかるため、それと比べてネックにならないコストで働けばいい
 class TextWindow : public GlyphArrangement {
 	SP<Text> _text;
 public:
