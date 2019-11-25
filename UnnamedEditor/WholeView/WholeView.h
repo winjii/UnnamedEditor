@@ -8,6 +8,8 @@ namespace WholeView {
 
 
 using DevicePos = Vec2;
+const char16_t ZERO_WIDTH_SPACE = U'\u200B';
+const char16_t NEWLINE = U'\n';
 
 
 //未確定文字列入力モードかどうかを判定するクラス
@@ -34,18 +36,19 @@ public:
 	bool isSettled() { return _count == 0; }
 };
 
+//末尾文字の削除は避けるのはどこの役割か
 
 struct CharData {
 	char16_t code;
 	SP<const Font::Glyph> glyph;
 };
 class Text {
+public:
+	using Iterator = std::list<CharData>::const_iterator;
 private:
 	std::list<CharData> _data;
 	SP<Font::FixedFont> _font;
 public:
-	using Iterator = std::list<CharData>::const_iterator;
-
 	Text(SP<Font::FixedFont> font);
 
 	Iterator begin() const;
@@ -56,7 +59,7 @@ public:
 	Iterator erase(Iterator first, Iterator last);
 	bool isNewline(Iterator itr) const;
 	std::pair<Iterator, int> lineHead(Iterator itr) const; //[先頭文字のIterator, 先頭文字までの距離]
-	std::pair<Iterator, int> nextLineHead(Iterator itr) const;
+	std::pair<Iterator, int> nextLineHead(Iterator itr) const; //改行が見つからなければend()までの距離になる
 };
 
 
@@ -322,7 +325,6 @@ private:
 	enum class FloatingStep {
 		Inactive, AnimatingIn, Stable, AnimatingOut
 	};
-	const char16_t ZERO_WIDTH_SPACE = U'\u200B';
 
 	RectF _area;
 	double _lineInterval;

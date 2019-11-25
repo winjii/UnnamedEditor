@@ -53,7 +53,6 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 }
 
 void WholeView::setText(const String &text) {
-	_textWindow.eraseText(_textWindow.beginExtended(), _textWindow.end());
 	_textWindow.insertText(_textWindow.beginExtended(), text);
 }
 
@@ -116,7 +115,8 @@ void WholeView::update() {
 	_area.draw(Palette::White);
 	auto itr = _textWindow.beginExtended();
 	if (!isFloating || !_floatingArrangement->lowerTextArea(_floatingArrangement->beginExtended())) {
-		while (itr.first != _floatingArrangement->beginExtended().first && _textWindow.onTextArea(itr)) {
+		while (itr != _textWindow.end() && _textWindow.onTextArea(itr)) {
+			if (isFloating && itr.first == _floatingArrangement->beginExtended().first) break;
 			itr.first->glyph->draw(*(itr.second));
 			drawCursor(itr);
 			itr = _textWindow.nextExtended(itr);
@@ -148,6 +148,10 @@ void WholeView::update() {
 Text::Text(SP<Font::FixedFont> font)
 : _data()
 , _font(font) {
+	CharData cd;
+	cd.code = ZERO_WIDTH_SPACE;
+	cd.glyph = font->renderChar(cd.code);
+	_data.push_back(cd);
 }
 
 Text::Iterator Text::begin() const {
@@ -184,7 +188,8 @@ bool Text::isNewline(Iterator itr) const
 {
 	//TODO: 色々な改行に対応する
 	//統一的な内部表現に変換してしまった方が楽？
-	return itr->code == U'\n';
+	if (itr == end()) return true;
+	return itr->code == NEWLINE;
 }
 
 std::pair<Text::Iterator, int> Text::lineHead(Iterator itr) const
@@ -205,10 +210,10 @@ std::pair<Text::Iterator, int> Text::nextLineHead(Iterator itr) const
 	int ret = 0;
 	while (true) {
 		if (itr == end()) break;
-		Iterator itr_ = next(itr);
-		if (isNewline(itr_)) break;
+		bool flg = isNewline(itr);
+		itr = next(itr);
 		ret++;
-		itr = itr_;
+		if (flg) break;
 	}
 	return { itr, ret };
 }
@@ -318,15 +323,28 @@ GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr) {
 }
 
 GlyphArrangement::Iterator GlyphArrangement::nextExtended(Iterator itr) {
+	auto extendBack = [&](Iterator next) {
+		if (next != _end) return;
+		_end.first = _text->next(_end.first);
+		_end.second++;
+	};
+
 	if (itr.first == _endConstraints) throw "out of range";
-	if (itr.second != _pos.end()) return { _text->next(itr.first), ++itr.second }; //グリフ位置キャッシュ済み
+	if (itr.second != --_pos.end()) {
+		//グリフ位置キャッシュ済み
+		Iterator next(_text->next(itr.first), ++itr.second);
+		extendBack(next);
+		return next;
+	}
 
 	auto [nlhead, cnt] = _text->nextLineHead(_text->next(itr.first));
 	Vec2 origin = Vec2(itr.second->x - _lineInterval, _area.y);
-	Iterator first(_text->next(itr.first), _pos.end());
 	_pos.insert(_pos.end(), cnt, origin);
+	Iterator next(_text->next(itr.first), _pos.end() - cnt);
 	Iterator last(nlhead, _pos.end());
-	arrange(first, last, origin);
+	arrange(next, last, origin);
+	extendBack(next);
+	return next;
 }
 
 GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr, int cnt) {
@@ -340,7 +358,7 @@ GlyphArrangement::Iterator GlyphArrangement::nextExtended(Iterator itr, int cnt)
 }
 
 GlyphArrangement::Iterator GlyphArrangement::beginExtended() {
-	if (_begin == _end && _begin.first != _beginConstraints) {
+	if (_begin == _end && _begin.first != _endConstraints) {
 		_end.first = _text->next(_end.first);
 		_end.second++;
 	}
@@ -351,7 +369,7 @@ void GlyphArrangement::fitBegin() {
 	while (_begin.first != _beginConstraints && !lowerTextArea(_begin)) {
 		_begin = prevExtended(_begin);
 	}
-	while (_begin.first != _beginConstraints && lowerTextArea(_begin)) {
+	while (_begin.first != _endConstraints && lowerTextArea(_begin)) {
 		if (_begin == _end) _begin = _end = nextExtended(_begin);
 		_begin = nextExtended(_begin);
 	}
@@ -363,25 +381,39 @@ TextWindow::TextWindow(SP<Text> text, const RectF& area, double lineInterval, Ve
 }
 
 TextWindow::Iterator TextWindow::insertText(Iterator itr, String s) {
-	auto [lhead, d0] = _text->lineHead(itr.first);
+	bool changedB = itr.first == _begin.first;
+	bool changedBC = itr.first == _beginConstraints;
+	auto inserted = _text->insert(itr.first, s);
+	auto [lhead, d0] = _text->lineHead(inserted);
 	Vec2 origin = *(itr.second - d0);
 	_pos.erase(itr.second - d0, _pos.end());
-	auto inserted = _text->insert(itr.first, s);
 	auto [nlhead, d1] = _text->nextLineHead(inserted);
 	_pos.insert(_pos.end(), d0 + d1, Vec2());
+
+	if (changedB) _begin = { inserted, _pos.end() - d1 }; //begin.secondはeraseで壊れるため
+	if (changedBC) _beginConstraints = inserted;
+	_end = _begin;
+
 	arrange({ lhead, _pos.end() - d0 - d1 }, { nlhead, _pos.end() }, origin);
 	return { inserted, _pos.end() - d1 };
 }
 
 TextWindow::Iterator TextWindow::eraseText(Iterator first, Iterator last) {
-	auto [lhead, d0] = _text->lineHead(first.first);
+	bool changedB = first.first == _begin.first;
+	bool changedBC = first.first == _beginConstraints;
+	auto erased = _text->erase(first.first, last.first);
+	auto [lhead, d0] = _text->lineHead(erased);
 	Vec2 origin = *(first.second - d0);
 	_pos.erase(first.second - d0, _pos.end());
-	auto deleted = _text->erase(first.first, last.first);
-	auto [nlhead, d1] = _text->nextLineHead(deleted);
+	auto [nlhead, d1] = _text->nextLineHead(erased);
 	_pos.insert(_pos.end(), d0 + d1, Vec2());
+
+	if (changedB) _begin = { erased, _pos.end() - d1 }; //begin.secondはeraseで壊れるため
+	if (changedBC) _beginConstraints = erased;
+	_end = _begin;
+
 	arrange({ lhead, _pos.end() - d0 - d1 }, { nlhead, _pos.end() }, origin);
-	return { deleted, _pos.end() - d1 };
+	return { erased, _pos.end() - d1 };
 }
 
 SP<const Text> TextWindow::text() {
