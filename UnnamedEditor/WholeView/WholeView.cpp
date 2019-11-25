@@ -53,7 +53,7 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 }
 
 void WholeView::setText(const String &text) {
-	_textWindow.insertText(_textWindow.beginExtended(), text);
+	_cursor = _textWindow.insertText(_textWindow.beginExtended(), text);
 }
 
 void WholeView::update() {
