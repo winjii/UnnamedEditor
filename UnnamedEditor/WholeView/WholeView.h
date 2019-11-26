@@ -77,17 +77,26 @@ private:
 	RectF _area;
 	double _lineInterval;
 protected:
-	std::list<Vec2> _pos; //改行で区切られたブロック単位でキャッシュされている
-	Iterator _begin;
+	std::list<Vec2> _pos; //位置キャッシュ。要素が増えても減ることはない（イテレータ壊れない）
+	Iterator _begin, _end;
+	Iterator _drawStart;
 	Text::Iterator _beginConstraints, _endConstraints;
 
-	Iterator nextUnsafe(Iterator itr);
-	Iterator prevUnsafe(Iterator itr);
-	Iterator advancedUnsafe(Iterator itr, int d);
+	Iterator next(Iterator itr);
+	Iterator prev(Iterator itr);
+	Iterator advanced(Iterator itr, int d);
 	void arrange(Iterator first, Iterator last, Vec2 origin);
+
+	//適宜_posを拡張するがグリフ位置の計算まではしない
+	std::pair<Iterator, int> lineHead(Iterator itr);
+	std::pair<Iterator, int> nextLineHead(Iterator itr);
+
+	//beginConstraintsやendConstraintsを超えてイテレータを返せる（超えても編集しない分には問題ない）
+	Iterator prevForce(Iterator itr);
+	Iterator nextForce(Iterator itr);
 public:
 	GlyphArrangement(SP<const Text> text, const RectF& area, double lineInterval, Vec2 originPos);
-	GlyphArrangement(const GlyphArrangement& ga, Iterator beginConstraints);
+	GlyphArrangement(GlyphArrangement& ga, Iterator beginConstraints);
 	GlyphArrangement(GlyphArrangement&&) = default;
 	GlyphArrangement& operator=(GlyphArrangement&&) = default;
 	Text::Iterator beginConstraints() const;
@@ -99,6 +108,7 @@ public:
 	bool lowerTextArea(Iterator itr) const;
 	void scroll(double delta); //内部で持ってる要素分時間かかる
 	void disable();
+	Iterator drawStart(); //描画開始位置
 
 	//XXXExtended:テキストをはみ出さない限りは窓を拡張して有効なIteratorを返すことを保証する
 	//（Iterator::firstがend()でないのにIterator::secondがend()であるようなイテレータを返すことはない）
@@ -106,10 +116,6 @@ public:
 	Iterator nextExtended(Iterator itr);
 	Iterator prevExtended(Iterator itr, int cnt);
 	Iterator nextExtended(Iterator itr, int cnt);
-	Iterator beginExtended();
-
-	//描画の開始位置までbeginを移動させる
-	void fitBegin();
 };
 
 
@@ -126,7 +132,7 @@ private:
 	
 	//destroyed: destroyed以降が破壊されることを示す
 	//edit: 文字列を編集しdestroyedに代わるイテレータを返す
-	Iterator editText(Iterator destroyed, std::function<Text::Iterator()> edit);
+	Iterator editText(Iterator destroyed, std::function<Iterator()> edit);
 public:
 	TextWindow(SP<Text> text, const RectF& area, double lineInterval, Vec2 originPos);
 	Iterator insertText(Iterator itr, const String &s);
