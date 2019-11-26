@@ -188,7 +188,6 @@ bool Text::isNewline(Iterator itr) const
 {
 	//TODO: 色々な改行に対応する
 	//統一的な内部表現に変換してしまった方が楽？
-	if (itr == end()) return true;
 	return itr->code == NEWLINE;
 }
 
@@ -376,6 +375,7 @@ TextWindow::TextWindow(SP<Text> text, const RectF& area, double lineInterval, Ve
 , _text(text) {
 }
 
+//TODO: 無駄なイテレータ計算が多い
 TextWindow::Iterator TextWindow::editText(Iterator destroyed, std::function<Text::Iterator()> edit) {
 	bool changedB = destroyed.first == _begin.first;
 	bool changedBC = destroyed.first == _beginConstraints;
@@ -394,7 +394,6 @@ TextWindow::Iterator TextWindow::editText(Iterator destroyed, std::function<Text
 	return { newItr, std::prev(_pos.end(), d1) };
 }
 
-//TODO: 無駄なイテレータ計算が多い
 TextWindow::Iterator TextWindow::insertText(Iterator itr, String s) {
 	auto edit = [&]() { return _text->insert(itr.first, s); };
 	return editText(itr, edit);
