@@ -376,41 +376,33 @@ TextWindow::TextWindow(SP<Text> text, const RectF& area, double lineInterval, Ve
 , _text(text) {
 }
 
-//TODO: 無駄なイテレータ計算が多い
-TextWindow::Iterator TextWindow::insertText(Iterator itr, String s) {
-	bool changedB = itr.first == _begin.first;
-	bool changedBC = itr.first == _beginConstraints;
-	auto inserted = _text->insert(itr.first, s);
-	auto [lhead, d0] = _text->lineHead(inserted);
-	auto lheadPos = std::prev(itr.second, d0);
+TextWindow::Iterator TextWindow::editText(Iterator destroyed, std::function<Text::Iterator()> edit) {
+	bool changedB = destroyed.first == _begin.first;
+	bool changedBC = destroyed.first == _beginConstraints;
+	auto newItr = edit();
+	auto [lhead, d0] = _text->lineHead(newItr);
+	auto lheadPos = std::prev(destroyed.second, d0);
 	Vec2 origin = *lheadPos;
 	_pos.erase(lheadPos, _pos.end());
-	auto [nlhead, d1] = _text->nextLineHead(inserted);
+	auto [nlhead, d1] = _text->nextLineHead(newItr);
 	_pos.insert(_pos.end(), d0 + d1, Vec2());
 
-	if (changedB) _begin = { inserted, std::prev(_pos.end(), d1) }; //begin.secondはeraseで壊れるため
-	if (changedBC) _beginConstraints = inserted;
+	if (changedB) _begin = { newItr, std::prev(_pos.end(), d1) }; //begin.secondはeditで壊れるため
+	if (changedBC) _beginConstraints = newItr;
 
 	arrange({ lhead, std::prev(_pos.end(), d0 + d1) }, { nlhead, _pos.end() }, origin);
-	return { inserted, std::prev(_pos.end(), d1) };
+	return { newItr, std::prev(_pos.end(), d1) };
+}
+
+//TODO: 無駄なイテレータ計算が多い
+TextWindow::Iterator TextWindow::insertText(Iterator itr, String s) {
+	auto edit = [&]() { return _text->insert(itr.first, s); };
+	return editText(itr, edit);
 }
 
 TextWindow::Iterator TextWindow::eraseText(Iterator first, Iterator last) {
-	bool changedB = first.first == _begin.first;
-	bool changedBC = first.first == _beginConstraints;
-	auto erased = _text->erase(first.first, last.first);
-	auto [lhead, d0] = _text->lineHead(erased);
-	auto lheadPos = std::prev(first.second, d0);
-	Vec2 origin = *lheadPos;
-	_pos.erase(lheadPos, _pos.end());
-	auto [nlhead, d1] = _text->nextLineHead(erased);
-	_pos.insert(_pos.end(), d0 + d1, Vec2());
-
-	if (changedB) _begin = { erased, std::prev(_pos.end(), d1) }; //begin.secondはeraseで壊れるため
-	if (changedBC) _beginConstraints = erased;
-
-	arrange({ lhead, std::prev(_pos.end(), d0 + d1) }, { nlhead, _pos.end() }, origin);
-	return { erased, std::prev(_pos.end(), d1) };
+	auto edit = [&]() { return _text->erase(first.first, last.first); };
+	return editText(first, edit);
 }
 
 SP<const Text> TextWindow::text() {

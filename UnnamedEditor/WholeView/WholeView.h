@@ -36,7 +36,7 @@ public:
 	bool isSettled() { return _count == 0; }
 };
 
-//末尾文字の削除は避けるのはどこの役割か
+//末尾文字の削除を避けるのはどこの役割か
 
 struct CharData {
 	char16_t code;
@@ -118,7 +118,12 @@ public:
 //遅延評価的に働きなるべく必要最小限の労力で配置を計算する
 //実際にテキストを表示するには描画範囲に応じた描画コストが最大毎フレームかかるため、それと比べてネックにならないコストで働けばいい
 class TextWindow : public GlyphArrangement {
+private:
 	SP<Text> _text;
+	
+	//destroyed: destroyed以降が破壊されることを示す
+	//edit: 文字列を編集しdestroyedに代わるイテレータを返す
+	Iterator editText(Iterator destroyed, std::function<Text::Iterator()> edit);
 public:
 	TextWindow(SP<Text> text, const RectF& area, double lineInterval, Vec2 originPos);
 	Iterator insertText(Iterator itr, String s);
