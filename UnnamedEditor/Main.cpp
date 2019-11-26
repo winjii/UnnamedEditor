@@ -205,7 +205,7 @@ void WholeViewTest() {
 
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	while (System::Update()) {
-		wholeView.update();
+		wholeView.draw();
 	}
 }
 
@@ -360,6 +360,18 @@ void GlyphLoadTest() {
 	system("pause");
 }
 
+void TextInputTest() {
+	String raw;
+	String str;
+	while (System::Update()) {
+		raw += TextInput::GetRawInput();
+		TextInput::UpdateText(str);
+		if (MouseL.down()) {
+			printf("set break point here");
+		}
+	}
+}
+
 }
 
 void Main()
@@ -380,6 +392,7 @@ void Main()
 		RasterizeTest,
 		FontShiftTest,
 		GlyphLoadTest,
+		TextInputTest,
 	} runMode = RunMode::WholeViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
@@ -426,5 +439,8 @@ void Main()
 	}
 	else if (runMode == RunMode::GlyphLoadTest) {
 		UnnamedEditor::GlyphLoadTest();
+	}
+	else if (runMode == RunMode::TextInputTest) {
+		UnnamedEditor::TextInputTest();
 	}
 }

@@ -76,15 +76,14 @@ private:
 	SP<const Text> _text;
 	RectF _area;
 	double _lineInterval;
-
-	Iterator nextUnsafe(Iterator itr);
-	Iterator prevUnsafe(Iterator itr);
-	Iterator advancedUnsafe(Iterator itr, int d);
 protected:
 	std::list<Vec2> _pos; //改行で区切られたブロック単位でキャッシュされている
 	Iterator _begin;
 	Text::Iterator _beginConstraints, _endConstraints;
 
+	Iterator nextUnsafe(Iterator itr);
+	Iterator prevUnsafe(Iterator itr);
+	Iterator advancedUnsafe(Iterator itr, int d);
 	void arrange(Iterator first, Iterator last, Vec2 origin);
 public:
 	GlyphArrangement(SP<const Text> text, const RectF& area, double lineInterval, Vec2 originPos);
@@ -120,17 +119,30 @@ public:
 class TextWindow : public GlyphArrangement {
 private:
 	SP<Text> _text;
+	Iterator _cursor; //視覚的なカーソルというより編集位置と思ったほうがよさそう
+	int _editedCount;
+	int _unsettledCount;
+	bool _isEditing;
 	
 	//destroyed: destroyed以降が破壊されることを示す
 	//edit: 文字列を編集しdestroyedに代わるイテレータを返す
 	Iterator editText(Iterator destroyed, std::function<Text::Iterator()> edit);
 public:
 	TextWindow(SP<Text> text, const RectF& area, double lineInterval, Vec2 originPos);
-	Iterator insertText(Iterator itr, String s);
+	Iterator insertText(Iterator itr, const String &s);
 	Iterator eraseText(Iterator first, Iterator last);
 	SP<const Text> text();
 	UP<GlyphArrangement> detachBack(Iterator partition);
 	void undetatch(UP<GlyphArrangement> ga);
+	bool setCursor(Iterator cursor); //編集中はカーソルを勝手に動かせない。falseを返す
+	void startEditing();
+	void stopEditing();
+	bool isEditing();
+	Iterator cursor();
+	Iterator editedBegin();
+	Iterator unsettledBegin();
+	void inputText(const String& addend, const String& editing); //編集中でなければ何もしない
+	void eraseUnsettled();
 };
 
 
@@ -340,7 +352,6 @@ private:
 	SP<Font::FixedFont> _font;
 	TextWindow _textWindow;
 	UP<GlyphArrangement> _floatingArrangement;
-	TextWindow::Iterator _cursor;
 	JudgeUnsettled _ju;
 	FloatingStep _floatingStep;
 	AnimationProgress _floatingProgress;
@@ -355,7 +366,7 @@ public:
 	WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font);
 
 	void setText(const String &text);
-	void update();
+	void draw();
 };
 
 

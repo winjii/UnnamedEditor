@@ -45,7 +45,6 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _font(font)
 , _textWindow(SP<Text>(new Text(font)), _area, _lineInterval, _area.tr())
 , _floatingArrangement()
-, _cursor(_textWindow.beginExtended())
 , _ju()
 , _floatingStep(FloatingStep::Inactive)
 , _floatingProgress()
@@ -53,20 +52,14 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 }
 
 void WholeView::setText(const String &text) {
-	_cursor = _textWindow.insertText(_textWindow.beginExtended(), text);
+	_textWindow.insertText(_textWindow.beginExtended(), text);
 }
 
-void WholeView::update() {
-	String updated, unsettled;
-	TextInput::UpdateText(updated);
-	unsettled = TextInput::GetEditingText();
-	_ju.update(unsettled.length());
-
-	int cursorDelta = 0;
-	if (KeyDown.down()) cursorDelta++;
-	if (KeyUp.down()) cursorDelta--;
-
-	bool deleted = _ju.isSettled() && KeyBackspace.down();
+void WholeView::draw() {
+	String addend, editing;
+	TextInput::UpdateText(addend);
+	editing = TextInput::GetEditingText();
+	_ju.update(editing.length());
 
 	_floatingProgress.update();
 	if (_floatingProgress.getStep() == AnimationProgress::Step::Stable) {
@@ -74,42 +67,39 @@ void WholeView::update() {
 			_floatingStep = FloatingStep::Stable;
 		else if (_floatingStep == FloatingStep::AnimatingOut) {
 			_floatingStep == FloatingStep::Inactive;
-			//TODO: ゼロ幅スペース削除
 			_textWindow.undetatch(std::move(_floatingArrangement));
 			_floatingArrangement = nullptr;
 		}
 	}
 	bool isFloating = _floatingStep != FloatingStep::Inactive;
 
-	if (_floatingStep != FloatingStep::AnimatingOut &&
-		_floatingStep != FloatingStep::Inactive &&
-		_text->next(_cursor.first) == _floatingArrangement->beginExtended().first &&
-		(KeyDown.down() || KeyUp.down())) {
+	if (_textWindow.isEditing() && (KeyDown.down() || KeyUp.down())) {
 		// Floating終了を開始
+		_textWindow.stopEditing();
 		_floatingStep = FloatingStep::AnimatingOut;
 		_floatingProgress.start(1);
 	}
+	
 
-	if (KeyDown.down()) _cursor = _textWindow.nextExtended(_cursor);
-	if (KeyUp.down()) _cursor = _textWindow.prevExtended(_cursor);
+	if (KeyDown.down()) _textWindow.setCursor(_textWindow.nextExtended(_textWindow.cursor()));
+	if (KeyUp.down()) _textWindow.setCursor(_textWindow.prevExtended(_textWindow.cursor()));
 
-	if (_floatingStep != FloatingStep::AnimatingIn &&
-		_floatingStep != FloatingStep::Stable &&
-		(updated.size() > 0 || unsettled.size() > 0)) {
-		_cursor = _textWindow.insertText(_cursor, { ZERO_WIDTH_SPACE });
-		_floatingArrangement = _textWindow.detachBack(_cursor);
+	if (_textWindow.isEditing() && (addend.size() > 0 || editing.size() > 0)) {
+		_textWindow.startEditing();
+		_floatingArrangement = _textWindow.detachBack(_textWindow.cursor());
 		_floatingStep = FloatingStep::AnimatingIn;
 		_floatingProgress.start(1.5);
 	}
 
 	auto drawCursor = [&](const GlyphArrangement::Iterator& itr) {
-		if (itr.first != _cursor.first) return;
+		if (itr.first != _textWindow.cursor().first) return;
 		Vec2 c = *(itr.second);
 		Vec2 a(_lineInterval / 2, 0);
 		double t = Scene::Time() * 2 * Math::Pi / 2.5;
 		Line(c - a, c + a).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
 	};
 
+	_textWindow.inputText(addend, editing);
 	_textWindow.fitBegin();
 
 	_area.draw(Palette::White);
@@ -127,7 +117,7 @@ void WholeView::update() {
 		int cnt = 0;
 		while (fitr.first != _floatingArrangement->endConstraints() && !_floatingArrangement->upperTextArea(fitr)) {
 			if (_floatingArrangement->onTextArea(fitr)) {
-				Vec2 p; 
+				Vec2 p;
 				double t = _floatingProgress.getProgress();
 				if (_floatingStep == FloatingStep::AnimatingOut) {
 					p = floatingTextIn(*(fitr.second), *(fitr.second) - Vec2(_lineInterval*2, 0), t, cnt);
@@ -244,18 +234,15 @@ GlyphArrangement::GlyphArrangement(const GlyphArrangement& ga, Iterator beginCon
 	//begin側がブロックの途中で切れるがbeginConstraintsによってbegin側の拡張が制限されるので問題ない
 }
 
-GlyphArrangement::Iterator GlyphArrangement::nextUnsafe(Iterator itr)
-{
+GlyphArrangement::Iterator GlyphArrangement::nextUnsafe(Iterator itr) {
 	return { _text->next(itr.first), ++itr.second};
 }
 
-GlyphArrangement::Iterator GlyphArrangement::prevUnsafe(Iterator itr)
-{
+GlyphArrangement::Iterator GlyphArrangement::prevUnsafe(Iterator itr) {
 	return { _text->prev(itr.first), --itr.second };
 }
 
-GlyphArrangement::Iterator GlyphArrangement::advancedUnsafe(Iterator itr, int d)
-{
+GlyphArrangement::Iterator GlyphArrangement::advancedUnsafe(Iterator itr, int d) {
 	if (0 <= d) {
 		for (int i = 0; i < d; i++) itr = nextUnsafe(itr);
 	}
@@ -372,29 +359,36 @@ void GlyphArrangement::fitBegin() {
 
 TextWindow::TextWindow(SP<Text> text, const RectF& area, double lineInterval, Vec2 originPos)
 : GlyphArrangement(text, area, lineInterval, originPos)
-, _text(text) {
+, _text(text)
+, _cursor(_begin)
+, _editedCount(0)
+, _unsettledCount(0)
+, _isEditing(false) {
 }
 
 //TODO: 無駄なイテレータ計算が多い
 TextWindow::Iterator TextWindow::editText(Iterator destroyed, std::function<Text::Iterator()> edit) {
 	bool changedB = destroyed.first == _begin.first;
 	bool changedBC = destroyed.first == _beginConstraints;
-	auto newItr = edit();
-	auto [lhead, d0] = _text->lineHead(newItr);
+	bool changedCursor = destroyed.first == _cursor.first;
+	auto edited = edit();
+	auto [lhead, d0] = _text->lineHead(edited);
 	auto lheadPos = std::prev(destroyed.second, d0);
 	Vec2 origin = *lheadPos;
 	_pos.erase(lheadPos, _pos.end());
-	auto [nlhead, d1] = _text->nextLineHead(newItr);
+	auto [nlhead, d1] = _text->nextLineHead(edited);
 	_pos.insert(_pos.end(), d0 + d1, Vec2());
 
-	if (changedB) _begin = { newItr, std::prev(_pos.end(), d1) }; //begin.secondはeditで壊れるため
-	if (changedBC) _beginConstraints = newItr;
+	Iterator newItr(edited, std::prev(_pos.end(), d1));
+	if (changedB) _begin = newItr; //begin.secondはeditで壊れるため
+	if (changedBC) _beginConstraints = edited;
+	if (changedCursor) _cursor = newItr;
 
 	arrange({ lhead, std::prev(_pos.end(), d0 + d1) }, { nlhead, _pos.end() }, origin);
-	return { newItr, std::prev(_pos.end(), d1) };
+	return { edited, std::prev(_pos.end(), d1) };
 }
 
-TextWindow::Iterator TextWindow::insertText(Iterator itr, String s) {
+TextWindow::Iterator TextWindow::insertText(Iterator itr, const String &s) {
 	auto edit = [&]() { return _text->insert(itr.first, s); };
 	return editText(itr, edit);
 }
@@ -421,6 +415,50 @@ void TextWindow::undetatch(UP<GlyphArrangement> ga) {
 		_beginConstraints = ga->beginConstraints();
 	}
 	else throw "not undetachable";
+}
+
+bool TextWindow::setCursor(Iterator cursor) {
+	if (_isEditing) return false;
+	_cursor = cursor;
+	return true;
+}
+
+void TextWindow::startEditing() {
+	_isEditing = true;
+	_cursor = insertText(_cursor, { ZERO_WIDTH_SPACE });
+}
+
+void TextWindow::stopEditing() {
+	_isEditing = false;
+	setCursor(eraseText(unsettledBegin(), nextUnsafe(_cursor))); // ゼロ幅スペースも消す
+	_editedCount = _unsettledCount = 0;
+}
+
+bool TextWindow::isEditing() {
+	return _isEditing;
+}
+
+TextWindow::Iterator TextWindow::cursor() {
+	return _cursor;
+}
+
+TextWindow::Iterator TextWindow::editedBegin() {
+	return prevExtended(_cursor, _editedCount);
+}
+
+TextWindow::Iterator TextWindow::unsettledBegin() {
+	return prevExtended(_cursor, _unsettledCount + _editedCount);
+}
+
+void TextWindow::inputText(const String& addend, const String& editing) {
+	Iterator uBegin = unsettledBegin();
+	auto edit = [&]() {
+		auto itr = _text->erase(editedBegin().first, _cursor.first);
+		_unsettledCount += addend.size();
+		_editedCount = editing.size();
+		return _text->insert(itr, addend + editing);
+	};
+	_cursor = nextExtended(editText(uBegin, edit), _unsettledCount + _editedCount);
 }
 
 }
