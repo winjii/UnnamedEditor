@@ -66,6 +66,32 @@ void WholeView::draw() {
 	editing = TextInput::GetEditingText();
 	_ju.update(editing.length());
 
+	if (_floatingStep == FloatingStep::Stable || _floatingStep == FloatingStep::AnimatingIn && (KeyDown.down() || KeyUp.down())) {
+		// Floating終了を開始
+		_floatingStep = FloatingStep::AnimatingOut;
+		_floatingProgress.start(1);
+	}
+	
+
+	if (KeyDown.down()) _textWindow.cursorNext();
+	if (KeyUp.down()) _textWindow.cursorPrev();
+
+	if (!_textWindow.isEditing() && (addend.size() > 0 || editing.size() > 0)) {
+		_floatingArrangement = _textWindow.startEditing();
+		_floatingStep = FloatingStep::AnimatingIn;
+		_floatingProgress.start(1.5);
+	}
+
+	auto drawCursor = [&](const GlyphArrangement::Iterator& itr) {
+		if (itr.first != _textWindow.cursor().first) return;
+		Vec2 c = *(itr.second);
+		int cnt = _textWindow.text()->idx(itr.first);
+		Vec2 a(_lineInterval / 2, 0);
+		double t = Scene::Time() * 2 * Math::Pi / 2.5;
+		Line(c - a, c + a).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
+	};
+
+
 	_floatingProgress.update();
 	if (_floatingProgress.getStep() == AnimationProgress::Step::Stable) {
 		if (_floatingStep == FloatingStep::AnimatingIn)
@@ -78,31 +104,6 @@ void WholeView::draw() {
 	}
 	bool isFloating = _floatingStep != FloatingStep::Inactive;
 
-	if (_textWindow.isEditing() && (KeyDown.down() || KeyUp.down())) {
-		// Floating終了を開始
-		_floatingStep = FloatingStep::AnimatingOut;
-		_floatingProgress.start(10);
-	}
-	
-
-	//if (KeyDown.down()) _textWindow.setCursor(_textWindow.nextExtended(_textWindow.cursor()));
-	//if (KeyUp.down()) _textWindow.setCursor(_textWindow.prevExtended(_textWindow.cursor()));
-
-	if (!_textWindow.isEditing() && (addend.size() > 0 || editing.size() > 0)) {
-		_floatingArrangement = _textWindow.startEditing();
-		_floatingStep = FloatingStep::AnimatingIn;
-		_floatingProgress.start(1.5);
-		isFloating = true;
-	}
-
-	auto drawCursor = [&](const GlyphArrangement::Iterator& itr) {
-		if (itr.first != _textWindow.cursor().first) return;
-		Vec2 c = *(itr.second);
-		int cnt = _textWindow.text()->idx(itr.first);
-		Vec2 a(_lineInterval / 2, 0);
-		double t = Scene::Time() * 2 * Math::Pi / 2.5;
-		Line(c - a, c + a).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
-	};
 
 	if (_floatingStep == FloatingStep::AnimatingIn || _floatingStep == FloatingStep::Stable)
 		_textWindow.inputText(addend, editing);
@@ -113,14 +114,12 @@ void WholeView::draw() {
 	std::optional<GlyphArrangement::Iterator> fBegin;
 	if (isFloating)
 		fBegin = _floatingArrangement->calcDrawBegin();
-	int cnt = 0;
 	while (true) {
 		drawCursor(itr);
 		if (itr == twEnd) break;
 		if (isFloating && itr.first == fBegin.value().first) break;
 		itr.first->glyph->draw(*(itr.second));
 		itr = _textWindow.nextExtended(itr);
-		cnt++;
 	}
 	if (isFloating) {
 		auto fitr = fBegin.value();
@@ -132,7 +131,7 @@ void WholeView::draw() {
 			Vec2 p;
 			double t = _floatingProgress.getProgress();
 			if (_floatingStep == FloatingStep::AnimatingOut) {
-				p = floatingTextOut(*(itr.second), *(fitr.second), t, cnt);
+				p = floatingTextOut(*(fitr.second), *(itr.second), t, cnt);
 			}
 			else {
 				p = floatingTextIn(*(fitr.second), *(fitr.second) - Vec2(_lineInterval * 2, 0), t, cnt);
@@ -560,6 +559,20 @@ void TextWindow::inputText(const String& addend, const String& editing) {
 	_unsettledCount += addend.size();
 	_editedCount = editing.size();
 	insertText(_cursor, addend + editing, true);
+}
+
+bool TextWindow::cursorNext() {
+	if (_isEditing || _cursor.first == _end) return false;
+	_cursor = nextExtended(_cursor);
+	return true;
+}
+
+bool TextWindow::cursorPrev() {
+	if (_isEditing) return false;
+	Iterator prv = prev(_cursor);
+	if (prv.first == _text->beginSentinel()) return false;
+	_cursor = prv;
+	return true;
 }
 
 }

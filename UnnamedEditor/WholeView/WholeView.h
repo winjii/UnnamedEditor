@@ -171,7 +171,9 @@ public:
 	void inputText(const String& addend, const String& editing); //編集中でなければ何もしない
 	void eraseUnsettled();
 
-	//編集中はカーソルを勝手に動かせない。falseを返す
+	//編集中はカーソルを勝手に動かせない
+	//範囲外にも動かせない
+	//動かせない場合falseを返す
 	bool cursorNext();
 	bool cursorPrev();
 };
@@ -210,6 +212,7 @@ public:
 
 	void start(double animationTime) {
 		_animationTime = animationTime;
+		_progress = 0;
 		_sw.restart();
 		_step = Step::Animating;
 	}
