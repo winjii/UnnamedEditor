@@ -109,7 +109,7 @@ protected:
 	Iterator next(Iterator itr);
 	Iterator prev(Iterator itr);
 	Iterator advanced(Iterator itr, int d);
-	void arrange(Iterator first, Iterator last);
+	void arrange(Iterator first, Iterator last); //firstのグリフ位置を基準にして(first, last]のグリフ位置を計算
 	bool onTextArea(Iterator itr) const; //描画エリア内に被る可能性があればon
 	bool upperTextArea(Iterator itr) const;
 	bool lowerTextArea(Iterator itr) const;
@@ -161,8 +161,8 @@ public:
 	Iterator insertText(Iterator itr, const String &s, bool rearranges = true);
 	Iterator eraseText(Iterator first, Iterator last, bool rearranges = true);
 	SP<const Text::Text> text();
-	UP<GlyphArrangement> cloneBack(Iterator newBegin); //[newBegin のGlyphArrangementを作る
-	void startEditing();
+	//UP<GlyphArrangement> cloneBack(Iterator newBegin); //[newBegin のGlyphArrangementを作る
+	UP<GlyphArrangement> startEditing();
 	void stopEditing();
 	bool isEditing();
 	Iterator cursor();
