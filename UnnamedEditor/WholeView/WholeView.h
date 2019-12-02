@@ -1,5 +1,6 @@
 #pragma once
 #include "Font\FixedFont.h"
+#include "Text.h"
 #include <list>
 
 
@@ -8,6 +9,9 @@ namespace WholeView {
 
 
 using DevicePos = Vec2;
+//const char16_t ZERO_WIDTH_SPACE = U'\u200B';
+const char16_t NULL_CHAR = 0;
+const char16_t NEWLINE = U'\n';
 
 
 //未確定文字列入力モードかどうかを判定するクラス
@@ -34,30 +38,47 @@ public:
 	bool isSettled() { return _count == 0; }
 };
 
+//末尾文字の削除を避けるのはどこの役割か
 
 struct CharData {
 	char16_t code;
 	SP<const Font::Glyph> glyph;
 };
-class Text {
-private:
-	std::list<CharData> _data;
-	SP<Font::FixedFont> _font;
-public:
-	using Iterator = std::list<CharData>::const_iterator;
 
-	Text(SP<Font::FixedFont> font);
-
-	Iterator begin() const;
-	Iterator end() const;
-	Iterator next(Iterator itr) const;
-	Iterator prev(Iterator itr) const;
-	Iterator insert(Iterator itr, String s);
-	Iterator erase(Iterator first, Iterator last);
-	bool isNewline(Iterator itr) const;
-	std::pair<Iterator, int> lineHead(Iterator itr) const; //[先頭文字のIterator, 先頭文字までの距離]
-	std::pair<Iterator, int> nextLineHead(Iterator itr) const;
-};
+//class ConstText {
+//public:
+//	using Iterator = std::list<CharData>::const_iterator;
+//private:
+//	std::list<CharData> _data;
+//	SP<Font::FixedFont> _font;
+//public:
+//	ConstText(SP<Font::FixedFont> font);
+//
+//	Iterator begin() const;
+//	Iterator end() const;
+//	virtual Iterator next(Iterator itr) const;
+//	virtual Iterator prev(Iterator itr) const;
+//	/*Iterator insert(Iterator itr, String s);
+//	Iterator erase(Iterator first, Iterator last);
+//	Iterator erase(Iterator itr);*/
+//	Iterator insertNull(Iterator itr);
+//	Iterator eraseNull(Iterator itr);
+//	bool isNewline(Iterator itr) const;
+//	std::pair<Iterator, int> lineHead(Iterator itr) const; //[先頭文字のIterator, 先頭文字までの距離]
+//	std::pair<Iterator, int> nextLineHead(Iterator itr) const; //改行が見つからなければend()までの距離になる
+//};
+//class EditableText : ConstText {
+//private:
+//	std::list<CharData> _data;
+//public:
+//	//生成オブジェクトと新しいfirst, lastを返却
+//	std::tuple<EditableText, Iterator, Iterator> build(Iterator first, Iterator last);
+//
+//	Iterator next(Iterator itr) const;
+//	Iterator prev(Iterator itr) const;
+//	Iterator insert(Iterator itr, const String& s);
+//	Iterator erase(Iterator first, Iterator last);
+//};
 
 
 //テキストを表示するためのグリフ配置を計算する
@@ -66,49 +87,93 @@ public:
 //TODO: ↑本来は型で制限すべき←このクラスを介さないとアクセスできない独自イテレータを定義
 //見かけ上の窓（_beginから_endまで）はXXXExtendedによってしか広がらない（内部で勝手に伸縮しない）
 //ある文字の位置を決めるのに絶対にその前の改行までは遡らなければいけないから折り返し文字量に応じて計算量が増えるのは仕方ない
-//TODO: Textに挿入操作がされたときにText::Iteratorとdeque::iteratorの対応壊れるやんけ←Textを永続化すれば？←双方向連結リストは永続化できません
+//文字でなく仕切りを指すイテレータはNULL文字と一緒に動く（文字を挿入などするとき仕切りの位置を動かさなくていい嬉しさがある）
+//TODO; NULL文字を適宜消す
+//TODO: beginとendの役割分かりづれーー
+//TODO: 区間の扱いもうちょっとなんとかならんか
 class GlyphArrangement {
 public:
-	using Iterator = std::pair<Text::Iterator, std::deque<Vec2>::iterator>;
+	using Iterator = std::pair<Text::Text::Iterator, std::list<Vec2>::iterator>;
 private:
-	const Text& _text;
-protected:
+	SP<Text::Text> _text;
 	RectF _area;
-	std::deque<Vec2> _pos; //改行で区切られたブロック単位でキャッシュされている
-	Iterator _begin, _end;
 	double _lineInterval;
-	void arrange(Iterator first, Iterator last, Vec2 origin);
-public:
-	GlyphArrangement(const Text& text, const RectF &area, Vec2 origin, )
+protected:
+	std::list<Vec2> _pos; //グリフ位置キャッシュ。要素が増えても減ることはない（イテレータ壊れない）
 
-	Iterator end() const;
+	//NULL文字に対応するイテレータ群
+	//普通の文字同様、_cacheBeginと_cacheEndの間にある限りはグリフ位置が計算される
+	Iterator _cacheBegin, _cacheEnd; //(_cachBegin, _cacheEnd]はキャッシュ済みの区間（書き間違いではない）
+	Text::Text::Iterator _begin, _end; //(_begin, _end]は外部からアクセスする範囲
+
+	Iterator next(Iterator itr);
+	Iterator prev(Iterator itr);
+	Iterator advanced(Iterator itr, int d);
+	void arrange(Iterator first, Iterator last);
 	bool onTextArea(Iterator itr) const; //描画エリア内に被る可能性があればon
 	bool upperTextArea(Iterator itr) const;
 	bool lowerTextArea(Iterator itr) const;
+	//Iterator eraseSafe(Iterator first, Iterator last); //NULL文字を避けて削除
+
+	//適宜_posを拡張するがグリフ位置の計算まではしない
+	std::pair<Iterator, int> lineHead(Iterator itr);
+	std::pair<Iterator, int> nextLineHead(Iterator itr);
+public:
+	GlyphArrangement(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos);
+	GlyphArrangement(GlyphArrangement& ga, Iterator begin);
+	~GlyphArrangement();
+	GlyphArrangement(GlyphArrangement&&) = default;
+	GlyphArrangement& operator=(GlyphArrangement&&) = default;
+	//ConstText::Iterator begin();
+	//ConstText::Iterator end();
+	RectF area() const;
+	double lineInterval() const;
 	void scroll(double delta); //内部で持ってる要素分時間かかる
-	void disable();
+	Iterator calcDrawBegin(); //描画開始位置 [drawBegin,
+	Iterator calcDrawEnd(); //描画終了位置 , drawEnd)
 
 	//XXXExtended:テキストをはみ出さない限りは窓を拡張して有効なIteratorを返すことを保証する
 	//（Iterator::firstがend()でないのにIterator::secondがend()であるようなイテレータを返すことはない）
+	//nullSkipがtrueだと開始イテレータ以外のNULL文字をスキップして移動する
 	Iterator prevExtended(Iterator itr);
 	Iterator nextExtended(Iterator itr);
 	Iterator prevExtended(Iterator itr, int cnt);
 	Iterator nextExtended(Iterator itr, int cnt);
-	Iterator beginExtended();
-
-	//描画の開始位置までbeginを移動させる
-	void fitBegin();
 };
 
 
-//テキストのうちある範囲（窓内）におけるグリフ配置と内容編集を担い、整合性を保つ
-//実際に窓内のテキストを表示するには窓の範囲に応じた描画コストが最大毎フレームかかるため、それと比べてネックにならないコストで働けばいい
+//グリフ配置と内容編集を担い、整合性を保つ
+//遅延評価的に働きなるべく必要最小限の労力で配置を計算する
+//実際にテキストを表示するには描画範囲に応じた描画コストが最大毎フレームかかるため、それと比べてネックにならないコストで働けばいい
 class TextWindow : public GlyphArrangement {
-	Text _text;
+private:
+	SP<Text::Text> _text;
+	Iterator _cursor; //視覚的なカーソルというより編集位置と思ったほうがよさそう
+	int _editedCount;
+	int _unsettledCount;
+	bool _isEditing;
+	
+	//destroyed: destroyed以降が破壊されることを示す
+	//edit: 文字列を編集しdestroyedに代わるイテレータを返す
+	//Iterator editText(Iterator destroyed, std::function<Iterator()> edit);
 public:
-	Iterator insertText(Iterator itr, String s);
-	Iterator eraseText(Iterator first, Iterator last);
-	Text text();
+	TextWindow(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos);
+	Iterator insertText(Iterator itr, const String &s, bool rearranges = true);
+	Iterator eraseText(Iterator first, Iterator last, bool rearranges = true);
+	SP<const Text::Text> text();
+	UP<GlyphArrangement> cloneBack(Iterator newBegin); //[newBegin のGlyphArrangementを作る
+	void startEditing();
+	void stopEditing();
+	bool isEditing();
+	Iterator cursor();
+	Iterator editedBegin();
+	Iterator unsettledBegin();
+	void inputText(const String& addend, const String& editing); //編集中でなければ何もしない
+	void eraseUnsettled();
+
+	//編集中はカーソルを勝手に動かせない。falseを返す
+	bool cursorNext();
+	bool cursorPrev();
 };
 
 
@@ -144,7 +209,6 @@ public:
 	double getProgress() { return _progress; }
 
 	void start(double animationTime) {
-		if (_step != Step::Inactive) throw "not inactive";
 		_animationTime = animationTime;
 		_sw.restart();
 		_step = Step::Animating;
@@ -312,18 +376,16 @@ private:
 	enum class FloatingStep {
 		Inactive, AnimatingIn, Stable, AnimatingOut
 	};
-	const char16_t ZERO_WIDTH_SPACE = U'\u200B';
 
 	RectF _area;
+	double _lineInterval;
 	SP<Font::FixedFont> _font;
 	TextWindow _textWindow;
-	GlyphArrangement _floatingArrangement;
-	TextWindow::Iterator _cursor;
-	double _lineInterval;
+	UP<GlyphArrangement> _floatingArrangement;
 	JudgeUnsettled _ju;
 	FloatingStep _floatingStep;
 	AnimationProgress _floatingProgress;
-	const Text& _text;
+	SP<const Text::Text> _text;
 
 	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
 	Vec2 floatingTextOut(Vec2 source, Vec2 target, double t, int i);
@@ -334,7 +396,7 @@ public:
 	WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font);
 
 	void setText(const String &text);
-	void update();
+	void draw();
 };
 
 

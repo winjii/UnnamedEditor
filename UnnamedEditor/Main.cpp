@@ -195,17 +195,17 @@ void NoBug() {
 }
 
 void WholeViewTest() {
-	String IamACat = TextReader(U"IamACat.txt").readAll();
 	
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 24, true));
 	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
-	wholeView.setText(IamACat);
+	//String IamACat = TextReader(U"IamACat.txt").readAll();
+	//wholeView.setText(IamACat);
 
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	while (System::Update()) {
-		wholeView.update();
+		wholeView.draw();
 	}
 }
 
@@ -360,6 +360,18 @@ void GlyphLoadTest() {
 	system("pause");
 }
 
+void TextInputTest() {
+	String raw;
+	String str;
+	while (System::Update()) {
+		raw += TextInput::GetRawInput();
+		TextInput::UpdateText(str);
+		if (MouseL.down()) {
+			printf("set break point here");
+		}
+	}
+}
+
 }
 
 void Main()
@@ -380,7 +392,8 @@ void Main()
 		RasterizeTest,
 		FontShiftTest,
 		GlyphLoadTest,
-	} runMode = RunMode::GlyphLoadTest;
+		TextInputTest,
+	} runMode = RunMode::WholeViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -426,5 +439,8 @@ void Main()
 	}
 	else if (runMode == RunMode::GlyphLoadTest) {
 		UnnamedEditor::GlyphLoadTest();
+	}
+	else if (runMode == RunMode::TextInputTest) {
+		UnnamedEditor::TextInputTest();
 	}
 }
