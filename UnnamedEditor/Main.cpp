@@ -200,8 +200,8 @@ void WholeViewTest() {
 	FT_Init_FreeType(&lib);
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 24, true));
 	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
-	String IamACat = TextReader(U"IamACat.txt").readAll();
-	wholeView.setText(IamACat);
+	//String IamACat = TextReader(U"IamACat.txt").readAll();
+	//wholeView.setText(IamACat);
 
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	while (System::Update()) {
