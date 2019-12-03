@@ -229,29 +229,6 @@ void ChangeableFontTest() {
 	}
 }
 
-void FloatingTextTest() {
-	using namespace WholeView;
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
-	Font::FixedFont font(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true);
-	std::u16string s = String(U"星宮いちごは、ごくごくフツーの中学1年生の女の子。ところが、親友のあおいに誘われてアイドル養成の名門校「スターライト学園」に編入したことで、いちごをとりまく世界がガラリと変わってしまう。様々なライバルたちと出会い、アイドルとしての心得を学びながら、いちごはアイカツ！カードを使って数々のオーディションに挑戦していくことに。新人アイドルいちごの、明るく元気なアイドル活動が幕を開ける…！").toUTF16(); 
-	auto glyphs = font.renderString(s);
-	Vec2 origin = Window::ClientCenter() + Vec2(50, 0);
-	FloatingText ft(RectF(Window::ClientSize()), glyphs, 25, origin);
-
-	const ScopedRenderStates2D state(SamplerState::ClampLinear);
-	Scene::SetBackground(Palette::White);
-	while (System::Update()) {
-		if (ft.getState() == FloatingText::State::Inactive) {
-			ft.transitIn(-50);
-		}
-		else if (ft.getState() == FloatingText::State::Stable) {
-			ft.transitOut(origin);
-		}
-		ft.update();
-	}
-}
-
 void FontScaleTest() {
 	using namespace UnnamedEditor::Font;
 	FT_Library lib;
@@ -387,7 +364,6 @@ void Main()
 		NoBug,
 		WholeViewTest,
 		ChangeableFontTest,
-		FloatingTextTest,
 		FontScaleTest,
 		RasterizeTest,
 		FontShiftTest,
@@ -424,9 +400,6 @@ void Main()
 	}
 	else if (runMode == RunMode::ChangeableFontTest) {
 		UnnamedEditor::ChangeableFontTest();
-	}
-	else if (runMode == RunMode::FloatingTextTest) {
-		UnnamedEditor::FloatingTextTest();
 	}
 	else if (runMode == RunMode::FontScaleTest) {
 		UnnamedEditor::FontScaleTest();

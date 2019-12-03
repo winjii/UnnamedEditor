@@ -7,17 +7,6 @@
 namespace UnnamedEditor {
 namespace WholeView {
 
-/*
-//TODO: sizeをちゃんと取得
-WholeView::TranslationIntoWorkspace::TranslationIntoWorkspace(const WholeView &wv, double endSize, const Vec2 &endHead)
-: _startRect(wv._pos, wv._size)
-, _startSize(wv._font->getFontSize())
-, _endSize(endSize)
-, _startHead(wv.getCharPos(wv._cursorIndex))
-, _endHead(endHead)
-, _lineInterval(wv._lineInterval) {
-	
-}*/
 
 Vec2 WholeView::floatingTextIn(Vec2 source, Vec2 target, double t, int i)
 {
@@ -144,82 +133,6 @@ void WholeView::draw() {
 	}
 }
 
-//ConstText::ConstText(SP<Font::FixedFont> font)
-//: _data()
-//, _font(font) {
-//	CharData cd;
-//	cd.code = NULL_CHAR;
-//	cd.glyph = font->renderChar(cd.code);
-//	_data.push_back(cd);
-//}
-//
-//ConstText::Iterator ConstText::begin() const {
-//	return _data.begin();
-//}
-//
-//ConstText::Iterator ConstText::end() const {
-//	return _data.end();
-//}
-//
-//ConstText::Iterator ConstText::next(Iterator itr) const {
-//	return ++itr;
-//}
-//
-//ConstText::Iterator ConstText::prev(Iterator itr) const {
-//	return --itr;
-//}
-//
-//ConstText::Iterator ConstText::insert(Iterator itr, String s) {
-//	for (auto c : s.reversed()) {
-//		CharData cd;
-//		cd.code = c;
-//		cd.glyph = _font->renderChar(c);
-//		itr = _data.insert(itr, cd);
-//	}
-//	return itr;
-//}
-//
-//ConstText::Iterator ConstText::erase(Iterator first, Iterator last) {
-//	return _data.erase(first, last);
-//}
-//
-//ConstText::Iterator ConstText::erase(Iterator itr) {
-//	return _data.erase(itr);
-//}
-//
-//bool ConstText::isNewline(Iterator itr) const
-//{
-//	//TODO: 色々な改行に対応する
-//	//統一的な内部表現に変換してしまった方が楽？
-//	return itr->code == NEWLINE;
-//}
-//
-//std::pair<ConstText::Iterator, int> ConstText::lineHead(Iterator itr) const
-//{
-//	int ret = 0;
-//	while (true) {
-//		if (itr == begin()) break;
-//		Iterator itr_ = prev(itr);
-//		if (isNewline(itr_)) break;
-//		ret++;
-//		itr = itr_;
-//	}
-//	return { itr, ret };
-//}
-//
-//std::pair<ConstText::Iterator, int> ConstText::nextLineHead(Iterator itr) const
-//{
-//	int ret = 0;
-//	while (true) {
-//		if (itr == end()) break;
-//		bool flg = isNewline(itr);
-//		itr = next(itr);
-//		ret++;
-//		if (flg) break;
-//	}
-//	return { itr, ret };
-//}
-
 GlyphArrangement::GlyphArrangement(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos)
 : _text(text)
 , _area(area)
@@ -266,36 +179,6 @@ GlyphArrangement::~GlyphArrangement() {
 	_pos.clear();
 }
 
-//GlyphArrangement::PartitionIterator GlyphArrangement::makePartitionFront(Iterator itr, bool ensuresPos) {
-//	Vec2 p;
-//	if (ensuresPos) p = *itr.second;
-//	itr.first = _text->insert(itr.first, { NULL_CHAR });
-//	itr.second = _pos.insert(itr.second, p);
-//	return itr;
-//}
-//
-//GlyphArrangement::PartitionIterator GlyphArrangement::makePartitionBack(Iterator itr) {
-//	if (itr.first == _end) std::exception("out of range");
-//	return makePartitionFront(nextExtended(itr, false), true);
-//}
-//
-//void GlyphArrangement::partitionNext(PartitionIterator& itr) {
-//	auto itr_ = makePartitionBack(nextExtended(itr, false));
-//	finalizePartition(itr);
-//	itr = itr_;
-//}
-//
-//void GlyphArrangement::partitionPrev(PartitionIterator& itr) {
-//	auto itr_ = makePartitionFront(prevExtended(itr, false), true);
-//	finalizePartition(itr);
-//	itr = itr_;
-//}
-//
-//void GlyphArrangement::finalizePartition(PartitionIterator& itr) {
-//	_text->erase(itr.first);
-//	_pos.erase(itr.second);
-//}
-
 GlyphArrangement::Iterator GlyphArrangement::next(Iterator itr) {
 	assert(itr.first != _text->endSentinel());
 	if (itr.second == --_pos.end()) _pos.push_back(Vec2());
@@ -333,27 +216,6 @@ void GlyphArrangement::arrange(Iterator first, Iterator last) {
 		*itr.second = pen;
 	}
 }
-
-//GlyphArrangement::Iterator GlyphArrangement::eraseSafe(Iterator first, Iterator last) {
-//	Iterator itr = first;
-//	while (itr != last) {
-//		if (itr.first->code != NULL_CHAR) {
-//			itr.first = _text->erase(itr.first);
-//			itr.second = _pos.erase(itr.second);
-//		}
-//		else itr = next(itr);
-//	}
-//	return last;
-//}
-
-//TODO: それでいいのか？
-//ConstText::Iterator GlyphArrangement::begin() {
-//	return _begin;
-//}
-//
-//ConstText::Iterator GlyphArrangement::end() {
-//	return _end;
-//}
 
 RectF GlyphArrangement::area() const {
 	return _area;
@@ -467,20 +329,6 @@ TextWindow::TextWindow(SP<Text::Text> text, const RectF& area, double lineInterv
 , _isEditing(false) {
 	_cursor = next(_cacheBegin);
 }
-
-//TODO: 無駄なイテレータ計算が多い
-//TextWindow::Iterator TextWindow::editText(Iterator destroyed, std::function<Iterator()> edit) {
-//	Vec2 origin = [&]() {
-//		Iterator lhead = lineHead(destroyed).first;
-//		if (lhead != _cacheBegin) return *lhead.second;
-//		return *next(lhead).second;
-//	}(); //先に座標とっておかないとdestroyed == lineHeadだった場合にどっかいっちゃうことがある
-//	auto edited = edit();
-//	auto lhead = lineHead(edited).first;
-//	auto nlhead = nextLineHead(edited).first;
-//	arrange(lhead, nlhead, origin);
-//	return edited;
-//}
 
 //TODO: _posに全てinsertしてしまってるけどOK？
 TextWindow::Iterator TextWindow::insertText(Iterator itr, const String &s, bool rearranges) {
