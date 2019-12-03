@@ -2,6 +2,7 @@
 #include "Font\FixedFont.h"
 #include "Text.h"
 #include <list>
+#include <cmath>
 
 
 namespace UnnamedEditor {
@@ -188,8 +189,13 @@ public:
 		_step = Step::NotScrolling;
 	}
 	double useDelta() {
+		//y = log(x + a) + log(1 / a)‚ÌÏ•ª
+		auto f = [](double x) {
+			double a = 0.1;
+			return -x*std::log(a) + (x + a)*std::log(x + a) - x - a*std::log(a);
+		};
 		double t = _sw.sF();
-		double sum = 5000*((t + 1)*Math::Log(1 + t) - t);
+		double sum = 1000*t + 100*(t*t);
 		double ret = sum - _used;
 		_used = sum;
 		return ret*_direction;
