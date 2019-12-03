@@ -109,7 +109,7 @@ void WholeView::draw() {
 	if (_floatingStep == FloatingStep::AnimatingIn || _floatingStep == FloatingStep::Stable)
 		_textWindow.inputText(addend, editing);
 	if (_scrollDelta.step() == ScrollDelta::Step::Scrolling)
-		_textWindow.scroll(_scrollDelta.useDelta());
+		_textWindow.scroll(-_scrollDelta.useDelta());
 
 	_area.draw(Palette::White);
 	auto itr = _textWindow.calcDrawBegin();
@@ -307,7 +307,7 @@ GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr) {
 	Vec2 p = *itr.second;
 	Iterator lhead = lineHead(_cacheBegin).first;
 	_cacheBegin = prev(lhead);
-	*lhead.second = Vec2(0, 0);
+	*lhead.second = Vec2(0, _area.y);
 	arrange(lhead, itr);
 	double d = p.x - itr.second->x;
 	std::transform(_pos.begin(), std::next(itr.second), _pos.begin(), [d](Vec2 v) { return v + Vec2(d, 0); });
