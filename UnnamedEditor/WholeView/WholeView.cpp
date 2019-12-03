@@ -80,6 +80,18 @@ void WholeView::draw() {
 		Line(c - a, c + a).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
 	};
 
+	if (_floatingStep == FloatingStep::Inactive || _floatingStep == FloatingStep::AnimatingOut) {
+		if (KeyLeft.down()) _scrollDelta.startScroll(1);
+		if (KeyRight.down()) _scrollDelta.startScroll(-1);
+	}
+	if (_scrollDelta.step() == ScrollDelta::Step::Scrolling) {
+		if (_scrollDelta.direction() == 1 && KeyLeft.up()) {
+			_scrollDelta.stopScroll();
+		}
+		if (_scrollDelta.direction() == -1 && KeyRight.up()) {
+			_scrollDelta.stopScroll();
+		}
+	}
 
 	_floatingProgress.update();
 	if (_floatingProgress.getStep() == AnimationProgress::Step::Stable) {
@@ -96,9 +108,12 @@ void WholeView::draw() {
 
 	if (_floatingStep == FloatingStep::AnimatingIn || _floatingStep == FloatingStep::Stable)
 		_textWindow.inputText(addend, editing);
+	if (_scrollDelta.step() == ScrollDelta::Step::Scrolling)
+		_textWindow.scroll(_scrollDelta.useDelta());
 
 	_area.draw(Palette::White);
 	auto itr = _textWindow.calcDrawBegin();
+	auto debug = itr;
 	auto twEnd = _textWindow.calcDrawEnd();
 	std::optional<GlyphArrangement::Iterator> fBegin;
 	if (isFloating)
@@ -279,7 +294,7 @@ GlyphArrangement::Iterator GlyphArrangement::calcDrawEnd() {
 		if (prv.first == _begin || !upperTextArea(prv)) break;
 		ret = prv;
 	}
-	Iterator nlhead = nextLineHead(ret).first;
+	Iterator nlhead = nextLineHead(prev(ret)).first;
 	_pos.erase(std::next(nlhead.second), _pos.end());
 	_cacheEnd = nlhead;
 	return ret;
@@ -295,7 +310,7 @@ GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr) {
 	*lhead.second = Vec2(0, 0);
 	arrange(lhead, itr);
 	double d = p.x - itr.second->x;
-	std::transform(_pos.begin(), itr.second, _pos.begin(), [d](Vec2 v) { return v + Vec2(d, 0); });
+	std::transform(_pos.begin(), std::next(itr.second), _pos.begin(), [d](Vec2 v) { return v + Vec2(d, 0); });
 	return prev(itr);
 }
 
@@ -373,7 +388,7 @@ UP<GlyphArrangement> TextWindow::startEditing() {
 	//floatingした文字列と元の文字列の間に隙間ができるので、"隙間へのカーソル"を表現するためにNULL文字を置いておく
 	Vec2 p = *_cursor.second;
 	Iterator floatingBegin = _cursor;
-	_cursor = insertText(_cursor, { NULL_CHAR }, false);
+	_cursor = insertText(_cursor, {  Text::Text::NULL_CHAR }, false);
 	*_cursor.second = p;
 	return UP<GlyphArrangement>(new GlyphArrangement(*this, floatingBegin));
 }

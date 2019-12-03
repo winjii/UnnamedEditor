@@ -14,8 +14,8 @@ struct CharData {
 
 class Text {
 public:
-	const char16_t NULL_CHAR = 0;
-	const char16_t NEWLINE = U'\n';
+	static const char16_t NULL_CHAR = 0;
+	static const char16_t NEWLINE = U'\n';
 	class Iterator : public std::list<CharData>::iterator {
 	public:
 		using Base = std::list<CharData>::iterator;

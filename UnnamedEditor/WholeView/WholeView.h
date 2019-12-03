@@ -164,6 +164,39 @@ public:
 };
 
 
+class ScrollDelta {
+public:
+	enum class Step { NotScrolling, Scrolling };
+private:
+	int _direction;
+	double _used;
+	Step _step;
+	Stopwatch _sw;
+public:
+	ScrollDelta() : _step(Step::NotScrolling) {}
+	Step step() { return _step; }
+	int direction() { return _direction; }
+	void startScroll(int direction) { //-1 or +1
+		if (_step == Step::Scrolling) return;
+		_direction = direction;
+		_used = 0;
+		_sw.restart();
+		_step = Step::Scrolling;
+	}
+	void stopScroll() {
+		if (_step == Step::NotScrolling) return;
+		_step = Step::NotScrolling;
+	}
+	double useDelta() {
+		double t = _sw.sF();
+		double sum = 5000*((t + 1)*Math::Log(1 + t) - t);
+		double ret = sum - _used;
+		_used = sum;
+		return ret*_direction;
+	}
+};
+
+
 class WholeView {
 private:
 
@@ -180,6 +213,7 @@ private:
 	FloatingStep _floatingStep;
 	AnimationProgress _floatingProgress;
 	SP<const Text::Text> _text;
+	ScrollDelta _scrollDelta;
 
 	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
 	Vec2 floatingTextOut(Vec2 source, Vec2 target, double t, int i);
