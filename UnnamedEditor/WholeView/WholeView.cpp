@@ -15,18 +15,20 @@ Vec2 WholeView::floatingTextIn(Vec2 source, Vec2 target, double t, int i)
 
 Vec2 WholeView::floatingTextOut(Vec2 source, Vec2 target, double t, int i)
 {
+	RectF area = _textWindow.area();
+
 	double rate = EaseOut(Easing::Expo, 3.0, 1.0, std::min(1.0, i / 200.0));
 	t = std::min(1.0, t*rate);
 
-	double d1 = source.y - _area.y;
-	double d2 = _area.h;
-	double d3 = _area.y + _area.h - target.y;
-	double delta = EaseOut(Easing::Quint, t) * (d1 + d2 + d3);
+	double d1 = source.y - area.y;
+	double d2 = area.h;
+	double d3 = area.y + area.h - target.y;
+	double delta = EaseOut(Easing::Expo, t) * (d1 + d2 + d3);
 	if (delta <= d1) return Vec2(source.x, source.y - delta);
 	delta -= d1;
-	if (delta <= d2) return Vec2((source.x + target.x) / 2.0, _area.y + _area.h - delta);
+	if (delta <= d2) return Vec2((source.x + target.x) / 2.0, area.y + area.h - delta);
 	delta -= d2;
-	return Vec2(target.x, _area.y + _area.h - delta);
+	return Vec2(target.x, area.y + area.h - delta);
 }
 
 //TODO: Å‰‚©‚çRect‚ÅŽó‚¯Žæ‚é
@@ -56,7 +58,7 @@ void WholeView::draw() {
 	editing = TextInput::GetEditingText();
 	_ju.update(editing.length());
 
-	if (_floatingStep == FloatingStep::Stable || _floatingStep == FloatingStep::AnimatingIn && (KeyDown.down() || KeyUp.down())) {
+	if ((_floatingStep == FloatingStep::Stable || _floatingStep == FloatingStep::AnimatingIn) && (KeyDown.down() || KeyUp.down())) {
 		// FloatingI—¹‚ðŠJŽn
 		_floatingStep = FloatingStep::AnimatingOut;
 		_floatingProgress.start(1);
