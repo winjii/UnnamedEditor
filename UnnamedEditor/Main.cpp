@@ -198,7 +198,7 @@ void WholeViewTest() {
 	
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
-	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 24, true));
+	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 16, true));
 	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
 	String IamACat = TextReader(U"IamACat.txt").readAll();
 	wholeView.setText(IamACat);

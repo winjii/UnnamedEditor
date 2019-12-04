@@ -32,7 +32,7 @@ Vec2 WholeView::floatingTextOut(Vec2 source, Vec2 target, double t, int i)
 //TODO: ç≈èâÇ©ÇÁRectÇ≈éÛÇØéÊÇÈ
 WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font)
 : _area(pos, size)
-, _lineInterval(font->getFontSize())
+, _lineInterval(font->getFontSize()*1.25)
 , _font(font)
 , _textWindow([&]() {
 	RectF r(_area.pos + _font->getFontSize() * Vec2(1, 1), _area.size - 2 * _font->getFontSize() * Vec2(1, 1));
@@ -42,11 +42,12 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _ju()
 , _floatingStep(FloatingStep::Inactive)
 , _floatingProgress()
-, _text(_textWindow.text()) {
+, _text(_textWindow.text())
+, _scrollDelta(_lineInterval) {
 }
 
 void WholeView::setText(const String &text) {
-	_textWindow.insertText(_textWindow.cursor(), text, true);
+	_textWindow.setCursorUnsafe(_textWindow.insertText(_textWindow.cursor(), text, true));
 }
 
 void WholeView::draw() {
@@ -108,7 +109,7 @@ void WholeView::draw() {
 
 	if (_floatingStep == FloatingStep::AnimatingIn || _floatingStep == FloatingStep::Stable)
 		_textWindow.inputText(addend, editing);
-	if (_scrollDelta.step() == ScrollDelta::Step::Scrolling)
+	if (_scrollDelta.step() != ScrollDelta::Step::NotScrolling)
 		_textWindow.scroll(-_scrollDelta.useDelta());
 
 	_area.draw(Palette::White);
@@ -436,6 +437,10 @@ bool TextWindow::cursorPrev() {
 	if (prv.first == _text->beginSentinel()) return false;
 	_cursor = prv;
 	return true;
+}
+
+void TextWindow::setCursorUnsafe(Iterator cursor) {
+	_cursor = cursor;
 }
 
 }

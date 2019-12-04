@@ -128,6 +128,9 @@ public:
 	//動かせない場合falseを返す
 	bool cursorNext();
 	bool cursorPrev();
+
+	//カーソル移動先が安全な場合のみ正常に動く。いずれ置き換える
+	void setCursorUnsafe(Iterator cursor);
 };
 
 
@@ -167,26 +170,29 @@ public:
 
 class ScrollDelta {
 public:
-	enum class Step { NotScrolling, Scrolling };
+	enum class Step { NotScrolling, Scrolling, StoppingScroll };
 private:
 	int _direction;
 	double _used;
 	Step _step;
 	Stopwatch _sw;
+	const double _lineInterval;
 public:
-	ScrollDelta() : _step(Step::NotScrolling) {}
+	ScrollDelta(int lineInterval) : _step(Step::NotScrolling), _lineInterval(lineInterval) {}
 	Step step() { return _step; }
 	int direction() { return _direction; }
 	void startScroll(int direction) { //-1 or +1
-		if (_step == Step::Scrolling) return;
-		_direction = direction;
 		_used = 0;
+		if (_step != Step::NotScrolling) {
+			_used = (_used - std::round(_used / _lineInterval)*_lineInterval)*(_direction*direction);
+		}
+		_direction = direction;
 		_sw.restart();
 		_step = Step::Scrolling;
 	}
 	void stopScroll() {
-		if (_step == Step::NotScrolling) return;
-		_step = Step::NotScrolling;
+		if (_step != Step::Scrolling) return;
+		_step = Step::StoppingScroll;
 	}
 	double useDelta() {
 		//y = log(x + a) + log(1 / a)の積分
@@ -195,7 +201,13 @@ public:
 			return -x*std::log(a) + (x + a)*std::log(x + a) - x - a*std::log(a);
 		};
 		double t = _sw.sF();
-		double sum = 1000*t + 100*(t*t);
+		double sum = 1000*t;
+		if (_step == Step::StoppingScroll) {
+			sum = std::round(_used / _lineInterval) * _lineInterval;
+			_step = Step::NotScrolling;
+		}
+		//int p = 20*std::floor(sum/20);
+		//sum = EaseOut(Easing::Expo, p, p + 20, (sum - p)/20);
 		double ret = sum - _used;
 		_used = sum;
 		return ret*_direction;
