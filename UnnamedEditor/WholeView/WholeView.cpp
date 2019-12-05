@@ -13,9 +13,10 @@ Vec2 WholeView::floatingTextIn(Vec2 source, Vec2 target, double t, int i)
 	return EaseOut(Easing::Back, source, target, t);
 }
 
+//TODO: 禁則処理などでareaの外に出るケースは考慮できていない
 Vec2 WholeView::floatingTextOut(Vec2 source, Vec2 target, double t, int i)
 {
-	RectF area = _textWindow.area();
+	RectF area = _textArea;
 
 	double rate = EaseOut(Easing::Expo, 3.0, 1.0, std::min(1.0, i / 200.0));
 	t = std::min(1.0, t*rate);
@@ -34,22 +35,18 @@ Vec2 WholeView::floatingTextOut(Vec2 source, Vec2 target, double t, int i)
 //TODO: 最初からRectで受け取る
 WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font)
 : _area(pos, size)
-, _lineInterval(font->getFontSize()*1.25)
+, _textArea(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1))
+, _lineInterval((int)(font->getFontSize()*1.25))
 , _font(font)
-, _textWindow([&]() {
-	RectF r(_area.pos + _font->getFontSize() * Vec2(1, 1), _area.size - 2 * _font->getFontSize() * Vec2(1, 1));
-	return std::move(TextWindow(SP<Text::Text>(new Text::Text(font)), r, _lineInterval, r.tr()));
-}())
-, _floatingArrangement()
+, _ga(_font, _lineInterval, _textArea.h)
 , _ju()
 , _floatingStep(FloatingStep::Inactive)
 , _floatingProgress()
-, _text(_textWindow.text())
 , _scrollDelta(_lineInterval) {
 }
 
 void WholeView::setText(const String &text) {
-	_textWindow.setCursorUnsafe(_textWindow.insertText(_textWindow.cursor(), text, true));
+	_ga.insertText(*_ga.cursor(), text);
 }
 
 void WholeView::draw() {
@@ -65,23 +62,23 @@ void WholeView::draw() {
 	}
 	
 
-	if (KeyDown.down()) _textWindow.cursorNext();
-	if (KeyUp.down()) _textWindow.cursorPrev();
+	//if (KeyDown.down()) _textWindow.cursorNext();
+	//if (KeyUp.down()) _textWindow.cursorPrev();
 
-	if (!_textWindow.isEditing() && (addend.size() > 0 || editing.size() > 0)) {
+	/*if (!_textWindow.isEditing() && (addend.size() > 0 || editing.size() > 0)) {
 		_floatingArrangement = _textWindow.startEditing();
 		_floatingStep = FloatingStep::AnimatingIn;
 		_floatingProgress.start(1.5);
-	}
+	}*/
 
-	auto drawCursor = [&](const GlyphArrangement::Iterator& itr) {
+	/*auto drawCursor = [&](const GlyphArrangement::Iterator& itr) {
 		if (itr.first != _textWindow.cursor().first) return;
 		Vec2 c = *(itr.second);
 		int cnt = _textWindow.text()->idx(itr.first);
 		Vec2 a(_lineInterval / 2, 0);
 		double t = Scene::Time() * 2 * Math::Pi / 2.5;
 		Line(c - a, c + a).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
-	};
+	};*/
 
 	if (_floatingStep == FloatingStep::Inactive || _floatingStep == FloatingStep::AnimatingOut) {
 		if (KeyLeft.down()) _scrollDelta.startScroll(1);
@@ -96,7 +93,7 @@ void WholeView::draw() {
 		}
 	}
 
-	_floatingProgress.update();
+	/*_floatingProgress.update();
 	if (_floatingProgress.getStep() == AnimationProgress::Step::Stable) {
 		if (_floatingStep == FloatingStep::AnimatingIn)
 			_floatingStep = FloatingStep::Stable;
@@ -106,16 +103,30 @@ void WholeView::draw() {
 			_floatingArrangement = nullptr;
 		}
 	}
-	bool isFloating = _floatingStep != FloatingStep::Inactive;
+	bool isFloating = _floatingStep != FloatingStep::Inactive;*/
 
 
-	if (_floatingStep == FloatingStep::AnimatingIn || _floatingStep == FloatingStep::Stable)
-		_textWindow.inputText(addend, editing);
-	if (_scrollDelta.step() != ScrollDelta::Step::NotScrolling)
-		_textWindow.scroll(-_scrollDelta.useDelta());
+	/*if (_floatingStep == FloatingStep::AnimatingIn || _floatingStep == FloatingStep::Stable)
+		_textWindow.inputText(addend, editing);*/
+	if (_scrollDelta.step() != ScrollDelta::Step::NotScrolling) {
+		auto [delta, offset] = _scrollDelta.useDelta();
+		_ga.scroll(-delta);
+	}
 
 	_area.draw(Palette::White);
-	auto itr = _textWindow.calcDrawBegin();
+	{
+		using GA = UnnamedEditor::WholeView::GlyphArrangement2;
+		auto litr = _ga.origin();
+		Point lineOrigin = _textArea.tr() - Point(_lineInterval / 2, 0) + _ga.originPos();
+		while (lineOrigin.x > -_lineInterval && litr != _ga.endLine()) {
+			for (auto c : litr->cd) {
+				c.glyph->draw(lineOrigin + c.pos);
+			}
+			lineOrigin.x -= litr->advance;
+			litr = _ga.tryNext(litr);
+		}
+	}
+	/*auto itr = _textWindow.calcDrawBegin();
 	auto debug = itr;
 	auto twEnd = _textWindow.calcDrawEnd();
 	std::optional<GlyphArrangement::Iterator> fBegin;
@@ -148,7 +159,7 @@ void WholeView::draw() {
 			itr = _textWindow.nextExtended(itr);
 			cnt++;
 		}
-	}
+	}*/
 }
 
 GlyphArrangement::GlyphArrangement(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos)
@@ -443,6 +454,172 @@ bool TextWindow::cursorPrev() {
 
 void TextWindow::setCursorUnsafe(Iterator cursor) {
 	_cursor = cursor;
+}
+
+GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
+	if (litr->cd.empty()) {
+		return _data.erase(litr);
+	}
+	Point pen(0, 0);
+	decltype(litr->cd)::iterator itr = litr->cd.begin();
+	while (itr != litr->cd.end()) {
+		itr->pos = pen;
+		itr->glyph = _font->renderChar(itr->code);
+		//TODO: Glyphをちゃんと整数座標に対応
+		pen += itr->glyph->getAdvance().asPoint();
+		if (pen.y > _maxLineLnegth - _font->getFontSize()) {
+			pen = Point(pen.x - _lineInterval, 0);
+		}
+		for (auto i : itr->itrs) {
+			*i = CharIterator(litr, itr);
+		}
+		itr = std::next(itr);
+	}
+	litr->advance = -pen.x + _lineInterval;
+	return litr;
+}
+
+void GlyphArrangement2::initBucket(LineIterator fisrt, LineIterator last) {
+	//TODO:
+}
+
+GlyphArrangement2::LineIterator GlyphArrangement2::tryNext(LineIterator litr, int cnt) {
+	for (int i = 0; i < cnt && litr != _data.end(); i++) ++litr;
+	return litr;
+}
+
+GlyphArrangement2::LineIterator GlyphArrangement2::tryPrev(LineIterator litr, int cnt) {
+	for (int i = 0; i < cnt && litr != _data.begin(); i++) --litr;
+	return litr;
+}
+
+void GlyphArrangement2::registerItr(SP<CharIterator> itr) {
+	itr->second->itrs.push_back(itr);
+}
+
+GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength)
+: _font(font)
+, _data()
+, _lineInterval(lineInterval)
+, _maxLineLnegth(maxLineLength)
+, _origin()
+, _originPos(0, 0)
+, _cursor(new CharIterator()) {
+	_data.push_back(LineData());
+	CharData cd;
+	cd.code = Text::Text::NEWLINE;
+	_data.back().cd.push_back(cd);
+	_cursor->first = _origin = _data.begin();
+	_cursor->second = _data.begin()->cd.begin();
+	registerItr(_cursor);
+}
+
+void GlyphArrangement2::insertText(CharIterator citr, const String& s) {
+	if (s.empty()) return;
+	LineIterator litr = citr.first;
+	std::vector<CharData> tail(citr.second, litr->cd.end());
+	litr->cd.erase(citr.second, litr->cd.end());
+	for (auto c : s) {
+		CharData cd;
+		cd.code = c;
+		litr->cd.push_back(cd);
+		if (c == Text::Text::NEWLINE) {
+			initLine(litr);
+			litr = std::next(litr);
+			LineData ld;
+			litr = _data.insert(litr, ld);
+		}
+	}
+	litr->cd.insert(litr->cd.end(), tail.begin(), tail.end());
+	initLine(litr);
+	initBucket(tryPrev(citr.first), tryNext(litr, 2));
+}
+
+void GlyphArrangement2::eraseText(CharIterator first, CharIterator last) {
+	if (first.first == last.first) {
+		first.first->cd.erase(first.second, last.second);
+		auto litr = initLine(first.first);
+		initBucket(tryPrev(litr), tryNext(litr, 2));
+		return;
+	}
+	LineIterator litr = std::next(first.first);
+	while (litr != last.first) {
+		litr = _data.erase(litr);
+	}
+	first.first->cd.erase(first.second, first.first->cd.end());
+	auto lfirst = initLine(first.first);
+	last.first->cd.erase(last.first->cd.begin(), last.second);
+	auto llast = initLine(last.first);
+	initBucket(tryPrev(lfirst), tryNext(llast, 2));
+}
+
+void GlyphArrangement2::scroll(int delta) {
+	_originPos.x -= delta;
+	if (delta < 0) {
+		while (_origin != _data.end() && _lineInterval < _originPos.x - _origin->advance) {
+			_originPos.x -= _origin->advance;
+			_origin = std::next(_origin);
+		}
+	}
+	else {
+		while (_origin != _data.begin() && _lineInterval > _originPos.x) {
+			_origin = std::prev(_origin);
+			_originPos.x += _origin->advance;
+		}
+	}
+}
+
+GlyphArrangement2::CharIterator GlyphArrangement2::next(CharIterator citr) const {
+	CharIterator ret(citr.first, std::next(citr.second));
+	if (ret.second == citr.first->cd.end()) {
+		ret.first = std::next(ret.first);
+		ret.second = ret.first->cd.begin();
+	}
+	return ret;
+}
+
+GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr) const {
+	if (citr.second == citr.first->cd.begin()) {
+		auto litr = std::prev(citr.first);
+		return { litr, std::prev(litr->cd.end()) };
+	}
+	return { citr.first, std::prev(citr.second) };
+}
+
+void GlyphArrangement2::next(SP<CharIterator> citr) {
+	auto& itrs = citr->second->itrs;
+	for (auto i = itrs.begin(); i != itrs.end();) {
+		if (*i == citr) i = itrs.erase(i);
+		else ++i;
+	}
+	*citr = next(*citr);
+	itrs.push_back(citr);
+}
+
+void GlyphArrangement2::prev(SP<CharIterator> citr) {
+	auto& itrs = citr->second->itrs;
+	for (auto i = itrs.begin(); i != itrs.end();) {
+		if (*i == citr) i = itrs.erase(i);
+		else ++i;
+	}
+	*citr = prev(*citr);
+	itrs.push_back(citr);
+}
+
+GlyphArrangement2::LineIterator GlyphArrangement2::origin() const {
+	return _origin;
+}
+
+Point GlyphArrangement2::originPos() const {
+	return _originPos;
+}
+
+SP<GlyphArrangement2::CharIterator> GlyphArrangement2::cursor() const {
+	return _cursor;
+}
+
+GlyphArrangement2::LineIterator GlyphArrangement2::endLine() {
+	return _data.end();
 }
 
 }

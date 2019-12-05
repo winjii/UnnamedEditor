@@ -32,6 +32,32 @@ public:
 };
 
 
+//↓xとyを取り替えるだけでなく正負なども変えなきゃいけない...
+//仮想的なテキスト内座標を作って描画時に変換したほうが良さそう
+//class TextDirection {
+//private:
+//	bool _isVertical;
+//public:
+//	bool isVertical() { return _isVertical; }
+//	int& perpendicular(Point& p) {
+//		if (_isVertical) return p.x;
+//		return p.y;
+//	}
+//	int& parallel(Point& p) {
+//		if (_isVertical) return p.y;
+//		return p.x;
+//	}
+//	double& perpendicular(Vec2& p) {
+//		if (_isVertical) return p.x;
+//		return p.y;
+//	}
+//	double& parallel(Vec2& p) {
+//		if (_isVertical) return p.y;
+//		return p.x;
+//	}
+//};
+
+
 
 //テキストを表示するためのグリフ配置を計算する
 //テキストの更新はできず、テキストが削除された部分のText::Iteratorは壊れる（更新に対応するにはTextWindowを使う）
@@ -134,6 +160,73 @@ public:
 };
 
 
+//TODO: あるlineからn（1000とか10000とか）文字以下のlineまでのミニマップをキャッシュ（バケット法）
+//↑line1つのミニマップもキャッシュ
+//↑ミニマップ描画をshortcutできるイメージ
+//↑文字列編集されたときはどうする？
+//↑あるバケットが更新されたらその一つ手前のバケットから再計算→統合できるのにされていない隣接バケットが生まれない→例えばn=1000だとしたら、最悪ケースでも500と501や1000と1のバケットが交互に並ぶだけ→バケットの最大個数は2√nくらいで抑えられる
+//TODO: 末尾の改行消さないようにする
+class GlyphArrangement2 {
+public:
+	struct LineData;
+	struct CharData;
+	using LineIterator = std::list<LineData>::iterator;
+	using CharIterator = std::pair<LineIterator, std::vector<CharData>::iterator>;
+	struct CharData {
+		char16_t code;
+		SP<const Font::Glyph> glyph;
+		std::list<SP<CharIterator>> itrs;
+		Point pos; //line内での相対的な位置
+	};
+	struct BucketHeader {
+		int size;
+	};
+	struct LineData {
+		std::vector<CharData> cd; //テキスト末尾に改行
+		int advance;
+		SP<BucketHeader> bucketHeader;
+	};
+private:
+	SP<Font::FixedFont> _font;
+	std::list<LineData> _data;
+	int _lineInterval;
+	int _maxLineLnegth;
+	LineIterator _origin;
+	Point _originPos;
+	SP<CharIterator> _cursor;
+
+	LineIterator initLine(LineIterator litr); //glyph, posを計算 cd.empty()だったら削除
+	void initBucket(LineIterator fisrt, LineIterator last);
+	void registerItr(SP<CharIterator> itr);
+public:
+	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength);
+
+	LineIterator tryNext(LineIterator litr, int cnt = 1);
+	LineIterator tryPrev(LineIterator litr, int cnt = 1);
+	void insertText(CharIterator citr, const String &s);
+	void eraseText(CharIterator first, CharIterator last);
+	void scroll(int delta);
+	CharIterator next(CharIterator citr) const;
+	CharIterator prev(CharIterator citr) const;
+	void next(SP<CharIterator> citr);
+	void prev(SP<CharIterator> citr);
+	LineIterator origin() const;
+	Point originPos() const;
+	SP<CharIterator> cursor() const;
+	LineIterator endLine();
+};
+
+
+class FloatingArrangement {
+private:
+	GlyphArrangement2::CharIterator _floatingStart;
+	GlyphArrangement2::LineData _head;
+	GlyphArrangement2::LineIterator _body;
+public:
+
+};
+
+
 //TODO: startまで空でもよくないか
 class AnimationProgress {
 public:
@@ -173,10 +266,10 @@ public:
 	enum class Step { NotScrolling, Scrolling, StoppingScroll };
 private:
 	int _direction;
-	double _used;
+	int _used;
 	Step _step;
 	Stopwatch _sw;
-	const double _lineInterval;
+	const int _lineInterval;
 public:
 	ScrollDelta(int lineInterval) : _step(Step::NotScrolling), _lineInterval(lineInterval) {}
 	Step step() { return _step; }
@@ -194,7 +287,7 @@ public:
 		if (_step != Step::Scrolling) return;
 		_step = Step::StoppingScroll;
 	}
-	double useDelta() {
+	std::pair<int, double> useDelta() {
 		//y = log(x + a) + log(1 / a)の積分
 		auto f = [](double x) {
 			double a = 0.1;
@@ -208,9 +301,9 @@ public:
 		}
 		//int p = 20*std::floor(sum/20);
 		//sum = EaseOut(Easing::Expo, p, p + 20, (sum - p)/20);
-		double ret = sum - _used;
-		_used = sum;
-		return ret*_direction;
+		int ret = (int)sum - _used;
+		_used = (int)sum;
+		return { ret * _direction, sum - (double)(int)sum };
 	}
 };
 
@@ -223,10 +316,10 @@ private:
 	};
 
 	RectF _area;
-	double _lineInterval;
+	Rect _textArea;
+	int _lineInterval;
 	SP<Font::FixedFont> _font;
-	TextWindow _textWindow;
-	UP<GlyphArrangement> _floatingArrangement;
+	GlyphArrangement2 _ga;
 	JudgeUnsettled _ju;
 	FloatingStep _floatingStep;
 	AnimationProgress _floatingProgress;
