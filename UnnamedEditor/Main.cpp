@@ -203,9 +203,17 @@ void WholeViewTest() {
 	String IamACat = TextReader(U"IamACat.txt").readAll();
 	wholeView.setText(IamACat);
 
+	MSRenderTexture msrt(Window::ClientSize());
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	while (System::Update()) {
-		wholeView.draw();
+		msrt.clear(Palette::White);
+		{
+			ScopedRenderTarget2D target(msrt);
+			wholeView.draw();
+		}
+		Graphics2D::Flush();
+		msrt.resolve();
+		msrt.scaled(1).draw(Arg::center(Window::ClientCenter()));
 	}
 }
 

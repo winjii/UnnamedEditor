@@ -15,6 +15,7 @@ using DevicePos = Vec2;
 //未確定文字列入力モードかどうかを判定するクラス
 //未確定文字列を削除した時に、既にその削除のために使われた入力が、確定文字列の削除をやってしまう（ラグのせい）ことへの対処ができる
 //（確定文字列への編集を一定時間ブロックするだけ）
+//TODO: 未確定文字はunsettledじゃなくeditingで名前統一
 class JudgeUnsettled {
 private:
 	int _count;
@@ -165,6 +166,7 @@ public:
 //↑ミニマップ描画をshortcutできるイメージ
 //↑文字列編集されたときはどうする？
 //↑あるバケットが更新されたらその一つ手前のバケットから再計算→統合できるのにされていない隣接バケットが生まれない→例えばn=1000だとしたら、最悪ケースでも500と501や1000と1のバケットが交互に並ぶだけ→バケットの最大個数は2√nくらいで抑えられる
+//テキストの変更をまたいで使うイテレータはちゃんとregisterItr()する
 //TODO: 末尾の改行消さないようにする
 class GlyphArrangement2 {
 public:
@@ -188,6 +190,7 @@ public:
 	};
 private:
 	SP<Font::FixedFont> _font;
+	SP<Font::FixedFont> _miniFont;
 	std::list<LineData> _data;
 	int _lineInterval;
 	int _maxLineLnegth;
@@ -197,33 +200,26 @@ private:
 
 	LineIterator initLine(LineIterator litr); //glyph, posを計算 cd.empty()だったら削除
 	void initBucket(LineIterator fisrt, LineIterator last);
-	void registerItr(SP<CharIterator> itr);
 public:
 	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength);
 
+	void registerItr(SP<CharIterator> itr);
 	LineIterator tryNext(LineIterator litr, int cnt = 1);
 	LineIterator tryPrev(LineIterator litr, int cnt = 1);
-	void insertText(CharIterator citr, const String &s);
-	void eraseText(CharIterator first, CharIterator last);
+	CharIterator insertText(CharIterator citr, const String &s);
+	CharIterator eraseText(CharIterator first, CharIterator last);
+	void replaceText(CharIterator first, CharIterator last, const String& s);
 	void scroll(int delta);
-	CharIterator next(CharIterator citr) const;
-	CharIterator prev(CharIterator citr) const;
-	void next(SP<CharIterator> citr);
-	void prev(SP<CharIterator> citr);
+	CharIterator next(CharIterator citr, bool overLine = false, int cnt = 1) const;
+	CharIterator prev(CharIterator citr, bool overLine = false, int cnt = 1) const;
+	void next(SP<CharIterator> citr); //管理されたイテレータを動かす
+	void prev(SP<CharIterator> citr); //管理されたイテレータを動かす
 	LineIterator origin() const;
 	Point originPos() const;
 	SP<CharIterator> cursor() const;
-	LineIterator endLine();
-};
-
-
-class FloatingArrangement {
-private:
-	GlyphArrangement2::CharIterator _floatingStart;
-	GlyphArrangement2::LineData _head;
-	GlyphArrangement2::LineIterator _body;
-public:
-
+	LineIterator end();
+	CharIterator lineBegin(LineIterator litr) const;
+	CharIterator lineEnd(LineIterator litr) const;
 };
 
 
@@ -241,8 +237,8 @@ private:
 	Step _step;
 public:
 	AnimationProgress(): _animationTime(), _sw(), _progress(0), _step(Step::Inactive) {}
-	Step getStep() { return _step; }
-	double getProgress() { return _progress; }
+	Step getStep() const { return _step; }
+	double getProgress() const { return _progress; }
 	void start(double animationTime) {
 		_animationTime = animationTime;
 		_progress = 0;
@@ -258,6 +254,58 @@ public:
 			_step = Step::Stable;
 		}
 	}
+};
+
+
+class FloatingAnimation {
+	using GA = GlyphArrangement2;
+public:
+	enum class Step {
+		Inactive, Floating, Stopping
+	};
+private:
+	Step _step;
+	int _lineInterval;
+	int _maxLineLength;
+	SP<GA::CharIterator> _floatingBegin; //管理されたイテレータ
+	AnimationProgress _inOutAP;
+	AnimationProgress _updateAP;
+	std::vector<Vec2> _oldHeadPos;
+	std::vector<Vec2> _newHeadPos;
+	double _oldAdvance; //headのadvance
+	double _newAdvance;
+
+	Vec2 easeOverLine(Vec2 source, Vec2 target, double t, int i);
+public:
+	FloatingAnimation(int lineInterval, int maxLineLength);
+	Step step() const;
+	bool isInactive() const;
+	GA::CharIterator floatingBegin() const;
+	bool isStable() const; //文字が整数座標に静止しているか
+	void startFloating(GA& ga, GA::CharIterator floatingBegin);
+	void stopFloating();
+	void updateTime();
+	void updatePos(const GA& ga); //変更が起きたときのみ呼び出す
+
+	//citrはfloatingStart以降であること
+	//Inactiveのときに呼び出さない
+	//各行の行頭の静止座標からの相対位置を返す（描画する側で行頭の静止座標を足す）
+	Vec2 getPos(GA::CharIterator citr);
+};
+
+
+class InputManager {
+private:
+	SP<FloatingAnimation> _fa;
+	String _editing;
+	bool _isInputing;
+public:
+	InputManager(SP<FloatingAnimation> fa);
+	bool isInputing() const;
+	SP<FloatingAnimation> floatingAnimation() const;
+	void input(GlyphArrangement2 &ga, const String& addend, const String& editing);
+	void stopInputing();
+	void startInputing(GlyphArrangement2& ga);
 };
 
 
@@ -310,21 +358,15 @@ public:
 
 class WholeView {
 private:
-
-	enum class FloatingStep {
-		Inactive, AnimatingIn, Stable, AnimatingOut
-	};
-
 	RectF _area;
 	Rect _textArea;
 	int _lineInterval;
 	SP<Font::FixedFont> _font;
 	GlyphArrangement2 _ga;
 	JudgeUnsettled _ju;
-	FloatingStep _floatingStep;
-	AnimationProgress _floatingProgress;
-	SP<const Text::Text> _text;
 	ScrollDelta _scrollDelta;
+	SP<FloatingAnimation> _floating;
+	InputManager _inputManager;
 
 	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
 	Vec2 floatingTextOut(Vec2 source, Vec2 target, double t, int i);
