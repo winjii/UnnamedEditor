@@ -161,13 +161,51 @@ public:
 };
 
 
+//文字の見た目を一時的に変化させる
+class TemporaryCharRender {
+public:
+	class Pointer : protected SP<TemporaryCharRender> {
+		using Base = SP<TemporaryCharRender>;
+	public:
+		bool isValid() const { return operator bool(); }
+		void destroy() { Base::reset(); }
+		TemporaryCharRender* operator->() const { return Base::operator->(); }
+		TemporaryCharRender& operator*() const { return Base::operator*(); }
+	};
+	class Manager { //Pointerを管理して自動で無効にする
+	private:
+		std::list<SP<TemporaryCharRender::Pointer>> _data;
+	public:
+		void update() {
+			auto itr = _data.begin();
+			while (itr != _data.end()) {
+				if (!(**itr)->update()) {
+					(*itr)->destroy();
+					itr = _data.erase(itr);
+				}
+				else ++itr;
+			}
+		}
+		void registerPointer(SP<TemporaryCharRender::Pointer> p) {
+			_data.push_back(p);
+		}
+	};
+
+	virtual bool update() = 0; //殺されたくないうちはtrueを差し出す
+	virtual void draw(Vec2 pos) = 0;
+};
+
+
 //TODO: あるlineからn（1000とか10000とか）文字以下のlineまでのミニマップをキャッシュ（バケット法）
 //↑line1つのミニマップもキャッシュ
 //↑ミニマップ描画をshortcutできるイメージ
 //↑文字列編集されたときはどうする？
 //↑あるバケットが更新されたらその一つ手前のバケットから再計算→統合できるのにされていない隣接バケットが生まれない→例えばn=1000だとしたら、最悪ケースでも500と501や1000と1のバケットが交互に並ぶだけ→バケットの最大個数は2√nくらいで抑えられる
-//テキストの変更をまたいで使うイテレータはちゃんとregisterItr()する
+//テキストの変更をまたいで使うイテレータはちゃんとregisterItr()する。ただしこれらのイテレータを含む範囲を削除してはいけない...
 //TODO: 末尾の改行消さないようにする
+//TODO: 管理されたイテレータが削除されるケースをどうにかしたい
+//TODO: cursor持つのこいつか？
+//TODO: 管理されたイテレータは自分でremoveItrを呼び出すようにすればいいのでは
 class GlyphArrangement2 {
 public:
 	struct LineData;
@@ -198,17 +236,20 @@ private:
 	Point _originPos;
 	SP<CharIterator> _cursor;
 
-	LineIterator initLine(LineIterator litr); //glyph, posを計算 cd.empty()だったら削除
+	//glyph, posを計算する。cd.empty()だったら削除
+	LineIterator initLine(LineIterator litr);
+
 	void initBucket(LineIterator fisrt, LineIterator last);
 public:
 	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength);
 
 	void registerItr(SP<CharIterator> itr);
+	void removeItr(SP<CharIterator> itr);
 	LineIterator tryNext(LineIterator litr, int cnt = 1);
 	LineIterator tryPrev(LineIterator litr, int cnt = 1);
 	CharIterator insertText(CharIterator citr, const String &s);
 	CharIterator eraseText(CharIterator first, CharIterator last);
-	void replaceText(CharIterator first, CharIterator last, const String& s);
+	CharIterator replaceText(CharIterator first, CharIterator last, const String& s);
 	void scroll(int delta);
 	CharIterator next(CharIterator citr, bool overLine = false, int cnt = 1) const;
 	CharIterator prev(CharIterator citr, bool overLine = false, int cnt = 1) const;
@@ -217,9 +258,16 @@ public:
 	LineIterator origin() const;
 	Point originPos() const;
 	SP<CharIterator> cursor() const;
+	LineIterator begin();
 	LineIterator end();
 	CharIterator lineBegin(LineIterator litr) const;
 	CharIterator lineEnd(LineIterator litr) const;
+
+	//NULL文字を挿入すると番兵などに使える。ただしそれを含む範囲をeraseしないよう注意
+	//NULL文字は参照が切れていたらinitLine時に自動で削除される
+	//↑しかしいつ削除されるか分からないのでdeleteNullしたほうがいい
+	SP<CharIterator> makeNull(CharIterator citr);
+	void deleteNull(SP<CharIterator> nullItr); //イテレータは壊れる
 };
 
 
@@ -294,18 +342,50 @@ public:
 };
 
 
+class CleanCopyCursor {
+	using GA = GlyphArrangement2;
+public:
+	enum class Step {
+		Advancing, Retreating, Stable
+	};
+private:
+	Step _step;
+	std::pair<SP<GA::CharIterator>, double> _drawingPos;
+	Stopwatch _sw;
+public:
+	CleanCopyCursor(GA& ga, GA::CharIterator citr);
+	GA::CharIterator pos(const GA& ga) const;
+	std::pair<GA::CharIterator, double> drawingPos() const;
+	void changeItr(GA& ga, GA::CharIterator newItr);
+	bool isStable();
+	void startAdvancing();
+	void startRetreating();
+	void stop(GA& ga);
+	void update(GA& ga);
+};
+
+
+//入力状態のときに働く機能を取りまとめる
 class InputManager {
+	using GA = GlyphArrangement2;
 private:
 	SP<FloatingAnimation> _fa;
 	String _editing;
 	bool _isInputing;
+	SP<GA::CharIterator> _cursor;
+	SP<CleanCopyCursor> _cccursor;
 public:
+	InputManager(int lineInterval, int maxLineLength);
 	InputManager(SP<FloatingAnimation> fa);
 	bool isInputing() const;
 	SP<FloatingAnimation> floatingAnimation() const;
-	void input(GlyphArrangement2 &ga, const String& addend, const String& editing);
+	SP<CleanCopyCursor> cleanCopyCursor() const;
+	void inputText(GA &ga, const String& addend, const String& editing);
 	void stopInputing();
-	void startInputing(GlyphArrangement2& ga);
+	void startInputing(GA& ga);
+	void startAdvancingCCC();
+	void startRetreatingCCC();
+	void stopCCC();
 };
 
 
