@@ -42,7 +42,10 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _ju()
 , _scrollDelta(_lineInterval)
 , _floating(new FloatingAnimation(_lineInterval, _textArea.h))
-, _inputManager(_floating) {
+, _inputManager(_floating)
+, _masker(_textArea.size)
+, _maskee(_textArea.size)
+, _maskPS(U"example/shader/2d/multi_texture_mask" SIV3D_SELECT_SHADER(U".hlsl", U".frag"), { { U"PSConstants2D", 0 } }) {
 }
 
 void WholeView::setText(const String &text) {
@@ -65,7 +68,7 @@ void WholeView::draw() {
 	//	_floatingStep = FloatingStep::AnimatingOut;
 	//	_floatingProgress.start(1);
 	//}
-	
+
 
 	//if (KeyDown.down()) _textWindow.cursorNext();
 	//if (KeyUp.down()) _textWindow.cursorPrev();
@@ -74,11 +77,6 @@ void WholeView::draw() {
 		_inputManager.startInputing(_ga);
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
-
-	auto drawCursor = [&](Vec2 pos) {
-		double t = Scene::Time() * 2 * Math::Pi / 2.5;
-		_font->getCursor(pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
-	};
 
 	if (_floating->step() != FloatingAnimation::Step::Floating) {
 		if (KeyLeft.down()) _scrollDelta.startScroll(1);
@@ -120,16 +118,26 @@ void WholeView::draw() {
 		auto [delta, offset] = _scrollDelta.useDelta();
 		_ga.scroll(-delta);
 	}
-	
+
 	_inputManager.inputText(_ga, addend, editing);
 	if (_inputManager.isInputing()) cccursor->update(_ga);
 
+	Vec2 maskStart, maskEnd;
 	_area.draw(Palette::White);
+	_masker.clear(Palette::White);
+	_maskee.clear(Palette::White);
 	{
+		ScopedRenderTarget2D target(_maskee);
+
+		auto drawCursor = [&](Vec2 pos) {
+			double t = Scene::Time() * 2 * Math::Pi / 2.5;
+			_font->getCursor(pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
+		};
+
 		using GA = GlyphArrangement2;
 		auto litr = _ga.origin();
 		bool flt = false;
-		Point lineOrigin = _textArea.tr() - Point(_lineInterval / 2, 0) + _ga.originPos();
+		Point lineOrigin = Point(_textArea.w - _lineInterval / 2, 0) + _ga.originPos();
 		while (lineOrigin.x > -_lineInterval && litr != _ga.end()) {
 			auto citr = _ga.lineBegin(litr);
 			while (citr != _ga.lineEnd(litr)) {
@@ -137,18 +145,42 @@ void WholeView::draw() {
 
 				Vec2 p = lineOrigin + citr.second->pos;
 				if (flt) p = lineOrigin + _floating->getPos(citr);
-				if (_textArea.stretched(_lineInterval, 0).contains(p))
+				if (_maskee.region().stretched(_lineInterval, 0).contains(p))
 					citr.second->glyph->draw(p);
-				if (citr == *_ga.cursor()) drawCursor(p.asPoint());
+				if (citr == *_ga.cursor()) {
+					drawCursor(p);
+					maskEnd = p;
+				}
 				if (!_floating->isInactive() && citr == cccursor->drawingPos().first) {
-					drawCursor(p + Vec2(0, cccursor->drawingPos().second));
+					Vec2 cp = p + Vec2(0, cccursor->drawingPos().second);
+					drawCursor(cp);
+					maskStart = cp;
 				}
 				citr = _ga.next(citr);
 			}
 			lineOrigin.x -= litr->advance;
 			litr = _ga.tryNext(litr);
 		}
-
+	}
+	if (!_floating->isInactive()) {
+		ScopedRenderTarget2D target(_masker);
+		int lines = (int)((maskEnd.x - maskStart.x) / _lineInterval + 0.5);
+		Vec2 st = maskStart;
+		ColorF color(Palette::Black, 0.5);
+		double hfs = _font->getFontSize() / 2.0;
+		for (int i = 0; i < lines; i++) {
+			RectF r(st.x - hfs, st.y, 2*hfs, _textArea.h - st.y);
+			r.draw(color);
+			st = Vec2(st.x - _lineInterval, 0);
+		}
+		RectF r(st.x - hfs, st.y, 2*hfs, maskEnd.y - st.y);
+		r.draw(color);
+	}
+	{
+		Graphics2D::SetTexture(1, _masker);
+		ScopedCustomShader2D shader(_maskPS); //TODO: _maskPSのプリコンパイル
+		_maskee.draw(_textArea.pos);
+		Graphics2D::SetTexture(1, none);
 	}
 	/*auto itr = _textWindow.calcDrawBegin();
 	auto debug = itr;
@@ -856,8 +888,8 @@ void InputManager::stopInputing() {
 
 void InputManager::startInputing(GA& ga) {
 	_isInputing = true;
-	auto floatingBegin = *ga.cursor();
 	_cursor = ga.makeNull(*ga.cursor());
+	auto floatingBegin = *ga.cursor();
 	ga.prev(ga.cursor());
 	assert(*_cursor == *ga.cursor());
 	_cccursor.reset(new CleanCopyCursor(ga, *_cursor));

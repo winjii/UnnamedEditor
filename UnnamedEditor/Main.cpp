@@ -214,6 +214,7 @@ void WholeViewTest() {
 		Graphics2D::Flush();
 		msrt.resolve();
 		msrt.scaled(1).draw(Arg::center(Window::ClientCenter()));
+		//wholeView.draw();
 	}
 }
 

@@ -447,6 +447,9 @@ private:
 	ScrollDelta _scrollDelta;
 	SP<FloatingAnimation> _floating;
 	InputManager _inputManager;
+	RenderTexture _masker;
+	RenderTexture _maskee;
+	const PixelShader _maskPS;
 
 	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
 	Vec2 floatingTextOut(Vec2 source, Vec2 target, double t, int i);

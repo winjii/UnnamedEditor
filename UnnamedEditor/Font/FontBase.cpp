@@ -65,8 +65,8 @@ FontBase::FontBase(FT_Library lib, std::string fontPath, bool isVertical)
 	FT_New_Face(lib, fontPath.c_str(), 0, &_face);
 	FT_Select_Charmap(_face, FT_Encoding_::FT_ENCODING_UNICODE);
 	_gsubReader = SP<GsubReader>(new GsubReader(_face));
-	_ascender = _face->size->metrics.ascender/64.0;
-	_descender = _face->size->metrics.descender/64.0;
+	_ascender = _face->ascender/64.0; //TODO: scalable(outline)ƒtƒHƒ“ƒg‚Ìê‡‚Í26.6 pixcel format‚¶‚á‚È‚¢
+	_descender = _face->descender/64.0;
 }
 
 FontBase::~FontBase() {
