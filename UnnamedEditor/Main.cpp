@@ -218,6 +218,45 @@ void WholeViewTest() {
 	}
 }
 
+void MiniRenderTest() {
+	FT_Library lib;
+	FT_Init_FreeType(&lib);
+	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
+	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
+	String IamACat = TextReader(U"IamACat.txt").readAll();
+	wholeView.setText(IamACat);
+
+	MSRenderTexture msrt(Window::ClientSize());
+	RenderTexture buf0(Window::ClientSize()), buf1(Window::ClientSize());
+	const ScopedRenderStates2D state(SamplerState::ClampLinear);
+	double la = 0;
+	double ls = 0;
+	double g = 0;
+	ColorF mul();
+	while (System::Update()) {
+		double a = exp(la);
+		double s = exp(ls);
+		msrt.clear(Palette::White);
+		buf0.clear(Palette::White);
+		{
+			ScopedRenderTarget2D target(msrt);
+			wholeView.draw();
+		}
+		Graphics2D::Flush();
+		msrt.resolve();
+		Shader::GaussianBlur(msrt, buf0, Vec2(0, g));
+		{
+			ScopedColorMul2D mul(a);
+			ScopedColorAdd2D add(1 - a);
+			buf0.scaled(s).draw(Arg::center(Window::ClientCenter()));
+		}
+		//buf1.draw();
+		SimpleGUI::Slider(U"a {:3.3}"_fmt(a), la, -3, 3, Vec2(0, 20), 100);
+		SimpleGUI::Slider(U"s {:3.3}"_fmt(s), ls, -3, 3, Vec2(0, 60), 100);
+		SimpleGUI::Slider(U"g {:3.3}"_fmt(g), g, -10, 10, Vec2(0, 100), 100);
+	}
+}
+
 void ChangeableFontTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
@@ -372,13 +411,14 @@ void Main()
 		Glyph_scaleTest,
 		NoBug,
 		WholeViewTest,
+		MiniRenderTest,
 		ChangeableFontTest,
 		FontScaleTest,
 		RasterizeTest,
 		FontShiftTest,
 		GlyphLoadTest,
 		TextInputTest,
-	} runMode = RunMode::WholeViewTest;
+	} runMode = RunMode::MiniRenderTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -406,6 +446,9 @@ void Main()
 	}
 	else if (runMode == RunMode::WholeViewTest) {
 		UnnamedEditor::WholeViewTest();
+	}
+	else if (runMode == RunMode::MiniRenderTest) {
+		UnnamedEditor::MiniRenderTest();
 	}
 	else if (runMode == RunMode::ChangeableFontTest) {
 		UnnamedEditor::ChangeableFontTest();
