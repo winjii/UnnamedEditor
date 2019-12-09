@@ -29,7 +29,7 @@ SP<Glyph> FontBase::renderChar(GlyphIndex gid, int fontSize) {
 	for (int r = 0; r < bitmap.rows; r++) {
 		for (int c = 0; c < bitmap.width; c++) {
 			HSV gray(Color(bitmap.buffer[r*bitmap.width + c]));
-			image[r][c] = Color(Palette::White, 255*gray.v);
+			image[r][c] = ColorF(Palette::White, gray.v);
 		}
 	}
 	if (_isVertical) {
