@@ -219,7 +219,8 @@ public:
 		Point pos; //line内での相対的な位置
 	};
 	struct BucketHeader {
-		int size;
+		int wrapCount;
+		MSRenderTexture minimap;
 	};
 	struct LineData {
 		std::vector<CharData> cd; //テキスト末尾に改行
@@ -228,18 +229,19 @@ public:
 	};
 private:
 	SP<Font::FixedFont> _font;
-	SP<Font::FixedFont> _miniFont;
 	std::list<LineData> _data;
 	int _lineInterval;
 	int _maxLineLnegth;
 	LineIterator _origin;
 	Point _originPos;
 	SP<CharIterator> _cursor;
+	SP<MSRenderTexture> _bufferTexture0;
+	SP<RenderTexture> _bufferTexture1;
 
 	//glyph, posを計算する。cd.empty()だったら削除
 	LineIterator initLine(LineIterator litr);
 
-	void initBucket(LineIterator fisrt, LineIterator last);
+	void initBucket(LineIterator first, LineIterator last);
 public:
 	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength);
 
@@ -461,6 +463,7 @@ public:
 
 	void setText(const String &text);
 	void draw();
+	void minimapTest();
 };
 
 

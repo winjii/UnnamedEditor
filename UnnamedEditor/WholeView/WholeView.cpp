@@ -218,6 +218,10 @@ void WholeView::draw() {
 	}*/
 }
 
+void WholeView::minimapTest() {
+	_ga.begin()->bucketHeader->minimap.draw();
+}
+
 GlyphArrangement::GlyphArrangement(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos)
 : _text(text)
 , _area(area)
@@ -541,8 +545,91 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 	return litr;
 }
 
-void GlyphArrangement2::initBucket(LineIterator fisrt, LineIterator last) {
-	//TODO:
+void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
+	int fs = _font->getFontSize(), fs_ = 4;
+	double sr = ((double)fs_) / fs;
+	auto nextBucket = [&](LineIterator i) {
+		while (i != _data.end() && !i->bucketHeader) {
+			i = tryNext(i);
+		}
+		return i;
+	};
+	auto bucket = [&](LineIterator i) {
+		while (i != _data.begin() && !i->bucketHeader) {
+			i = tryPrev(i);
+		}
+		return i;
+	};
+	auto countWrapping = [&](LineIterator i) {
+		return (int)(i->advance / (double)_lineInterval); //TODO: LineData‚Æ‚µ‚Äadvance‚Å‚È‚­wrapping count‚ğ‚½‚¹‚é
+	};
+	auto getBuffer0 = [&](int minWidth) {
+		int w = 1;
+		while (w < minWidth) w *= 2;
+		if (!_bufferTexture0 || _bufferTexture0->width() < w)
+			_bufferTexture0.reset(new MSRenderTexture(w, _maxLineLnegth));
+		if (!_bufferTexture1 || _bufferTexture1->width() < w)
+			_bufferTexture1.reset(new RenderTexture(w, _maxLineLnegth));
+		_bufferTexture0->clear(Palette::White);
+		_bufferTexture1->clear(Palette::White);
+		return make_pair(_bufferTexture0, _bufferTexture1);
+	};
+
+	if (first == last) return;
+	first = bucket(first);
+	last = nextBucket(last);
+	LineIterator head = first;
+	while (head != last) {
+		head->bucketHeader.reset(new BucketHeader());
+		LineIterator bl = head;
+		int normalSize = 1000 * fs / _maxLineLnegth;
+		int size = countWrapping(head);
+		bl = tryNext(bl);
+		while (bl != last) {
+			int add = countWrapping(bl);
+			LineIterator next = tryNext(bl);
+			if (bl->bucketHeader) {
+				add = bl->bucketHeader->wrapCount;
+				next = nextBucket(next);
+			}
+			if (normalSize < size + add) break;
+			size += add;
+			bl = next;
+		}
+		int textureWidth = sr*((size + 1) * _lineInterval);
+		MSRenderTexture msrt(Vec2(textureWidth + 0.5, sr * _maxLineLnegth + 0.5).asPoint());
+		msrt.clear(Palette::White);
+		{
+			double a = 10;
+			ScopedColorMul2D mul(1, a);
+			ScopedRenderTarget2D target(msrt);
+			LineIterator b = head;
+			Point lineOrigin(textureWidth - _lineInterval, 0);
+			while (b != bl) {
+				for (auto c : b->cd) {
+					c.glyph->draw(sr * (lineOrigin + c.pos), Palette::Black, 0, sr);
+				}
+				lineOrigin.x -= b->advance;
+				b = tryNext(b);
+			}
+		}
+		/*Graphics2D::Flush();
+		buf0->resolve();
+		Shader::GaussianBlur(*buf0, *buf1, Vec2(1.5, 0));
+		MSRenderTexture msrt((sr * Size(textureWidth, _maxLineLnegth) + Vec2(0.5, 0.5)).asPoint());
+		msrt.clear(Palette::White);
+		{
+			ScopedRenderTarget2D target(msrt);
+			buf1->scaled(sr).draw();
+		}*/
+		Graphics2D::Flush();
+		msrt.resolve();
+
+		head->bucketHeader->minimap = msrt;
+		head->bucketHeader->wrapCount = size;
+
+		head = bl;
+	}
 }
 
 GlyphArrangement2::LineIterator GlyphArrangement2::tryNext(LineIterator litr, int cnt) {
@@ -595,7 +682,7 @@ GlyphArrangement2::CharIterator GlyphArrangement2::insertText(CharIterator citr,
 		}
 		citr.second = litr->cd.insert(citr.second, cds.begin(), cds.end());
 		initLine(litr);
-		initBucket(tryPrev(litr), tryNext(litr, 2));
+		initBucket(litr, tryNext(litr));
 		return citr;
 	}
 	std::vector<CharData> tail(citr.second, litr->cd.end());
@@ -615,7 +702,7 @@ GlyphArrangement2::CharIterator GlyphArrangement2::insertText(CharIterator citr,
 	}
 	litr->cd.insert(litr->cd.end(), tail.begin(), tail.end());
 	initLine(litr);
-	initBucket(tryPrev(citr.first), tryNext(litr, 2));
+	initBucket(citr.first, tryNext(litr));
 	return { ret0, ret0->cd.begin() + idx };
 }
 
@@ -624,7 +711,7 @@ GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first,
 		if (first.second == last.second) return first;
 		auto ret1 = first.first->cd.erase(first.second, last.second);
 		auto litr = initLine(first.first);
-		initBucket(tryPrev(litr), tryNext(litr, 2));
+		initBucket(litr, tryNext(litr));
 		return { litr, ret1 };
 	}
 	LineIterator litr = std::next(first.first);
@@ -636,7 +723,7 @@ GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first,
 	auto ret1 = last.first->cd.erase(last.first->cd.begin(), last.second);
 	if (last.first->cd.empty()) ret1 = std::next(last.first->cd.begin());
 	auto llast = initLine(last.first);
-	initBucket(tryPrev(lfirst), tryNext(llast, 2));
+	initBucket(lfirst, tryNext(llast));
 	return { llast, ret1 };
 }
 

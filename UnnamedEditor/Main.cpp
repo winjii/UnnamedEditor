@@ -209,7 +209,7 @@ void WholeViewTest() {
 		msrt.clear(Palette::White);
 		{
 			ScopedRenderTarget2D target(msrt);
-			wholeView.draw();
+			wholeView.minimapTest();
 		}
 		Graphics2D::Flush();
 		msrt.resolve();
@@ -246,6 +246,8 @@ void MiniRenderTest() {
 		msrt.resolve();
 		Shader::GaussianBlur(msrt, buf0, Vec2(0, g));
 		{
+			//グレースケールにおいて、白(1)以外の色を黒(0)に近づけるための色演算
+			//1 - a*(1 - x) = ax + (1 - a)
 			ScopedColorMul2D mul(a);
 			ScopedColorAdd2D add(1 - a);
 			buf0.scaled(s).draw(Arg::center(Window::ClientCenter()));
@@ -418,7 +420,7 @@ void Main()
 		FontShiftTest,
 		GlyphLoadTest,
 		TextInputTest,
-	} runMode = RunMode::MiniRenderTest;
+	} runMode = RunMode::WholeViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
