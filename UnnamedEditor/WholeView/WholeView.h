@@ -221,6 +221,8 @@ public:
 	struct BucketHeader {
 		int wrapCount;
 		MSRenderTexture minimap;
+		int advance;
+		Vec2 origin;
 	};
 	struct LineData {
 		std::vector<CharData> cd; //テキスト末尾に改行
@@ -237,6 +239,7 @@ private:
 	SP<CharIterator> _cursor;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
+	const int _minimapFontSize = 8;
 
 	//glyph, posを計算する。cd.empty()だったら削除
 	LineIterator initLine(LineIterator litr);
@@ -247,8 +250,8 @@ public:
 
 	void registerItr(SP<CharIterator> itr);
 	void removeItr(SP<CharIterator> itr);
-	LineIterator tryNext(LineIterator litr, int cnt = 1);
-	LineIterator tryPrev(LineIterator litr, int cnt = 1);
+	LineIterator tryNext(LineIterator litr, int cnt = 1) const;
+	LineIterator tryPrev(LineIterator litr, int cnt = 1) const;
 	CharIterator insertText(CharIterator citr, const String &s);
 	CharIterator eraseText(CharIterator first, CharIterator last);
 	CharIterator replaceText(CharIterator first, CharIterator last, const String& s);
@@ -264,6 +267,9 @@ public:
 	LineIterator end();
 	CharIterator lineBegin(LineIterator litr) const;
 	CharIterator lineEnd(LineIterator litr) const;
+	LineIterator bucket(LineIterator litr) const;
+	LineIterator nextBucket(LineIterator litr) const;
+	double minimapLineInterval() const;
 
 	//NULL文字を挿入すると番兵などに使える。ただしそれを含む範囲をeraseしないよう注意
 	//NULL文字は参照が切れていたらinitLine時に自動で削除される
@@ -444,7 +450,7 @@ private:
 	Rect _textArea;
 	int _lineInterval;
 	SP<Font::FixedFont> _font;
-	GlyphArrangement2 _ga;
+	SP<GlyphArrangement2> _ga;
 	JudgeUnsettled _ju;
 	ScrollDelta _scrollDelta;
 	SP<FloatingAnimation> _floating;
@@ -464,6 +470,19 @@ public:
 	void setText(const String &text);
 	void draw();
 	void minimapTest();
+	SP<GlyphArrangement2> GlyphArrangement() const;
+};
+
+
+class MinimapView {
+	using GA = GlyphArrangement2;
+private:
+	RectF _area;
+	Rect _body;
+	SP<GA> _ga;
+public:
+	MinimapView(RectF area, SP<GA> ga);
+	void draw() const;
 };
 
 

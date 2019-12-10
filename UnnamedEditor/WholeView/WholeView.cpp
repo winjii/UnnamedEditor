@@ -38,7 +38,7 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _textArea(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1))
 , _lineInterval((int)(font->getFontSize()*1.25))
 , _font(font)
-, _ga(_font, _lineInterval, _textArea.h)
+, _ga(new GlyphArrangement2(_font, _lineInterval, _textArea.h))
 , _ju()
 , _scrollDelta(_lineInterval)
 , _floating(new FloatingAnimation(_lineInterval, _textArea.h))
@@ -49,10 +49,10 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 }
 
 void WholeView::setText(const String &text) {
-	_ga.insertText(*_ga.cursor(), U"‚Û");
-	auto itr = *_ga.cursor();
-	_ga.prev(_ga.cursor());
-	_ga.insertText(itr, text);
+	_ga->insertText(*_ga->cursor(), U"‚Û");
+	auto itr = *_ga->cursor();
+	_ga->prev(_ga->cursor());
+	_ga->insertText(itr, text);
 }
 
 void WholeView::draw() {
@@ -74,7 +74,7 @@ void WholeView::draw() {
 	//if (KeyUp.down()) _textWindow.cursorPrev();
 
 	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0)) {
-		_inputManager.startInputing(_ga);
+		_inputManager.startInputing(*_ga);
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
 
@@ -93,9 +93,9 @@ void WholeView::draw() {
 	if (!_floating->isInactive()) {
 		if (!cccursor->isStable()) addend = U"";
 		if (KeyEnter.down()) cccursor->startAdvancing();
-		else if (KeyEnter.up()) cccursor->stop(_ga);
+		else if (KeyEnter.up()) cccursor->stop(*_ga);
 		else if (KeyBackspace.down()) cccursor->startRetreating();
-		else if (KeyBackspace.up()) cccursor->stop(_ga);
+		else if (KeyBackspace.up()) cccursor->stop(*_ga);
 		if (!cccursor->isStable()) addend = U"";
 	}
 
@@ -116,11 +116,11 @@ void WholeView::draw() {
 		_textWindow.inputText(addend, editing);*/
 	if (_scrollDelta.step() != ScrollDelta::Step::NotScrolling) {
 		auto [delta, offset] = _scrollDelta.useDelta();
-		_ga.scroll(-delta);
+		_ga->scroll(-delta);
 	}
 
-	_inputManager.inputText(_ga, addend, editing);
-	if (_inputManager.isInputing()) cccursor->update(_ga);
+	_inputManager.inputText(*_ga, addend, editing);
+	if (_inputManager.isInputing()) cccursor->update(*_ga);
 
 	Vec2 maskStart, maskEnd;
 	_area.draw(Palette::White);
@@ -135,19 +135,19 @@ void WholeView::draw() {
 		};
 
 		using GA = GlyphArrangement2;
-		auto litr = _ga.origin();
+		auto litr = _ga->origin();
 		bool flt = false;
-		Point lineOrigin = Point(_textArea.w - _lineInterval / 2, 0) + _ga.originPos();
-		while (lineOrigin.x > -_lineInterval && litr != _ga.end()) {
-			auto citr = _ga.lineBegin(litr);
-			while (citr != _ga.lineEnd(litr)) {
+		Point lineOrigin = Point(_textArea.w - _lineInterval / 2, 0) + _ga->originPos();
+		while (lineOrigin.x > -_lineInterval && litr != _ga->end()) {
+			auto citr = _ga->lineBegin(litr);
+			while (citr != _ga->lineEnd(litr)) {
 				if (!_floating->isInactive() && _floating->floatingBegin() == citr) flt = true;
 
 				Vec2 p = lineOrigin + citr.second->pos;
 				if (flt) p = lineOrigin + _floating->getPos(citr);
 				if (_maskee.region().stretched(_lineInterval, 0).contains(p))
 					citr.second->glyph->draw(p);
-				if (citr == *_ga.cursor()) {
+				if (citr == *_ga->cursor()) {
 					drawCursor(p);
 					maskEnd = p;
 				}
@@ -156,10 +156,10 @@ void WholeView::draw() {
 					drawCursor(cp);
 					maskStart = cp;
 				}
-				citr = _ga.next(citr);
+				citr = _ga->next(citr);
 			}
 			lineOrigin.x -= litr->advance;
-			litr = _ga.tryNext(litr);
+			litr = _ga->tryNext(litr);
 		}
 	}
 	if (!_floating->isInactive()) {
@@ -219,7 +219,12 @@ void WholeView::draw() {
 }
 
 void WholeView::minimapTest() {
-	_ga.begin()->bucketHeader->minimap.draw();
+	_ga->begin()->bucketHeader->minimap.draw();
+	_ga->begin()->bucketHeader->minimap.draw(Vec2(0.5, 300));
+}
+
+SP<GlyphArrangement2> WholeView::GlyphArrangement() const {
+	return _ga;
 }
 
 GlyphArrangement::GlyphArrangement(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos)
@@ -546,20 +551,8 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 }
 
 void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
-	int fs = _font->getFontSize(), fs_ = 4;
+	int fs = _font->getFontSize(), fs_ = _minimapFontSize;
 	double sr = ((double)fs_) / fs;
-	auto nextBucket = [&](LineIterator i) {
-		while (i != _data.end() && !i->bucketHeader) {
-			i = tryNext(i);
-		}
-		return i;
-	};
-	auto bucket = [&](LineIterator i) {
-		while (i != _data.begin() && !i->bucketHeader) {
-			i = tryPrev(i);
-		}
-		return i;
-	};
 	auto countWrapping = [&](LineIterator i) {
 		return (int)(i->advance / (double)_lineInterval); //TODO: LineData‚Æ‚µ‚Äadvance‚Å‚È‚­wrapping count‚ðŽ‚½‚¹‚é
 	};
@@ -596,20 +589,21 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			size += add;
 			bl = next;
 		}
-		int textureWidth = sr*((size + 1) * _lineInterval);
-		MSRenderTexture msrt(Vec2(textureWidth + 0.5, sr * _maxLineLnegth + 0.5).asPoint());
+		int textureWidth = (int)(sr * (size + 1) * _lineInterval + 1);
+		double ascender = fs_ / 2.0;
+		MSRenderTexture msrt(Size(textureWidth, (int)(sr * _maxLineLnegth + 1)));
 		msrt.clear(Palette::White);
 		{
-			double a = 10;
+			double a = 3;
 			ScopedColorMul2D mul(1, a);
 			ScopedRenderTarget2D target(msrt);
 			LineIterator b = head;
-			Point lineOrigin(textureWidth - _lineInterval, 0);
+			Vec2 lineOrigin(textureWidth - ascender, 0);
 			while (b != bl) {
 				for (auto c : b->cd) {
-					c.glyph->draw(sr * (lineOrigin + c.pos), Palette::Black, 0, sr);
+					c.glyph->draw(lineOrigin + sr * c.pos, Palette::Black, 0, sr);
 				}
-				lineOrigin.x -= b->advance;
+				lineOrigin.x -= sr * b->advance;
 				b = tryNext(b);
 			}
 		}
@@ -627,17 +621,19 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 
 		head->bucketHeader->minimap = msrt;
 		head->bucketHeader->wrapCount = size;
+		head->bucketHeader->advance = (int)(sr * size * _lineInterval + 1);
+		head->bucketHeader->origin = Vec2(textureWidth - ascender, 0);
 
 		head = bl;
 	}
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::tryNext(LineIterator litr, int cnt) {
+GlyphArrangement2::LineIterator GlyphArrangement2::tryNext(LineIterator litr, int cnt) const {
 	for (int i = 0; i < cnt && litr != _data.end(); i++) ++litr;
 	return litr;
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::tryPrev(LineIterator litr, int cnt) {
+GlyphArrangement2::LineIterator GlyphArrangement2::tryPrev(LineIterator litr, int cnt) const {
 	for (int i = 0; i < cnt && litr != _data.begin(); i++) --litr;
 	return litr;
 }
@@ -813,6 +809,24 @@ GlyphArrangement2::CharIterator GlyphArrangement2::lineBegin(LineIterator litr) 
 
 GlyphArrangement2::CharIterator GlyphArrangement2::lineEnd(LineIterator litr) const {
 	return { litr, litr->cd.end() };
+}
+
+GlyphArrangement2::LineIterator GlyphArrangement2::bucket(LineIterator i) const {
+	while (i != _data.begin() && !i->bucketHeader) {
+		i = tryPrev(i);
+	}
+	return i;
+}
+
+GlyphArrangement2::LineIterator GlyphArrangement2::nextBucket(LineIterator i) const {
+	while (i != _data.end() && !i->bucketHeader) {
+		i = tryNext(i);
+	}
+	return i;
+}
+
+double GlyphArrangement2::minimapLineInterval() const {
+	return (double)_minimapFontSize / _font->getFontSize() * _lineInterval;
 }
 
 SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator citr) {
@@ -1068,6 +1082,36 @@ void CleanCopyCursor::update(GA& ga) {
 			double newAdvance = _drawingPos.first->second->glyph->getAdvance().y;
 			_drawingPos.second += newAdvance;
 			_sw.set(_sw.elapsed() - SecondsF(advance / velocity));
+		}
+	}
+}
+
+MinimapView::MinimapView(RectF area, SP<GA> ga)
+: _area(area)
+, _body(area)
+, _ga(ga) {
+}
+
+void MinimapView::draw() const {
+	_area.draw(Palette::White);
+	{
+		ScopedViewport2D viewport(_body);
+		int li = _ga->minimapLineInterval();
+		GA::LineIterator bucket = _ga->begin();
+		Point pen(_body.w, 0);
+		int delta = 0;
+		while (bucket != _ga->end()) {
+			if (_body.h < pen.y) break;
+			SP<GA::BucketHeader> header = bucket->bucketHeader;
+			header->minimap.draw(Arg::topRight(pen + Point(delta, 0)));
+			if (pen.x - header->minimap.width() < 0) {
+				pen = Point(_body.w + pen.x, pen.y + header->minimap.height() + 10);
+			}
+			else {
+				pen.x -= header->advance;
+				bucket = _ga->nextBucket(_ga->tryNext(bucket));
+				delta = 0;
+			}
 		}
 	}
 }

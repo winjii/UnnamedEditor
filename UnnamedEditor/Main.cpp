@@ -195,7 +195,6 @@ void NoBug() {
 }
 
 void WholeViewTest() {
-	
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
@@ -209,7 +208,7 @@ void WholeViewTest() {
 		msrt.clear(Palette::White);
 		{
 			ScopedRenderTarget2D target(msrt);
-			wholeView.minimapTest();
+			wholeView.draw();
 		}
 		Graphics2D::Flush();
 		msrt.resolve();
@@ -399,6 +398,21 @@ void TextInputTest() {
 	}
 }
 
+void MinimapViewTest() {
+	FT_Library lib;
+	FT_Init_FreeType(&lib);
+	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
+	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
+	String IamACat = TextReader(U"IamACat.txt").readAll();
+	wholeView.setText(IamACat);
+	WholeView::MinimapView mview(Rect(Window::ClientSize()), wholeView.GlyphArrangement());
+
+	const ScopedRenderStates2D state(SamplerState::ClampLinear);
+	while (System::Update()) {
+		mview.draw();
+	}
+}
+
 }
 
 void Main()
@@ -420,7 +434,8 @@ void Main()
 		FontShiftTest,
 		GlyphLoadTest,
 		TextInputTest,
-	} runMode = RunMode::WholeViewTest;
+		MinimapViewTest,
+	} runMode = RunMode::MinimapViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -469,5 +484,8 @@ void Main()
 	}
 	else if (runMode == RunMode::TextInputTest) {
 		UnnamedEditor::TextInputTest();
+	}
+	else if (runMode == RunMode::MinimapViewTest) {
+		UnnamedEditor::MinimapViewTest();
 	}
 }
