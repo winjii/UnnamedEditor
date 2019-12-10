@@ -158,7 +158,7 @@ void WholeView::draw() {
 				}
 				citr = _ga->next(citr);
 			}
-			lineOrigin.x -= litr->advance;
+			lineOrigin.x -= litr->wrapCount * _lineInterval;
 			litr = _ga->tryNext(litr);
 		}
 	}
@@ -527,9 +527,11 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 	}
 	Point pen(0, 0);
 	decltype(litr->cd)::iterator itr = litr->cd.begin();
+	int wrapCount = 0;
 	while (itr != litr->cd.end()) {
 		if (pen.y > _maxLineLnegth - _font->getFontSize()) {
 			pen = Point(pen.x - _lineInterval, 0);
+			wrapCount++;
 		}
 		itr->pos = pen;
 		if (!itr->glyph) itr->glyph = _font->renderChar(itr->code);
@@ -546,16 +548,13 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 			itr = litr->cd.erase(itr);
 		else itr = std::next(itr);
 	}
-	litr->advance = -pen.x + _lineInterval;
+	litr->wrapCount = wrapCount + 1;
 	return litr;
 }
 
 void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 	int fs = _font->getFontSize(), fs_ = _minimapFontSize;
 	double sr = ((double)fs_) / fs;
-	auto countWrapping = [&](LineIterator i) {
-		return (int)(i->advance / (double)_lineInterval); //TODO: LineDataとしてadvanceでなくwrapping countを持たせる
-	};
 	auto getBuffer0 = [&](int minWidth) {
 		int w = 1;
 		while (w < minWidth) w *= 2;
@@ -576,10 +575,10 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 		head->bucketHeader.reset(new BucketHeader());
 		LineIterator bl = head;
 		int normalSize = 1000 * fs / _maxLineLnegth;
-		int size = countWrapping(head);
+		int size = head->wrapCount;
 		bl = tryNext(bl);
 		while (bl != last) {
-			int add = countWrapping(bl);
+			int add = bl->wrapCount;
 			LineIterator next = tryNext(bl);
 			if (bl->bucketHeader) {
 				add = bl->bucketHeader->wrapCount;
@@ -603,7 +602,7 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 				for (auto c : b->cd) {
 					c.glyph->draw(lineOrigin + sr * c.pos, Palette::Black, 0, sr);
 				}
-				lineOrigin.x -= sr * b->advance;
+				lineOrigin.x -= sr * b->wrapCount * _lineInterval;
 				b = tryNext(b);
 			}
 		}
@@ -732,15 +731,15 @@ GlyphArrangement2::CharIterator GlyphArrangement2::replaceText(CharIterator firs
 void GlyphArrangement2::scroll(int delta) {
 	_originPos.x -= delta;
 	if (delta < 0) {
-		while (_origin != _data.end() && _lineInterval < _originPos.x - _origin->advance) {
-			_originPos.x -= _origin->advance;
+		while (_origin != _data.end() && _lineInterval < _originPos.x - _origin->wrapCount * _lineInterval) {
+			_originPos.x -= _origin->wrapCount * _lineInterval;
 			_origin = std::next(_origin);
 		}
 	}
 	else {
 		while (_origin != _data.begin() && _lineInterval > _originPos.x) {
 			_origin = std::prev(_origin);
-			_originPos.x += _origin->advance;
+			_originPos.x += _origin->wrapCount * _lineInterval;
 		}
 	}
 }
@@ -882,7 +881,7 @@ void FloatingAnimation::startFloating(GA& ga, GA::CharIterator floatingBegin) {
 	_floatingBegin.reset(new GA::CharIterator(floatingBegin));
 	ga.registerItr(_floatingBegin);
 	GA::LineIterator head = floatingBegin.first;
-	_oldAdvance = _newAdvance = head->advance;
+	_oldAdvance = _newAdvance = head->wrapCount * _lineInterval;
 	int size = std::distance(floatingBegin.second, head->cd.end());
 	_oldHeadPos.resize(size);
 	_newHeadPos.resize(size);
@@ -911,7 +910,7 @@ void FloatingAnimation::updatePos(const GA& ga) {
 	if (_step == Step::Inactive) return;
 	GA::LineIterator head = _floatingBegin->first;
 	_oldAdvance = _newAdvance;
-	_newAdvance = head->advance;
+	_newAdvance = head->wrapCount * _lineInterval;
 	for (int i = 0; i < _oldHeadPos.size(); i++) {
 		auto ritr = std::next(_floatingBegin->second, i);
 		//TODO: アニメーション位置をoldにするとなめらかに遷移できる
@@ -1096,6 +1095,9 @@ void MinimapView::draw() const {
 	_area.draw(Palette::White);
 	{
 		ScopedViewport2D viewport(_body);
+		ColorF c = Palette::Blueviolet;
+		ScopedColorAdd2D colorAdd(c);
+		ScopedColorMul2D colorMul(ColorF(1, 1, 1) - c)	;
 		int li = _ga->minimapLineInterval();
 		GA::LineIterator bucket = _ga->begin();
 		Point pen(_body.w, 0);
@@ -1105,7 +1107,7 @@ void MinimapView::draw() const {
 			SP<GA::BucketHeader> header = bucket->bucketHeader;
 			header->minimap.draw(Arg::topRight(pen + Point(delta, 0)));
 			if (pen.x - header->minimap.width() < 0) {
-				pen = Point(_body.w + pen.x, pen.y + header->minimap.height() + 10);
+				pen = Point(_body.w + pen.x, pen.y + header->minimap.height() + (int)(_ga->minimapLineInterval()*2));
 			}
 			else {
 				pen.x -= header->advance;

@@ -226,7 +226,7 @@ public:
 	};
 	struct LineData {
 		std::vector<CharData> cd; //テキスト末尾に改行
-		int advance;
+		int wrapCount;
 		SP<BucketHeader> bucketHeader;
 	};
 private:
@@ -239,7 +239,7 @@ private:
 	SP<CharIterator> _cursor;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
-	const int _minimapFontSize = 8;
+	const double _minimapFontSize = 1.75014897095213;
 
 	//glyph, posを計算する。cd.empty()だったら削除
 	LineIterator initLine(LineIterator litr);
@@ -248,6 +248,7 @@ private:
 public:
 	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength);
 
+	SP<Font::FixedFont> _font;
 	void registerItr(SP<CharIterator> itr);
 	void removeItr(SP<CharIterator> itr);
 	LineIterator tryNext(LineIterator litr, int cnt = 1) const;
@@ -270,6 +271,7 @@ public:
 	LineIterator bucket(LineIterator litr) const;
 	LineIterator nextBucket(LineIterator litr) const;
 	double minimapLineInterval() const;
+	double minimapScale() const;
 
 	//NULL文字を挿入すると番兵などに使える。ただしそれを含む範囲をeraseしないよう注意
 	//NULL文字は参照が切れていたらinitLine時に自動で削除される
@@ -471,6 +473,12 @@ public:
 	void draw();
 	void minimapTest();
 	SP<GlyphArrangement2> GlyphArrangement() const;
+};
+
+
+class MinimapHighlight {
+private:
+public:
 };
 
 
