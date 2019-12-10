@@ -248,7 +248,7 @@ private:
 public:
 	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength);
 
-	SP<Font::FixedFont> _font;
+	SP<Font::FixedFont> font();
 	void registerItr(SP<CharIterator> itr);
 	void removeItr(SP<CharIterator> itr);
 	LineIterator tryNext(LineIterator litr, int cnt = 1) const;
@@ -477,8 +477,15 @@ public:
 
 
 class MinimapHighlight {
+	using GA = GlyphArrangement2;
 private:
+	Vec2 _origin;
+	GA::LineIterator _litr;
+	SP<Font::FixedFont> _font;
+	double _minimapScale;
+	AnimationProgress _ap;
 public:
+	void draw();
 };
 
 

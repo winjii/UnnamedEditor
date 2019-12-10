@@ -591,16 +591,17 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 		int textureWidth = (int)(sr * (size + 1) * _lineInterval + 1);
 		double ascender = fs_ / 2.0;
 		MSRenderTexture msrt(Size(textureWidth, (int)(sr * _maxLineLnegth + 1)));
-		msrt.clear(Palette::White);
+		msrt.clear(ColorF(0, 0, 0, 0));
 		{
 			double a = 3;
 			ScopedColorMul2D mul(1, a);
 			ScopedRenderTarget2D target(msrt);
+			ScopedRenderStates2D state(BlendState::Opaque); //“§–¾‚È”wŒi‚É‘‚«ž‚Þ‚½‚ß
 			LineIterator b = head;
 			Vec2 lineOrigin(textureWidth - ascender, 0);
 			while (b != bl) {
 				for (auto c : b->cd) {
-					c.glyph->draw(lineOrigin + sr * c.pos, Palette::Black, 0, sr);
+					c.glyph->draw(lineOrigin + sr * c.pos, Palette::White, 0, sr);
 				}
 				lineOrigin.x -= sr * b->wrapCount * _lineInterval;
 				b = tryNext(b);
@@ -1096,8 +1097,8 @@ void MinimapView::draw() const {
 	{
 		ScopedViewport2D viewport(_body);
 		ColorF c = Palette::Blueviolet;
-		ScopedColorAdd2D colorAdd(c);
-		ScopedColorMul2D colorMul(ColorF(1, 1, 1) - c)	;
+		//ScopedColorAdd2D colorAdd(c);
+		//ScopedColorMul2D colorMul(ColorF(1, 1, 1) - c);
 		int li = _ga->minimapLineInterval();
 		GA::LineIterator bucket = _ga->begin();
 		Point pen(_body.w, 0);
@@ -1105,7 +1106,7 @@ void MinimapView::draw() const {
 		while (bucket != _ga->end()) {
 			if (_body.h < pen.y) break;
 			SP<GA::BucketHeader> header = bucket->bucketHeader;
-			header->minimap.draw(Arg::topRight(pen + Point(delta, 0)));
+			header->minimap.draw(Arg::topRight(pen + Point(delta, 0)), Palette::Blue);
 			if (pen.x - header->minimap.width() < 0) {
 				pen = Point(_body.w + pen.x, pen.y + header->minimap.height() + (int)(_ga->minimapLineInterval()*2));
 			}
@@ -1117,6 +1118,14 @@ void MinimapView::draw() const {
 		}
 	}
 }
+
+//void MinimapHighlight::draw() {
+//	for (auto c : _litr->cd) {
+//		Vec2 p = _origin + _minimapScale * c.pos;
+//		p = _ap.getProgress()
+//		c.glyph->draw(p, Palette::Black, 0, _minimapScale);
+//	}
+//}
 
 }
 }
