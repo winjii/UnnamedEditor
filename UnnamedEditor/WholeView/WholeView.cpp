@@ -553,7 +553,8 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 }
 
 void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
-	int fs = _font->getFontSize(), fs_ = _minimapFontSize;
+	int fs = _font->getFontSize();
+	double fs_ = _minimapFontSize;
 	double sr = ((double)fs_) / fs;
 	auto getBuffer0 = [&](int minWidth) {
 		int w = 1;
@@ -826,7 +827,7 @@ GlyphArrangement2::LineIterator GlyphArrangement2::nextBucket(LineIterator i) co
 }
 
 double GlyphArrangement2::minimapLineInterval() const {
-	return (double)_minimapFontSize / _font->getFontSize() * _lineInterval;
+	return _minimapFontSize / (double)_font->getFontSize() * _lineInterval;
 }
 
 SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator citr) {
@@ -1092,23 +1093,53 @@ MinimapView::MinimapView(RectF area, SP<GA> ga)
 , _ga(ga) {
 }
 
-void MinimapView::draw() const {
+void MinimapView::draw() {
 	_area.draw(Palette::White);
 	{
 		ScopedViewport2D viewport(_body);
+		Transformer2D transform(Mat3x2::Identity(), Mat3x2::Translate(_body.pos));
 		ColorF c = Palette::Blueviolet;
 		//ScopedColorAdd2D colorAdd(c);
 		//ScopedColorMul2D colorMul(ColorF(1, 1, 1) - c);
-		int li = _ga->minimapLineInterval();
+		double li = _ga->minimapLineInterval();
 		GA::LineIterator bucket = _ga->begin();
 		Point pen(_body.w, 0);
 		int delta = 0;
 		while (bucket != _ga->end()) {
 			if (_body.h < pen.y) break;
 			SP<GA::BucketHeader> header = bucket->bucketHeader;
-			header->minimap.draw(Arg::topRight(pen + Point(delta, 0)), Palette::Blue);
+			const auto& map = header->minimap;
+			header->minimap.draw(Arg::topRight(pen + Point(delta, 0)), Palette::Black);
+			
+			int xEnd = pen.x + delta, xBegin = std::max(0, pen.x + delta - header->advance);
+			if (Rect(xBegin, pen.y, xEnd - xBegin, map.height()).contains(Cursor::Pos())) {
+				//header->minimap.region(pen + Point(delta - header->minimap.width(), 0)).draw(Palette::Orange);
+				//RectF(xBegin, pen.y, xEnd - xBegin, map.height()).draw(Palette::Red);
+				GA::LineIterator litr = bucket;
+				double x = pen.x + delta;
+				double nx = x;
+				while (true) {
+					nx = x - litr->wrapCount * li;
+					if (nx < Cursor::PosF().x) break;
+					x = nx;
+					litr = _ga->tryNext(litr);
+				}
+				/*for (int i = 0; i < litr->wrapCount; i++) {
+					Circle(Vec2(x - i * li, pen.y), 2).draw(Palette::Yellow);
+				}
+				Circle(Vec2(x, pen.y), 5).draw(Palette::Blue);
+				Circle(pen + Vec2(delta - map.width(), 0), 5).draw(Palette::Red);
+				Circle(Vec2(x - litr->wrapCount * li, pen.y), 5).draw(Palette::Yellow);*/
+				if (MinimapHighlight::IsEmpty(litr->highlight)) {
+					RectF r(nx - (pen.x - map.width()), 0, x - nx, map.height());
+					litr->highlight.reset(new MinimapHighlight(map, r, Vec2(x, pen.y)));
+					_tmpManager.registerPointer(litr->highlight);
+				}
+				litr->highlight->keep();
+			}
+
 			if (pen.x - header->minimap.width() < 0) {
-				pen = Point(_body.w + pen.x, pen.y + header->minimap.height() + (int)(_ga->minimapLineInterval()*2));
+				pen = Point(_body.w + pen.x, pen.y + header->minimap.height() + (int)(li * 2));
 			}
 			else {
 				pen.x -= header->advance;
@@ -1117,6 +1148,7 @@ void MinimapView::draw() const {
 			}
 		}
 	}
+	_tmpManager.update();
 }
 
 //void MinimapHighlight::draw() {

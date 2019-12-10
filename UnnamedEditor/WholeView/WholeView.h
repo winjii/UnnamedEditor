@@ -33,6 +33,42 @@ public:
 };
 
 
+//TODO: startまで空でもよくないか
+class AnimationProgress {
+public:
+	enum class Step {
+		Inactive,
+		Animating,
+		Stable,
+	};
+private:
+	Stopwatch _sw;
+	double _animationTime, _progress;
+	Step _step;
+public:
+	AnimationProgress() : _animationTime(), _sw(), _progress(0), _step(Step::Inactive) {}
+	Step getStep() const { return _step; }
+	bool isAnimating() const { return _step == Step::Animating; }
+	bool isStable() const { return _step == Step::Stable; }
+	double getProgress() const { return _progress; }
+	void start(double animationTime) {
+		_animationTime = animationTime;
+		_progress = 0;
+		_sw.restart();
+		_step = Step::Animating;
+	}
+	void update() {
+		if (_step != Step::Animating) return;
+		_progress = _sw.sF() / _animationTime;
+		if (_progress > 1) {
+			_progress = 1;
+			_sw.reset();
+			_step = Step::Stable;
+		}
+	}
+};
+
+
 //↓xとyを取り替えるだけでなく正負なども変えなきゃいけない...
 //仮想的なテキスト内座標を作って描画時に変換したほうが良さそう
 //class TextDirection {
@@ -161,38 +197,99 @@ public:
 };
 
 
-//文字の見た目を一時的に変化させる
-class TemporaryCharRender {
+//自力で消滅して欲しいデータ
+class TemporaryData {
 public:
-	class Pointer : protected SP<TemporaryCharRender> {
-		using Base = SP<TemporaryCharRender>;
-	public:
-		bool isValid() const { return operator bool(); }
-		void destroy() { Base::reset(); }
-		TemporaryCharRender* operator->() const { return Base::operator->(); }
-		TemporaryCharRender& operator*() const { return Base::operator*(); }
-	};
+	//殺されたくないうちはtrueを差し出す
+	//1フレーム1回
+	virtual bool update() = 0;
+	
+	virtual void destroy() = 0;
+	virtual bool isEmpty() = 0;
+
+	static bool IsEmpty(SP<TemporaryData> p) {
+		return !p || p->isEmpty();
+	}
+
 	class Manager { //Pointerを管理して自動で無効にする
 	private:
-		std::list<SP<TemporaryCharRender::Pointer>> _data;
+		std::list<SP<TemporaryData>> _data;
 	public:
-		void update() {
+		void update() { //1フレーム1回
 			auto itr = _data.begin();
 			while (itr != _data.end()) {
-				if (!(**itr)->update()) {
+				if (!(*itr)->update()) {
 					(*itr)->destroy();
 					itr = _data.erase(itr);
 				}
 				else ++itr;
 			}
 		}
-		void registerPointer(SP<TemporaryCharRender::Pointer> p) {
+		void registerPointer(SP<TemporaryData> p) {
 			_data.push_back(p);
 		}
 	};
+};
 
-	virtual bool update() = 0; //殺されたくないうちはtrueを差し出す
-	virtual void draw(Vec2 pos) = 0;
+
+class MinimapHighlight : public TemporaryData {
+public:
+	enum class Step { In, Out };
+private:
+	class Inner {
+		friend MinimapHighlight;
+		Texture _texture;
+		RectF _region;
+		Vec2 _pos;
+		Step _step;
+		Step _nextStep;
+		Stopwatch _sw;
+		double _scale;
+		ColorF _color;
+		bool update() {
+			double maxTime = 0.5;
+			double r = _sw.sF() / maxTime;
+			if (r > 1) {
+				r = 1;
+				_sw.pause();
+			}
+			double t = (_step == Step::In) ? r : 1 - r;
+			if (_step == Step::Out && _sw.isPaused()) return false;
+			double delta = 0.05;
+			_scale = 1 + delta * t;
+			_color = EaseOut(Easing::Linear, Palette::Black, Palette::Orangered, t);
+			if (_step != _nextStep) {
+				_sw.pause();
+				_sw.set((SecondsF)(maxTime - _sw.sF()));
+				_sw.start();
+			}
+			_step = _nextStep;
+			_nextStep = Step::Out;
+
+			RectF(Vec2(_pos.x - _region.w, _pos.y), _region.w, _region.h).draw(Palette::White);
+			Vec2 c = Vec2(_pos.x - _region.w / 2.0, _pos.y + _region.h / 2.0);
+			_texture(_region).scaled(_scale).draw(Arg::center(c), Palette::Red);
+			return true;
+		}
+		void keep() {
+			_nextStep = Step::In;
+		}
+	};
+	UP<Inner> _inner;
+public:
+	MinimapHighlight(Texture texture, RectF region, Vec2 pos) {
+		_inner.reset(new Inner());
+		_inner->_texture = texture;
+		_inner->_region = region;
+		_inner->_pos = pos;
+		_inner->_step = Step::In;
+		_inner->_nextStep = Step::In;
+		_inner->_sw.start();
+	}
+	virtual bool update() { return _inner->update(); }
+	virtual void destroy() { _inner.reset(); }
+	virtual bool isEmpty() { return _inner == nullptr; }
+	void keep() { _inner->keep(); }
 };
 
 
@@ -228,6 +325,7 @@ public:
 		std::vector<CharData> cd; //テキスト末尾に改行
 		int wrapCount;
 		SP<BucketHeader> bucketHeader;
+		SP<MinimapHighlight> highlight;
 	};
 private:
 	SP<Font::FixedFont> _font;
@@ -239,7 +337,7 @@ private:
 	SP<CharIterator> _cursor;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
-	const double _minimapFontSize = 1.75014897095213;
+	const double _minimapFontSize = 8;
 
 	//glyph, posを計算する。cd.empty()だったら削除
 	LineIterator initLine(LineIterator litr);
@@ -278,40 +376,6 @@ public:
 	//↑しかしいつ削除されるか分からないのでdeleteNullしたほうがいい
 	SP<CharIterator> makeNull(CharIterator citr);
 	void deleteNull(SP<CharIterator> nullItr); //イテレータは壊れる
-};
-
-
-//TODO: startまで空でもよくないか
-class AnimationProgress {
-public:
-	enum class Step {
-		Inactive,
-		Animating,
-		Stable,
-	};
-private:
-	Stopwatch _sw;
-	double _animationTime, _progress;
-	Step _step;
-public:
-	AnimationProgress(): _animationTime(), _sw(), _progress(0), _step(Step::Inactive) {}
-	Step getStep() const { return _step; }
-	double getProgress() const { return _progress; }
-	void start(double animationTime) {
-		_animationTime = animationTime;
-		_progress = 0;
-		_sw.restart();
-		_step = Step::Animating;
-	}
-	void update() {
-		if (_step != Step::Animating) return;
-		_progress = _sw.sF() / _animationTime;
-		if (_progress > 1) {
-			_progress = 1;
-			_sw.reset();
-			_step = Step::Stable;
-		}
-	}
 };
 
 
@@ -476,28 +540,16 @@ public:
 };
 
 
-class MinimapHighlight {
-	using GA = GlyphArrangement2;
-private:
-	Vec2 _origin;
-	GA::LineIterator _litr;
-	SP<Font::FixedFont> _font;
-	double _minimapScale;
-	AnimationProgress _ap;
-public:
-	void draw();
-};
-
-
 class MinimapView {
 	using GA = GlyphArrangement2;
 private:
 	RectF _area;
 	Rect _body;
 	SP<GA> _ga;
+	TemporaryData::Manager _tmpManager;
 public:
 	MinimapView(RectF area, SP<GA> ga);
-	void draw() const;
+	void draw();
 };
 
 
