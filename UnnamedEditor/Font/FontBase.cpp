@@ -32,6 +32,7 @@ SP<Glyph> FontBase::renderChar(GlyphIndex gid, int fontSize) {
 			image[r][c] = ColorF(Palette::White, gray.v);
 		}
 	}
+	if (_retouchImage) _retouchImage(image);
 	if (_isVertical) {
 		ret.reset(new Glyph(_isVertical,
 							fontSize,
@@ -57,14 +58,18 @@ SP<Glyph> FontBase::renderChar(GlyphIndex gid, int fontSize) {
 	return ret;
 }
 
-FontBase::FontBase(FTLibraryWrapper lib, std::string fontPath, bool isVertical)
+FontBase::FontBase(FTLibraryWrapper lib, FTFaceWrapper face, bool isVertical)
 : _lib(lib)
-, _face(lib, fontPath)
+, _face(face)
 , _isVertical(isVertical) {
 	FT_Select_Charmap(_face.raw(), FT_Encoding_::FT_ENCODING_UNICODE);
 	_gsubReader = SP<GsubReader>(new GsubReader(_face.raw()));
 	_ascender = _face->ascender/64.0; //TODO: scalable(outline)ƒtƒHƒ“ƒg‚Ìê‡‚Í26.6 pixcel format‚¶‚á‚È‚¢
 	_descender = _face->descender/64.0;
+}
+
+FontBase::FontBase(FTLibraryWrapper lib, std::string fontPath, bool isVertical)
+: FontBase(lib, FTFaceWrapper(lib, fontPath), isVertical) {
 }
 
 FTLibraryWrapper FontBase::ftLibrary() {
@@ -86,6 +91,10 @@ double FontBase::descender() {
 Line FontBase::getCursor(Vec2 pen, double fontSize) {
 	if (!_isVertical) return Line(pen.x, pen.y + _ascender, pen.x, pen.y + _descender);
 	return Line(Vec2(pen.x - fontSize/2, pen.y), Vec2(pen.x + fontSize/2, pen.y));
+}
+
+void FontBase::setRetouchImage(std::function<void(Image&)> retouchImage) {
+	_retouchImage = retouchImage;
 }
 
 }

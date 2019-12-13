@@ -546,10 +546,13 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 		}
 		itr->pos = pen;
 		if (!itr->glyph) {
-			if (itr->code == Text::Text::NEWLINE || itr->code == Text::Text::NULL_CHAR)
-				itr->glyph = Font::Glyph::EmptyGlyph();
-			else
+			if (itr->code == Text::Text::NEWLINE || itr->code == Text::Text::NULL_CHAR) {
+				itr->glyph = itr->blurred = Font::Glyph::EmptyGlyph();
+			}
+			else {
 				itr->glyph = _font->renderChar(itr->code);
+				itr->blurred = _blurredFont->renderChar(itr->code);
+			}
 		}
 		//TODO: Glyph‚ð‚¿‚á‚ñ‚Æ®”À•W‚É‘Î‰ž
 		pen += itr->glyph->getAdvance().asPoint();
@@ -618,7 +621,7 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			Vec2 lineOrigin(textureWidth - ascender, 0);
 			while (b != bl) {
 				for (auto c : b->cd) {
-					c.glyph->draw(lineOrigin + sr * c.pos, Palette::White, 0, sr);
+					c.blurred->draw(lineOrigin + sr * c.pos, Palette::White, 0, sr);
 				}
 				lineOrigin.x -= sr * b->wrapCount * _lineInterval;
 				b = tryNext(b);
@@ -660,6 +663,7 @@ void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 
 GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength)
 : _font(font)
+, _blurredFont(new Font::FixedFont(font->ftLibrary(), font->ftFace(), font->getFontSize(), font->isVertical()))
 , _data()
 , _lineInterval(lineInterval)
 , _maxLineLnegth(maxLineLength)
@@ -673,6 +677,11 @@ GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval,
 	_cursor->first = _origin = _data.begin();
 	_cursor->second = _data.begin()->cd.begin();
 	registerItr(_cursor);
+
+	auto blur = [&](Image& img) {
+		img.gaussianBlur(2, 2);
+	};
+	_blurredFont->setRetouchImage(blur);
 }
 
 GlyphArrangement2::CharIterator GlyphArrangement2::insertText(CharIterator citr, const String& s) {

@@ -21,9 +21,13 @@ private:
 
 public:
 
+	FixedFont(FTLibraryWrapper lib, FTFaceWrapper face, int pixelSize, bool isVertical = false);
+
 	FixedFont(FTLibraryWrapper lib, std::string fontPath, int pixelSize, bool isVertical = false);
 
 	int getFontSize();
+
+	bool isVertical();
 
 	Line getCursor(Vec2 pen);
 

@@ -70,6 +70,8 @@ protected:
 
 	SP<FontDataPicker::GsubReader> _gsubReader;
 
+	std::function<void(Image&)> _retouchImage;
+
 
 
 	FontDataPicker::GlyphIndex getGID(char16_t charCode);
@@ -77,6 +79,8 @@ protected:
 	SP<Glyph> renderChar(FontDataPicker::GlyphIndex gid, int size);
 
 public:
+
+	FontBase(FTLibraryWrapper lib, FTFaceWrapper face, bool isVertical);
 
 	FontBase(FTLibraryWrapper lib, std::string fontPath, bool isVertical);
 
@@ -89,6 +93,8 @@ public:
 	double descender();
 
 	Line getCursor(Vec2 pen, double fontSize);
+
+	void setRetouchImage(std::function<void(Image&)> retouchImage);
 
 };
 

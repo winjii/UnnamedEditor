@@ -10,14 +10,20 @@ namespace UnnamedEditor {
 namespace Font {
 
 
-FixedFont::FixedFont(FTLibraryWrapper lib, std::string fontPath, int pixelSize, bool isVertical)
-: FontBase(lib, fontPath, isVertical)
+FixedFont::FixedFont(FTLibraryWrapper lib, FTFaceWrapper face, int pixelSize, bool isVertical)
+: FontBase(lib, face, isVertical)
 , _fontSize(pixelSize) {
-	
 }
+
+FixedFont::FixedFont(FTLibraryWrapper lib, std::string fontPath, int pixelSize, bool isVertical)
+: FixedFont(lib, FTFaceWrapper(lib, fontPath), pixelSize, isVertical) { }
 
 int FixedFont::getFontSize() {
 	return _fontSize;
+}
+
+bool FixedFont::isVertical() {
+	return _isVertical;
 }
 
 Line FixedFont::getCursor(Vec2 pen) {

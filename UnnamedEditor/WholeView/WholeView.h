@@ -311,6 +311,7 @@ public:
 	struct CharData {
 		char16_t code;
 		SP<const Font::Glyph> glyph;
+		SP<const Font::Glyph> blurred;
 		std::list<SP<CharIterator>> itrs;
 		Point pos; //line内での相対的な位置
 	};
@@ -328,6 +329,7 @@ public:
 	};
 private:
 	SP<Font::FixedFont> _font;
+	SP<Font::FixedFont> _blurredFont;
 	std::list<LineData> _data;
 	int _lineInterval;
 	int _maxLineLnegth;
@@ -336,7 +338,7 @@ private:
 	SP<CharIterator> _cursor;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
-	const double _minimapFontSize = 14;
+	const double _minimapFontSize = 4;
 
 	//glyph, posを計算する。cd.empty()だったら削除
 	LineIterator initLine(LineIterator litr);
