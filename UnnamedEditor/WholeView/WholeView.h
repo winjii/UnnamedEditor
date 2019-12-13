@@ -247,7 +247,7 @@ private:
 		double _scale;
 		ColorF _color;
 		bool update() {
-			double maxTime = 0.5;
+			double maxTime = 0.35;
 			double r = _sw.sF() / maxTime;
 			if (r > 1) {
 				r = 1;
@@ -256,7 +256,7 @@ private:
 			double t = (_step == Step::In) ? r : 1 - r;
 			if (_step == Step::Out && _sw.isPaused()) return false;
 			double delta = 0.05;
-			_scale = 1 + delta * t;
+			_scale = 1 + delta * EaseOut(Easing::Expo, t);
 			_color = EaseOut(Easing::Linear, Palette::Black, Palette::Orangered, t);
 			if (_step != _nextStep) {
 				_sw.pause();
@@ -300,7 +300,6 @@ public:
 //↑あるバケットが更新されたらその一つ手前のバケットから再計算→統合できるのにされていない隣接バケットが生まれない→例えばn=1000だとしたら、最悪ケースでも500と501や1000と1のバケットが交互に並ぶだけ→バケットの最大個数は2√nくらいで抑えられる
 //テキストの変更をまたいで使うイテレータはちゃんとregisterItr()する。ただしこれらのイテレータを含む範囲を削除してはいけない...
 //TODO: 末尾の改行消さないようにする
-//TODO: 管理されたイテレータが削除されるケースをどうにかしたい
 //TODO: cursor持つのこいつか？
 //TODO: 管理されたイテレータは自分でremoveItrを呼び出すようにすればいいのでは
 class GlyphArrangement2 {
@@ -337,7 +336,7 @@ private:
 	SP<CharIterator> _cursor;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
-	const double _minimapFontSize = 8;
+	const double _minimapFontSize = 14;
 
 	//glyph, posを計算する。cd.empty()だったら削除
 	LineIterator initLine(LineIterator litr);
@@ -352,7 +351,7 @@ public:
 	LineIterator tryNext(LineIterator litr, int cnt = 1) const;
 	LineIterator tryPrev(LineIterator litr, int cnt = 1) const;
 	CharIterator insertText(CharIterator citr, const String &s);
-	CharIterator eraseText(CharIterator first, CharIterator last);
+	CharIterator eraseText(CharIterator first, CharIterator last); //管理されたイテレータはlastにどかす
 	CharIterator replaceText(CharIterator first, CharIterator last, const String& s);
 	void scroll(int delta);
 	CharIterator next(CharIterator citr, bool overLine = false, int cnt = 1) const;
@@ -523,6 +522,7 @@ private:
 	InputManager _inputManager;
 	RenderTexture _masker;
 	RenderTexture _maskee;
+	MSRenderTexture _foreground;
 	const PixelShader _maskPS;
 
 	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
@@ -531,7 +531,7 @@ private:
 public:
 
 	//font: verticalでなければならない(これ設計汚くない？)
-	WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font);
+	WholeView(Rect area, SP<Font::FixedFont> font);
 
 	void setText(const String &text);
 	void draw();

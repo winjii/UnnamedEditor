@@ -32,9 +32,8 @@ Vec2 WholeView::floatingTextIn(Vec2 source, Vec2 target, double t, int i)
 //	return Vec2(target.x, area.y + area.h - delta);
 //}
 
-//TODO: 最初からRectで受け取る
-WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::FixedFont> font)
-: _area(pos, size)
+WholeView::WholeView(const Rect area, SP<Font::FixedFont> font)
+: _area(area)
 , _textArea(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1))
 , _lineInterval((int)(font->getFontSize()*1.25))
 , _font(font)
@@ -45,6 +44,7 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _inputManager(_lineInterval, _textArea.h)
 , _masker(_textArea.size)
 , _maskee(_textArea.size)
+, _foreground(area.size)
 , _maskPS(U"example/shader/2d/multi_texture_mask" SIV3D_SELECT_SHADER(U".hlsl", U".frag"), { { U"PSConstants2D", 0 } }) {
 	_floating = _inputManager.floatingAnimation();
 }
@@ -94,7 +94,7 @@ void WholeView::draw() {
 	if (!_floating->isInactive()) {
 		bool onEnd = *_ga->cursor() == cccursor->drawingPos().first && cccursor->isStable();
 		if (!cccursor->isStable()) addend = U"";
-		if (KeyEnter.down() && !onEnd) cccursor->startAdvancing();
+		if (KeyEnter.down() && !onEnd && _ju.isSettled()) cccursor->startAdvancing();
 		else if (KeyEnter.up()) cccursor->stop();
 		else if (KeyBackspace.down()) cccursor->startRetreating();
 		else if (KeyBackspace.up()) cccursor->stop();
@@ -125,15 +125,21 @@ void WholeView::draw() {
 	if (_inputManager.isInputing()) cccursor->update();
 
 	Vec2 maskStart, maskEnd;
-	_area.draw(Palette::White);
 	_masker.clear(Palette::White);
-	_maskee.clear(Palette::White);
+	_maskee.clear(ColorF(0, 0, 0, 0));
+	_area.draw(Palette::White);
+	_foreground.clear(ColorF(0, 0, 0, 0));
 	{
+		BlendState bs = BlendState::Default;
+		bs.srcAlpha = Blend::One;
+		bs.dstAlpha = Blend::Zero;
+		ScopedRenderStates2D renderState(bs);
 		ScopedRenderTarget2D target(_maskee);
 
 		auto drawCursor = [&](Vec2 pos) {
+			ScopedRenderTarget2D tmp(_foreground);
 			double t = Scene::Time() * 2 * Math::Pi / 2.5;
-			_font->getCursor(pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
+			_font->getCursor(pos + _textArea.pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
 		};
 
 		using GA = GlyphArrangement2;
@@ -184,6 +190,9 @@ void WholeView::draw() {
 		_maskee.draw(_textArea.pos);
 		Graphics2D::SetTexture(1, none);
 	}
+	Graphics2D::Flush();
+	_foreground.resolve();
+	_foreground.draw(_area.pos);
 	/*auto itr = _textWindow.calcDrawBegin();
 	auto debug = itr;
 	auto twEnd = _textWindow.calcDrawEnd();
@@ -563,17 +572,6 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 	int fs = _font->getFontSize();
 	double fs_ = _minimapFontSize;
 	double sr = ((double)fs_) / fs;
-	auto getBuffer0 = [&](int minWidth) {
-		int w = 1;
-		while (w < minWidth) w *= 2;
-		if (!_bufferTexture0 || _bufferTexture0->width() < w)
-			_bufferTexture0.reset(new MSRenderTexture(w, _maxLineLnegth));
-		if (!_bufferTexture1 || _bufferTexture1->width() < w)
-			_bufferTexture1.reset(new RenderTexture(w, _maxLineLnegth));
-		_bufferTexture0->clear(Palette::White);
-		_bufferTexture1->clear(Palette::White);
-		return make_pair(_bufferTexture0, _bufferTexture1);
-	};
 
 	if (first == last) return;
 	first = bucket(first);
@@ -599,12 +597,15 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 		int textureWidth = (int)(sr * (size + 1) * _lineInterval + 1);
 		double ascender = fs_ / 2.0;
 		MSRenderTexture msrt(Size(textureWidth, (int)(sr * _maxLineLnegth + 1)));
-		msrt.clear(ColorF(0, 0, 0, 0));
+		msrt.clear(ColorF(Palette::White, 0));
 		{
 			double a = 3;
 			ScopedColorMul2D mul(1, a);
 			ScopedRenderTarget2D target(msrt);
-			ScopedRenderStates2D state(BlendState::Opaque); //透明な背景に書き込むため
+			BlendState bs = BlendState::Default;
+			bs.srcAlpha = Blend::One;
+			bs.dstAlpha = Blend::Zero;
+			ScopedRenderStates2D state(bs);
 			LineIterator b = head;
 			Vec2 lineOrigin(textureWidth - ascender, 0);
 			while (b != bl) {
@@ -615,15 +616,6 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 				b = tryNext(b);
 			}
 		}
-		/*Graphics2D::Flush();
-		buf0->resolve();
-		Shader::GaussianBlur(*buf0, *buf1, Vec2(1.5, 0));
-		MSRenderTexture msrt((sr * Size(textureWidth, _maxLineLnegth) + Vec2(0.5, 0.5)).asPoint());
-		msrt.clear(Palette::White);
-		{
-			ScopedRenderTarget2D target(msrt);
-			buf1->scaled(sr).draw();
-		}*/
 		Graphics2D::Flush();
 		msrt.resolve();
 
@@ -711,8 +703,16 @@ GlyphArrangement2::CharIterator GlyphArrangement2::insertText(CharIterator citr,
 }
 
 GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first, CharIterator last) {
+	if (first == last) return first;
+	
+	//管理されたイテレータの退避
+	for (auto itr = first; itr != last; itr = next(itr, true)) {
+		for (auto managedItr : itr.second->itrs) {
+			*managedItr = last;
+			last.second->itrs.push_back(managedItr);
+		}
+	}
 	if (first.first == last.first) {
-		if (first.second == last.second) return first;
 		auto ret1 = first.first->cd.erase(first.second, last.second);
 		auto litr = initLine(first.first);
 		initBucket(litr, tryNext(litr));
@@ -1109,6 +1109,10 @@ MinimapView::MinimapView(RectF area, SP<GA> ga)
 }
 
 void MinimapView::draw() {
+	BlendState bs = BlendState::Default;
+	bs.srcAlpha = Blend::One;
+	bs.dstAlpha = Blend::Zero;
+	ScopedRenderStates2D state(bs);
 	_area.draw(Palette::White);
 	{
 		ScopedViewport2D viewport(_body);
@@ -1119,48 +1123,43 @@ void MinimapView::draw() {
 		double li = _ga->minimapLineInterval();
 		GA::LineIterator bucket = _ga->begin();
 		Point pen(_body.w, 0);
-		int delta = 0;
 		while (bucket != _ga->end()) {
 			if (_body.h < pen.y) break;
+			GA::LineIterator nextBucket = _ga->nextBucket(_ga->tryNext(bucket));
 			SP<GA::BucketHeader> header = bucket->bucketHeader;
 			const auto& map = header->minimap;
-			header->minimap.draw(Arg::topRight(pen + Point(delta, 0)), Palette::Black);
 			
-			int xEnd = pen.x + delta, xBegin = std::max(0, pen.x + delta - header->advance);
-			if (Rect(xBegin, pen.y, xEnd - xBegin, map.height()).contains(Cursor::Pos())) {
-				//header->minimap.region(pen + Point(delta - header->minimap.width(), 0)).draw(Palette::Orange);
-				//RectF(xBegin, pen.y, xEnd - xBegin, map.height()).draw(Palette::Red);
-				GA::LineIterator litr = bucket;
-				double x = pen.x + delta;
-				double nx = x;
-				while (true) {
-					nx = x - litr->wrapCount * li;
-					if (nx < Cursor::PosF().x) break;
-					x = nx;
-					litr = _ga->tryNext(litr);
-				}
-				/*for (int i = 0; i < litr->wrapCount; i++) {
-					Circle(Vec2(x - i * li, pen.y), 2).draw(Palette::Yellow);
-				}
-				Circle(Vec2(x, pen.y), 5).draw(Palette::Blue);
-				Circle(pen + Vec2(delta - map.width(), 0), 5).draw(Palette::Red);
-				Circle(Vec2(x - litr->wrapCount * li, pen.y), 5).draw(Palette::Yellow);*/
-				if (MinimapHighlight::IsEmpty(litr->highlight)) {
-					RectF r(nx - (pen.x - map.width()), 0, x - nx, map.height());
-					litr->highlight.reset(new MinimapHighlight(map, r, Vec2(x, pen.y)));
-					_tmpManager.registerPointer(litr->highlight);
-				}
-				litr->highlight->keep();
-			}
+			while (true) {
+				header->minimap.draw(Arg::topRight(pen), Palette::Black);
+				int xEnd = pen.x, xBegin = std::max(0, pen.x - header->advance);
+				if (Rect(xBegin, pen.y, xEnd - xBegin, map.height()).contains(Cursor::Pos())) {
+					//header->minimap.region(pen + Point(delta - header->minimap.width(), 0)).draw(Palette::Orange);
+					//RectF(xBegin, pen.y, xEnd - xBegin, map.height()).draw(Palette::Red);
+					GA::LineIterator litr = bucket;
+					double x = pen.x;
+					double nx = x;
+					while (litr != nextBucket) {
+						nx = x - litr->wrapCount * li;
+						if (nx < Cursor::PosF().x) break;
+						x = nx;
+						litr = _ga->tryNext(litr);
+					}
 
-			if (pen.x - header->minimap.width() < 0) {
+					if (litr != nextBucket) {
+						if (MinimapHighlight::IsEmpty(litr->highlight)) {
+							RectF r(nx - (pen.x - map.width()), 0, x - nx, map.height());
+							litr->highlight.reset(new MinimapHighlight(map, r, Vec2(x, pen.y)));
+							_tmpManager.registerPointer(litr->highlight);
+						}
+						litr->highlight->keep();
+					}
+				}
+				if (pen.x - header->minimap.width() >= 0) break;
 				pen = Point(_body.w + pen.x, pen.y + header->minimap.height() + (int)(li * 2));
 			}
-			else {
-				pen.x -= header->advance;
-				bucket = _ga->nextBucket(_ga->tryNext(bucket));
-				delta = 0;
-			}
+
+			pen.x -= header->advance;
+			bucket = nextBucket;
 		}
 	}
 	_tmpManager.update();

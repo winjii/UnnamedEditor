@@ -198,22 +198,14 @@ void WholeViewTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
-	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
+	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font);
 	//String IamACat = TextReader(U"IamACat.txt").readAll();
 	//wholeView.setText(IamACat);
 
-	MSRenderTexture msrt(Window::ClientSize());
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
+	Scene::SetBackground(ColorF(1, 1, 1, 0));
 	while (System::Update()) {
-		msrt.clear(Palette::White);
-		{
-			ScopedRenderTarget2D target(msrt);
-			wholeView.draw();
-		}
-		Graphics2D::Flush();
-		msrt.resolve();
-		msrt.scaled(1).draw(Arg::center(Window::ClientCenter()));
-		//wholeView.draw();
+		wholeView.draw();
 	}
 }
 
@@ -221,7 +213,7 @@ void MiniRenderTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
-	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
+	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font);
 	String IamACat = TextReader(U"IamACat.txt").readAll();
 	wholeView.setText(IamACat);
 
@@ -402,7 +394,7 @@ void MinimapViewTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
-	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
+	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font);
 	String IamACat = TextReader(U"IamACat.txt").readAll();
 	wholeView.setText(IamACat);
 	WholeView::MinimapView mview(Rect(Window::ClientSize()), wholeView.GlyphArrangement());
@@ -410,6 +402,41 @@ void MinimapViewTest() {
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	while (System::Update()) {
 		mview.draw();
+	}
+}
+
+void TransparentRenderTest() {
+	RenderTexture rt1(200, 200);
+	RenderTexture rt2(200, 200);
+	Scene::SetBackground(Palette::White);
+	BlendState blendState1 = BlendState::Default;
+	blendState1.srcAlpha = Blend::One;
+	blendState1.dstAlpha = Blend::Zero;
+	BlendState blendState2 = BlendState::Default;
+	blendState2.srcAlpha = Blend::Zero;
+	blendState2.dstAlpha = Blend::One;
+	auto draw = [&](RenderTexture& rt, BlendState bs) {
+		Rect(50, 100, 300, 100).draw(ColorF(Palette::Red, 0.5));
+		{
+			ScopedRenderTarget2D target(rt);
+			ScopedRenderStates2D state(bs);
+			rt.clear(ColorF(0, 0, 0, 0.25));
+			Rect(25, 25, 150, 150).draw(ColorF(Palette::Green, 0.5));
+			Rect(rt.size()).drawFrame(2, 0, Palette::Black);
+		}
+		rt.draw(100, 50);
+	};
+	while (System::Update()) {
+		{
+			ScopedViewport2D viewport(0, 0, 400, 300);
+			ScopedRenderStates2D state(blendState1);
+			draw(rt1, blendState1);
+		}
+		{
+			ScopedViewport2D viewport(400, 0, 400, 300);
+			ScopedRenderStates2D state(blendState2);
+			draw(rt2, blendState2);
+		}
 	}
 }
 
@@ -435,7 +462,8 @@ void Main()
 		GlyphLoadTest,
 		TextInputTest,
 		MinimapViewTest,
-	} runMode = RunMode::WholeViewTest;
+		TransparentRenderTest,
+	} runMode = RunMode::MinimapViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
@@ -487,5 +515,8 @@ void Main()
 	}
 	else if (runMode == RunMode::MinimapViewTest) {
 		UnnamedEditor::MinimapViewTest();
+	}
+	else if (runMode == RunMode::TransparentRenderTest) {
+		UnnamedEditor::TransparentRenderTest();
 	}
 }
