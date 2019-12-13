@@ -535,7 +535,12 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 			wrapCount++;
 		}
 		itr->pos = pen;
-		if (!itr->glyph) itr->glyph = _font->renderChar(itr->code);
+		if (!itr->glyph) {
+			if (itr->code == Text::Text::NEWLINE || itr->code == Text::Text::NULL_CHAR)
+				itr->glyph = Font::Glyph::EmptyGlyph();
+			else
+				itr->glyph = _font->renderChar(itr->code);
+		}
 		//TODO: Glyph‚ğ‚¿‚á‚ñ‚Æ®”À•W‚É‘Î‰
 		pen += itr->glyph->getAdvance().asPoint();
 		for (auto itrtrtritrtr = itr->itrs.begin(); itrtrtritrtr != itr->itrs.end();) {

@@ -4,6 +4,9 @@ namespace UnnamedEditor {
 namespace Font {
 
 
+SP<Glyph> Glyph::empty;
+
+
 Glyph::Glyph(bool isVertical, int fontSize, double bearingX, double bearingY, double advance, const Image &image)
 : _isVertical(isVertical)
 , _fontSize(fontSize)
@@ -14,6 +17,11 @@ Glyph::Glyph(bool isVertical, int fontSize, double bearingX, double bearingY, do
 }
 
 Glyph::~Glyph() {}
+
+SP<Glyph> Glyph::EmptyGlyph() {
+	if (!empty) empty.reset(new Glyph(0, 0, 0, 0, 0, Image()));
+	return empty;
+}
 
 Vec2 Glyph::draw(const Vec2 &pen, const Color &color, double angle, double scale) const {
 	if (!_texture.isEmpty()) {

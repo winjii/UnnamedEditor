@@ -12,7 +12,7 @@ namespace UnnamedEditor {
 namespace Font {
 
 
-class FixedFont : FontBase {
+class FixedFont : public FontBase {
 private:
 	
 	int _fontSize;
