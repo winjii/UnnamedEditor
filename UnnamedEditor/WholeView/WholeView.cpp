@@ -572,18 +572,26 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 	int fs = _font->getFontSize();
 	double fs_ = _minimapFontSize;
 	double sr = ((double)fs_) / fs;
+	int normalSize = 1000 * fs / _maxLineLnegth;
 
 	if (first == last) return;
 	first = bucket(first);
 	last = nextBucket(last);
+	LineIterator prevBucket = bucket(tryPrev(first));
+	if (first->bucketHeader && prevBucket->bucketHeader &&
+		first->bucketHeader->wrapCount + prevBucket->bucketHeader->wrapCount < normalSize) {
+		first = prevBucket;
+	}
+
 	LineIterator head = first;
-	while (head != last) {
+	bool checkedLast = false;
+	while (head != end() && !checkedLast) {
 		head->bucketHeader.reset(new BucketHeader());
 		LineIterator bl = head;
-		int normalSize = 1000 * fs / _maxLineLnegth;
 		int size = head->wrapCount;
 		bl = tryNext(bl);
-		while (bl != last) {
+		while (bl != end()) {
+			if (bl == last) checkedLast = true;
 			int add = bl->wrapCount;
 			LineIterator next = tryNext(bl);
 			if (bl->bucketHeader) {
