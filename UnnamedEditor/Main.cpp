@@ -199,8 +199,8 @@ void WholeViewTest() {
 	FT_Init_FreeType(&lib);
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
 	WholeView::WholeView wholeView(Vec2(0, 0), Vec2(Window::ClientWidth(), Window::ClientHeight()), font);
-	String IamACat = TextReader(U"IamACat.txt").readAll();
-	wholeView.setText(IamACat);
+	//String IamACat = TextReader(U"IamACat.txt").readAll();
+	//wholeView.setText(IamACat);
 
 	MSRenderTexture msrt(Window::ClientSize());
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
@@ -435,7 +435,7 @@ void Main()
 		GlyphLoadTest,
 		TextInputTest,
 		MinimapViewTest,
-	} runMode = RunMode::MinimapViewTest;
+	} runMode = RunMode::WholeViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();

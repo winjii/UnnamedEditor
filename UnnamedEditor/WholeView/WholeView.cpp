@@ -41,11 +41,12 @@ WholeView::WholeView(const DevicePos &pos, const DevicePos &size, SP<Font::Fixed
 , _ga(new GlyphArrangement2(_font, _lineInterval, _textArea.h))
 , _ju()
 , _scrollDelta(_lineInterval)
-, _floating(new FloatingAnimation(_lineInterval, _textArea.h))
-, _inputManager(_floating)
+, _floating()
+, _inputManager(_lineInterval, _textArea.h)
 , _masker(_textArea.size)
 , _maskee(_textArea.size)
 , _maskPS(U"example/shader/2d/multi_texture_mask" SIV3D_SELECT_SHADER(U".hlsl", U".frag"), { { U"PSConstants2D", 0 } }) {
+	_floating = _inputManager.floatingAnimation();
 }
 
 void WholeView::setText(const String &text) {
@@ -74,7 +75,7 @@ void WholeView::draw() {
 	//if (KeyUp.down()) _textWindow.cursorPrev();
 
 	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0)) {
-		_inputManager.startInputing(*_ga);
+		_inputManager.startInputing(_ga);
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
 
@@ -93,9 +94,9 @@ void WholeView::draw() {
 	if (!_floating->isInactive()) {
 		if (!cccursor->isStable()) addend = U"";
 		if (KeyEnter.down()) cccursor->startAdvancing();
-		else if (KeyEnter.up()) cccursor->stop(*_ga);
+		else if (KeyEnter.up()) cccursor->stop();
 		else if (KeyBackspace.down()) cccursor->startRetreating();
-		else if (KeyBackspace.up()) cccursor->stop(*_ga);
+		else if (KeyBackspace.up()) cccursor->stop();
 		if (!cccursor->isStable()) addend = U"";
 	}
 
@@ -119,8 +120,8 @@ void WholeView::draw() {
 		_ga->scroll(-delta);
 	}
 
-	_inputManager.inputText(*_ga, addend, editing);
-	if (_inputManager.isInputing()) cccursor->update(*_ga);
+	_inputManager.inputText(_ga, addend, editing);
+	if (_inputManager.isInputing()) cccursor->update();
 
 	Vec2 maskStart, maskEnd;
 	_area.draw(Palette::White);
@@ -164,7 +165,7 @@ void WholeView::draw() {
 	}
 	if (!_floating->isInactive()) {
 		ScopedRenderTarget2D target(_masker);
-		int lines = (int)((maskEnd.x - maskStart.x) / _lineInterval + 0.5);
+		int lines = (int)(-(maskEnd.x - maskStart.x) / _lineInterval + 0.5);
 		Vec2 st = maskStart;
 		ColorF color(Palette::Black, 0.5);
 		double hfs = _font->getFontSize() / 2.0;
@@ -941,7 +942,9 @@ Vec2 FloatingAnimation::getPos(GA::CharIterator citr) {
 	return easeOverLine(_oldHeadPos[idx], _newHeadPos[idx], _updateAP.getProgress(), idx) + d;
 }
 
-InputManager::InputManager(SP<FloatingAnimation> fa) : _fa(fa) {
+InputManager::InputManager(int lineInterval, int maxLineLength)
+: _fa(new FloatingAnimation(lineInterval, maxLineLength)) {
+
 }
 
 bool InputManager::isInputing() const {
@@ -956,7 +959,7 @@ SP<CleanCopyCursor> InputManager::cleanCopyCursor() const {
 	return _cccursor;
 }
 
-void InputManager::inputText(GA& ga, const String& addend, const String& editing) {
+void InputManager::inputText(SP<GA> ga, const String& addend, const String& editing) {
 	if (!_isInputing) return;
 	String all = addend + editing;
 	int prefixLength = [&]() {
@@ -968,16 +971,16 @@ void InputManager::inputText(GA& ga, const String& addend, const String& editing
 	}();
 	String replaced = addend.dropped(Min((int)addend.size(), prefixLength));
 	replaced += editing.dropped(Max(0, prefixLength - (int)addend.size()));
-	auto cursor = ga.cursor();
+	auto cursor = ga->cursor();
 	int eraseSize = _editing.size() - prefixLength;
 	if (eraseSize > 0 || !replaced.empty()) {
-		auto first = ga.prev(*cursor, true, eraseSize);
-		bool flg = first == _cccursor->pos(ga);
-		auto newItr = ga.replaceText(first, *cursor, replaced);
+		auto first = ga->prev(*cursor, true, eraseSize);
+		bool flg = first == _cccursor->pos();
+		auto newItr = ga->replaceText(first, *cursor, replaced);
 		if (flg) {
-			_cccursor->changeItr(ga, newItr);
+			_cccursor->changeItr(newItr);
 		}
-		_fa->updatePos(ga);
+		_fa->updatePos(*ga);
 	}
 	_editing = editing;
 }
@@ -988,14 +991,14 @@ void InputManager::stopInputing() {
 	_fa->stopFloating();
 }
 
-void InputManager::startInputing(GA& ga) {
+void InputManager::startInputing(SP<GA> ga) {
 	_isInputing = true;
-	_cursor = ga.makeNull(*ga.cursor());
-	auto floatingBegin = *ga.cursor();
-	ga.prev(ga.cursor());
-	assert(*_cursor == *ga.cursor());
+	_cursor = ga->makeNull(*ga->cursor());
+	auto floatingBegin = *ga->cursor();
+	ga->prev(ga->cursor());
+	assert(*_cursor == *ga->cursor());
 	_cccursor.reset(new CleanCopyCursor(ga, *_cursor));
-	_fa->startFloating(ga, floatingBegin);
+	_fa->startFloating(*ga, floatingBegin);
 }
 
 //void InputManager::stopInputing() {
@@ -1007,26 +1010,27 @@ void InputManager::startInputing(GA& ga) {
 //	_fa->floatingStart(ga);
 //}
 
-CleanCopyCursor::CleanCopyCursor(GA& ga, GA::CharIterator citr)
-: _step(Step::Stable) {
+CleanCopyCursor::CleanCopyCursor(SP<GA> ga, GA::CharIterator citr)
+: _step(Step::Stable)
+, _ga(ga) {
 	_drawingPos.first.reset(new GA::CharIterator(citr));
-	ga.registerItr(_drawingPos.first);
+	ga->registerItr(_drawingPos.first);
 	_drawingPos.second = 0;
 }
 
-GlyphArrangement2::CharIterator CleanCopyCursor::pos(const GA& ga) const {
+GlyphArrangement2::CharIterator CleanCopyCursor::pos() const {
 	if (_step != Step::Retreating) return *_drawingPos.first;
-	return ga.next(*_drawingPos.first);
+	return _ga->next(*_drawingPos.first);
 }
 
 std::pair<GlyphArrangement2::CharIterator, double> CleanCopyCursor::drawingPos() const {
 	return { *_drawingPos.first, _drawingPos.second };
 }
 
-void CleanCopyCursor::changeItr(GA& ga, GA::CharIterator newItr) {
-	ga.removeItr(_drawingPos.first);
+void CleanCopyCursor::changeItr(GA::CharIterator newItr) {
+	_ga->removeItr(_drawingPos.first);
 	_drawingPos.first.reset(new GA::CharIterator(newItr));
-	ga.registerItr(_drawingPos.first);
+	_ga->registerItr(_drawingPos.first);
 }
 
 bool CleanCopyCursor::isStable() {
@@ -1040,32 +1044,35 @@ void CleanCopyCursor::startAdvancing() {
 }
 
 void CleanCopyCursor::startRetreating() {
+	if (*_drawingPos.first == _ga->lineBegin(_ga->begin())) return;
+	if (_step != Step::Retreating)
+		_ga->prev(_drawingPos.first);
 	_step = Step::Retreating;
 	_drawingPos.second = 0;
 	_sw.restart();
 }
 
-void CleanCopyCursor::stop(GA& ga) {
-	if (_step == Step::Retreating && *_drawingPos.first != *ga.cursor())
-		ga.next(_drawingPos.first);
+void CleanCopyCursor::stop() {
+	if (_step == Step::Retreating && *_drawingPos.first != *_ga->cursor())
+		_ga->next(_drawingPos.first);
 	_step = Step::Stable;
 	_drawingPos.second = 0;
 	_sw.reset();
 }
 
-void CleanCopyCursor::update(GA& ga) {
+void CleanCopyCursor::update() {
 	if (isStable()) return;
 	double velocity = 15; //TODO: フォントサイズに比例
 	if (_step == Step::Advancing) {
 		while (true) {
 			_drawingPos.second = velocity * _sw.sF();
 			double advance = _drawingPos.first->second->glyph->getAdvance().y;
-			if (*_drawingPos.first == *ga.cursor()) {
-				stop(ga);
+			if (*_drawingPos.first == *_ga->cursor()) {
+				stop();
 				break;
 			}
 			if (_drawingPos.second < advance) break;
-			ga.next(_drawingPos.first);
+			_ga->next(_drawingPos.first);
 			_drawingPos.second -= advance;
 			_sw.set(_sw.elapsed() - SecondsF(advance / velocity));
 		}
@@ -1075,11 +1082,11 @@ void CleanCopyCursor::update(GA& ga) {
 			double advance = _drawingPos.first->second->glyph->getAdvance().y;
 			_drawingPos.second = advance - velocity * _sw.sF();
 			if (_drawingPos.second > 0) break;
-			if (*_drawingPos.first == ga.lineBegin(ga.begin())) {
-				stop(ga);
+			if (*_drawingPos.first == _ga->lineBegin(_ga->begin())) {
+				stop();
 				return;
 			}
-			ga.prev(_drawingPos.first);
+			_ga->prev(_drawingPos.first);
 			double newAdvance = _drawingPos.first->second->glyph->getAdvance().y;
 			_drawingPos.second += newAdvance;
 			_sw.set(_sw.elapsed() - SecondsF(advance / velocity));

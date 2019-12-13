@@ -426,16 +426,17 @@ private:
 	Step _step;
 	std::pair<SP<GA::CharIterator>, double> _drawingPos;
 	Stopwatch _sw;
+	SP<GA> _ga;
 public:
-	CleanCopyCursor(GA& ga, GA::CharIterator citr);
-	GA::CharIterator pos(const GA& ga) const;
+	CleanCopyCursor(SP<GA> ga, GA::CharIterator citr);
+	GA::CharIterator pos() const;
 	std::pair<GA::CharIterator, double> drawingPos() const;
-	void changeItr(GA& ga, GA::CharIterator newItr);
+	void changeItr(GA::CharIterator newItr);
 	bool isStable();
 	void startAdvancing();
 	void startRetreating();
-	void stop(GA& ga);
-	void update(GA& ga);
+	void stop();
+	void update();
 };
 
 
@@ -450,13 +451,12 @@ private:
 	SP<CleanCopyCursor> _cccursor;
 public:
 	InputManager(int lineInterval, int maxLineLength);
-	InputManager(SP<FloatingAnimation> fa);
 	bool isInputing() const;
 	SP<FloatingAnimation> floatingAnimation() const;
 	SP<CleanCopyCursor> cleanCopyCursor() const;
-	void inputText(GA &ga, const String& addend, const String& editing);
+	void inputText(SP<GA> ga, const String& addend, const String& editing);
 	void stopInputing();
-	void startInputing(GA& ga);
+	void startInputing(SP<GA> ga);
 	void startAdvancingCCC();
 	void startRetreatingCCC();
 	void stopCCC();
