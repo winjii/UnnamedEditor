@@ -92,8 +92,9 @@ void WholeView::draw() {
 		}
 	}
 	if (!_floating->isInactive()) {
+		bool onEnd = *_ga->cursor() == cccursor->drawingPos().first && cccursor->isStable();
 		if (!cccursor->isStable()) addend = U"";
-		if (KeyEnter.down()) cccursor->startAdvancing();
+		if (KeyEnter.down() && !onEnd) cccursor->startAdvancing();
 		else if (KeyEnter.up()) cccursor->stop();
 		else if (KeyBackspace.down()) cccursor->startRetreating();
 		else if (KeyBackspace.up()) cccursor->stop();
@@ -1067,7 +1068,7 @@ void CleanCopyCursor::stop() {
 
 void CleanCopyCursor::update() {
 	if (isStable()) return;
-	double velocity = 15; //TODO: フォントサイズに比例
+	double velocity = 30; //TODO: フォントサイズに比例
 	if (_step == Step::Advancing) {
 		while (true) {
 			_drawingPos.second = velocity * _sw.sF();
