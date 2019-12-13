@@ -18,7 +18,7 @@ private:
 
 public:
 
-	ChangeableFont(FT_Library lib, std::string fontPath, bool isVertical);
+	ChangeableFont(FTLibraryWrapper lib, std::string fontPath, bool isVertical);
 
 	~ChangeableFont();
 

@@ -106,8 +106,7 @@ void WorkspaceTest() {
 void GlyphTest() {
 	using namespace UnnamedEditor::Font;
 	using namespace UnnamedEditor;
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	UnnamedEditor::Font::FixedFont fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
 	UnnamedEditor::Font::FixedFont fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, false);
 	auto glyphsV = fontV.renderString(u"むーちょろくいちさん");
@@ -129,8 +128,7 @@ void DraftPaperTest() {
 	using namespace UnnamedEditor::Font;
 	using namespace UnnamedEditor;
 	using namespace UnnamedEditor::Workspace;
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	UnnamedEditor::Font::FixedFont fontV(lib, "C:/Windows/Fonts/msmincho.ttc", 30, true);
 	UnnamedEditor::Font::FixedFont fontH(lib, "C:/Windows/Fonts/msmincho.ttc", 30, false);
 	auto glyphsV = fontV.renderString(u"むーーーーーーーーーーーーーーちょろくいちさん");
@@ -153,8 +151,7 @@ void DraftPaperTest() {
 }
 
 void Glyph_scaleTest() {
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	UnnamedEditor::Font::FixedFont font0(lib, "C:/Windows/Fonts/msmincho.ttc", 32, true);
 	UnnamedEditor::Font::FixedFont font1(lib, "C:/Windows/Fonts/msmincho.ttc", 31, true);
 	String str = U"三人寄ればソレイユ！"; //OpenSiv3Dのバグにより変な線が入る
@@ -195,8 +192,7 @@ void NoBug() {
 }
 
 void WholeViewTest() {
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
 	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font);
 	//String IamACat = TextReader(U"IamACat.txt").readAll();
@@ -210,8 +206,7 @@ void WholeViewTest() {
 }
 
 void MiniRenderTest() {
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
 	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font);
 	String IamACat = TextReader(U"IamACat.txt").readAll();
@@ -251,8 +246,7 @@ void MiniRenderTest() {
 }
 
 void ChangeableFontTest() {
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	Font::ChangeableFont font(lib, "C:/Windows/Fonts/msmincho.ttc", true);
 
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
@@ -272,8 +266,7 @@ void ChangeableFontTest() {
 
 void FontScaleTest() {
 	using namespace UnnamedEditor::Font;
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	std::string path = "C:/Windows/Fonts/msmincho.ttc";
 	std::vector<int> s{ 32, 37, 41, 43, 47, 53, 49, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107 };
 	std::vector<FixedFont> fonts;
@@ -296,8 +289,7 @@ void FontScaleTest() {
 
 void FontShiftTest() {
 	using namespace UnnamedEditor::Font;
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	FixedFont f(lib, "D:/Data/Source/Repos/UnnamedEditor/UnnamedEditor/App/SourceHanSerif-Regular.otf", 32, false);
 	const ScopedRenderStates2D state(SamplerState::ClampNearest);
 	Scene::SetBackground(Palette::White);
@@ -315,18 +307,16 @@ void FontShiftTest() {
 }
 
 void RasterizeTest() {
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
-	FT_Face face;
-	FT_New_Face(lib, "C:/Windows/Fonts/msmincho.ttc", 0, &face);
+	Font::FTLibraryWrapper lib;
+	Font::FTFaceWrapper face(lib, "C:/Windows/Fonts/msmincho.ttc");
 	
 	FT_GlyphSlot slot = face->glyph;
 
 	unsigned int charCode = L'あ';
-	FT_UInt gid = FT_Get_Char_Index(face, charCode);
+	FT_UInt gid = FT_Get_Char_Index(face.raw(), charCode);
 
-	FT_Set_Pixel_Sizes(face, 64, 64);
-	FT_Load_Glyph(face, gid, FT_LOAD_NO_BITMAP);
+	FT_Set_Pixel_Sizes(face.raw(), 64, 64);
+	FT_Load_Glyph(face.raw(), gid, FT_LOAD_NO_BITMAP);
 	/*FT_Bitmap bitmap;
 	bitmap.buffer = new unsigned char[64 * 64];
 	memset(bitmap.buffer, 0, 64*64);
@@ -358,8 +348,7 @@ void RasterizeTest() {
 
 void GlyphLoadTest() {
 	using namespace UnnamedEditor::Font;
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	FixedFont f(lib, "C:/Windows/Fonts/msmincho.ttc", 32, false);
 	String IamACat = TextReader(U"IamACat.txt").readAll();
 	Console.open();
@@ -391,8 +380,7 @@ void TextInputTest() {
 }
 
 void MinimapViewTest() {
-	FT_Library lib;
-	FT_Init_FreeType(&lib);
+	Font::FTLibraryWrapper lib;
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
 	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font);
 	String IamACat = TextReader(U"IamACat.txt").readAll();

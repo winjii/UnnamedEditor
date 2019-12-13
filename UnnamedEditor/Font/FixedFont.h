@@ -21,7 +21,7 @@ private:
 
 public:
 
-	FixedFont(FT_Library lib, std::string fontPath, int pixelSize, bool isVertical = false);
+	FixedFont(FTLibraryWrapper lib, std::string fontPath, int pixelSize, bool isVertical = false);
 
 	int getFontSize();
 

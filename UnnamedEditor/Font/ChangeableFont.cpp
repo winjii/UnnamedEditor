@@ -8,7 +8,7 @@ namespace UnnamedEditor {
 namespace Font {
 
 
-ChangeableFont::ChangeableFont(FT_Library lib, std::string fontPath, bool isVertical)
+ChangeableFont::ChangeableFont(FTLibraryWrapper lib, std::string fontPath, bool isVertical)
 : FontBase(lib, fontPath, isVertical) {}
 
 ChangeableFont::~ChangeableFont() {}

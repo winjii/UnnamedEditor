@@ -9,7 +9,7 @@ namespace Font {
 
 
 FontDataPicker::GlyphIndex FontBase::getGID(char16_t charCode) {
-	GlyphIndex gid = FT_Get_Char_Index(_face, charCode);
+	GlyphIndex gid = FT_Get_Char_Index(_face.raw(), charCode);
 	if (_isVertical) gid = _gsubReader->vertSubstitute(gid);
 	return gid;
 }
@@ -17,10 +17,10 @@ FontDataPicker::GlyphIndex FontBase::getGID(char16_t charCode) {
 SP<Glyph> FontBase::renderChar(GlyphIndex gid, int fontSize) {
 	SP<Glyph> ret;
 
-	FT_Set_Pixel_Sizes(_face, fontSize, 0);
+	FT_Set_Pixel_Sizes(_face.raw(), fontSize, 0);
 	//TODO:bitmapタイプのフォントの時に死にそう
 	//FT_LOAD_NO_BITMAPを指定してRenderするのは外形指定タイプのフォントの読み込み処理
-	FT_Load_Glyph(_face, gid, FT_LOAD_NO_BITMAP);
+	FT_Load_Glyph(_face.raw(), gid, FT_LOAD_NO_BITMAP);
 	FT_Render_Glyph(_face->glyph, FT_Render_Mode::FT_RENDER_MODE_NORMAL);
 	FT_GlyphSlot slot = _face->glyph;
 	FT_Bitmap bitmap = _face->glyph->bitmap;
@@ -57,20 +57,22 @@ SP<Glyph> FontBase::renderChar(GlyphIndex gid, int fontSize) {
 	return ret;
 }
 
-FontBase::FontBase(FT_Library lib, std::string fontPath, bool isVertical)
+FontBase::FontBase(FTLibraryWrapper lib, std::string fontPath, bool isVertical)
 : _lib(lib)
+, _face(lib, fontPath)
 , _isVertical(isVertical) {
-	//TODO:コレクションの場合でも適当に0番目のfaceを選択している
-	//これをちゃんとするには、そもそもフォントファイルをregisterしてから名前で呼び出す感じの実装が必要？
-	FT_New_Face(lib, fontPath.c_str(), 0, &_face);
-	FT_Select_Charmap(_face, FT_Encoding_::FT_ENCODING_UNICODE);
-	_gsubReader = SP<GsubReader>(new GsubReader(_face));
+	FT_Select_Charmap(_face.raw(), FT_Encoding_::FT_ENCODING_UNICODE);
+	_gsubReader = SP<GsubReader>(new GsubReader(_face.raw()));
 	_ascender = _face->ascender/64.0; //TODO: scalable(outline)フォントの場合は26.6 pixcel formatじゃない
 	_descender = _face->descender/64.0;
 }
 
-FontBase::~FontBase() {
-	// FT_Done_Face(_face);
+FTLibraryWrapper FontBase::ftLibrary() {
+	return _lib;
+}
+
+FTFaceWrapper FontBase::ftFace() {
+	return _face;
 }
 
 double FontBase::ascender() {

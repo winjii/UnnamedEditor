@@ -10,7 +10,7 @@ namespace UnnamedEditor {
 namespace Font {
 
 
-FixedFont::FixedFont(FT_Library lib, std::string fontPath, int pixelSize, bool isVertical)
+FixedFont::FixedFont(FTLibraryWrapper lib, std::string fontPath, int pixelSize, bool isVertical)
 : FontBase(lib, fontPath, isVertical)
 , _fontSize(pixelSize) {
 	
