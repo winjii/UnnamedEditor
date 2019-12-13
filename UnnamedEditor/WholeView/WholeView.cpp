@@ -1058,7 +1058,7 @@ void CleanCopyCursor::startRetreating() {
 }
 
 void CleanCopyCursor::stop() {
-	if (_step == Step::Retreating && *_drawingPos.first != *_ga->cursor())
+	if (_step == Step::Retreating && *_drawingPos.first != *_ga->cursor() && _sw.isRunning())
 		_ga->next(_drawingPos.first);
 	_step = Step::Stable;
 	_drawingPos.second = 0;
@@ -1073,8 +1073,9 @@ void CleanCopyCursor::update() {
 			_drawingPos.second = velocity * _sw.sF();
 			double advance = _drawingPos.first->second->glyph->getAdvance().y;
 			if (*_drawingPos.first == *_ga->cursor()) {
-				stop();
-				break;
+				_drawingPos.second = 0;
+				_sw.pause();
+				break; //_step‚ÍStable‚É‚µ‚È‚¢
 			}
 			if (_drawingPos.second < advance) break;
 			_ga->next(_drawingPos.first);
@@ -1088,8 +1089,9 @@ void CleanCopyCursor::update() {
 			_drawingPos.second = advance - velocity * _sw.sF();
 			if (_drawingPos.second > 0) break;
 			if (*_drawingPos.first == _ga->lineBegin(_ga->begin())) {
-				stop();
-				return;
+				_drawingPos.second = 0;
+				_sw.pause();
+				return; //_step‚ÍStable‚É‚µ‚È‚¢
 			}
 			_ga->prev(_drawingPos.first);
 			double newAdvance = _drawingPos.first->second->glyph->getAdvance().y;
