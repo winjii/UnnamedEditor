@@ -370,7 +370,7 @@ private:
 	SP<CharIterator> _cursor;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
-	const double _minimapFontSize = 4;
+	const double _minimapFontSize = 0.8;
 
 	//glyph, posを計算する。cd.empty()だったら削除
 	LineIterator initLine(LineIterator litr);
@@ -403,6 +403,7 @@ public:
 	LineIterator nextBucket(LineIterator litr) const;
 	double minimapLineInterval() const;
 	double minimapScale() const;
+	void resetOrigin(LineIterator origin, Point pos);
 
 	//NULL文字を挿入すると番兵などに使える。ただしそれを含む範囲をeraseしないよう注意
 	//NULL文字は参照が切れていたらinitLine時に自動で削除される
@@ -572,7 +573,8 @@ public:
 	void setText(const String &text);
 	void draw();
 	void minimapTest();
-	SP<GlyphArrangement2> GlyphArrangement() const;
+	SP<GlyphArrangement2> glyphArrangement() const;
+	void jump(GlyphArrangement2::LineIterator litr);
 };
 
 
@@ -585,7 +587,7 @@ private:
 	TemporaryData::Manager _tmpManager;
 public:
 	MinimapView(RectF area, SP<GA> ga);
-	void draw();
+	GA::LineIterator draw();
 };
 
 

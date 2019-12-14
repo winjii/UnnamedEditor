@@ -72,7 +72,7 @@ void WholeView::draw() {
 		if (!cccursor->isStable()) addend = U"";
 		if (KeyEnter.down() && !onEnd && _ju.isSettled()) cccursor->startAdvancing();
 		else if (KeyEnter.up()) cccursor->stop();
-		else if (KeyBackspace.down()) {
+		else if (_ju.isSettled() && KeyBackspace.down()) {
 			if (cccursor->pos() == *_ga->cursor())
 				cccursor->startRetreating();
 			else
@@ -229,8 +229,12 @@ void WholeView::minimapTest() {
 	_ga->begin()->bucketHeader->minimap.draw(Vec2(0.5, 300));
 }
 
-SP<GlyphArrangement2> WholeView::GlyphArrangement() const {
+SP<GlyphArrangement2> WholeView::glyphArrangement() const {
 	return _ga;
+}
+
+void WholeView::jump(GlyphArrangement2::LineIterator litr) {
+	_ga->resetOrigin(litr, Point(-_textArea.w / 2, 0));
 }
 
 GlyphArrangement::GlyphArrangement(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos)
@@ -751,17 +755,13 @@ GlyphArrangement2::CharIterator GlyphArrangement2::replaceText(CharIterator firs
 
 void GlyphArrangement2::scroll(int delta) {
 	_originPos.x -= delta;
-	if (delta < 0) {
-		while (_origin != _data.end() && _lineInterval < _originPos.x - _origin->wrapCount * _lineInterval) {
-			_originPos.x -= _origin->wrapCount * _lineInterval;
-			_origin = std::next(_origin);
-		}
+	while (_origin != _data.end() && _lineInterval < _originPos.x - _origin->wrapCount * _lineInterval) {
+		_originPos.x -= _origin->wrapCount * _lineInterval;
+		_origin = std::next(_origin);
 	}
-	else {
-		while (_origin != _data.begin() && _lineInterval > _originPos.x) {
-			_origin = std::prev(_origin);
-			_originPos.x += _origin->wrapCount * _lineInterval;
-		}
+	while (_origin != _data.begin() && _lineInterval > _originPos.x) {
+		_origin = std::prev(_origin);
+		_originPos.x += _origin->wrapCount * _lineInterval;
 	}
 }
 
@@ -849,6 +849,12 @@ GlyphArrangement2::LineIterator GlyphArrangement2::nextBucket(LineIterator i) co
 
 double GlyphArrangement2::minimapLineInterval() const {
 	return _minimapFontSize / (double)_font->getFontSize() * _lineInterval;
+}
+
+void GlyphArrangement2::resetOrigin(LineIterator origin, Point pos) {
+	_origin = origin;
+	_originPos = pos;
+	scroll(0);
 }
 
 SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator citr) {
@@ -1152,7 +1158,9 @@ MinimapView::MinimapView(RectF area, SP<GA> ga)
 , _ga(ga) {
 }
 
-void MinimapView::draw() {
+GlyphArrangement2::LineIterator MinimapView::draw() {
+	GA::LineIterator ret = _ga->end();
+
 	BlendState bs = BlendState::Default;
 	bs.srcAlpha = Blend::One;
 	bs.dstAlpha = Blend::InvSrcAlpha;
@@ -1190,6 +1198,7 @@ void MinimapView::draw() {
 					}
 
 					if (litr != nextBucket) {
+						ret = litr;
 						if (MinimapHighlight::IsEmpty(litr->highlight)) {
 							RectF r(nx - (pen.x - map.width()), 0, x - nx, map.height());
 							litr->highlight.reset(new MinimapHighlight(map, r, Vec2(x, pen.y)));
@@ -1207,15 +1216,8 @@ void MinimapView::draw() {
 		}
 	}
 	_tmpManager.update();
+	return ret;
 }
-
-//void MinimapHighlight::draw() {
-//	for (auto c : _litr->cd) {
-//		Vec2 p = _origin + _minimapScale * c.pos;
-//		p = _ap.getProgress()
-//		c.glyph->draw(p, Palette::Black, 0, _minimapScale);
-//	}
-//}
 
 }
 }

@@ -18,6 +18,56 @@ using namespace FontDataPicker;
 
 namespace UnnamedEditor {
 
+
+void Run() {
+	Font::FTLibraryWrapper lib;
+	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
+	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font);
+	String IamACat = TextReader(U"IamACat.txt").readAll();
+	wholeView.setText(IamACat);
+	WholeView::MinimapView mview(Rect(Window::ClientSize()), wholeView.glyphArrangement());
+
+	BlendState bs = BlendState::Default;
+	bs.srcAlpha = Blend::One;
+	bs.dstAlpha = Blend::InvSrcAlpha;
+	const ScopedRenderStates2D state(SamplerState::ClampLinear, bs);
+	Scene::SetBackground(ColorF(1, 1, 1, 0));
+	WholeView::AnimationProgress ap;
+	ap.start(0.5);
+	int mode = 1;
+	MSRenderTexture msrt0(Window::ClientSize());
+	MSRenderTexture msrt1(Window::ClientSize());
+	while (System::Update()) {
+		int nextMode = mode;
+		ap.update();
+		if (!(mode == 0 && ap.isStable())) {
+			ScopedRenderTarget2D target(msrt0);
+			wholeView.draw();
+			if (mode == 1 && MouseL.down()) {
+				nextMode = 0;
+				ap.start(0.5);
+			}
+		}
+		if (!(mode == 1 && ap.isStable())) {
+			ScopedRenderTarget2D target(msrt1);
+			auto clicked = mview.draw();
+			if (mode == 0 && MouseL.down()) {
+				wholeView.jump(clicked);
+				nextMode = 1;
+				ap.start(0.5);
+			}
+		}
+		mode = nextMode;
+		double t = ap.getProgress();
+		if (mode == 0) t = 1 - t;
+		Graphics2D::Flush();
+		msrt0.resolve();
+		msrt1.resolve();
+		msrt0.draw(ColorF(1, 1, 1, t));
+		msrt1.draw(ColorF(1, 1, 1, 1 - t));
+	}
+}
+
 void GsubReaderTest() {
 	FT_Library lib;
 	FT_Init_FreeType(&lib);
@@ -385,7 +435,7 @@ void MinimapViewTest() {
 	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font);
 	String IamACat = TextReader(U"IamACat.txt").readAll();
 	wholeView.setText(IamACat);
-	WholeView::MinimapView mview(Rect(Window::ClientSize()), wholeView.GlyphArrangement());
+	WholeView::MinimapView mview(Rect(Window::ClientSize()), wholeView.glyphArrangement());
 
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	while (System::Update()) {
@@ -430,9 +480,9 @@ void TransparentRenderTest() {
 
 }
 
-void Main()
-{
+void Main() {
 	enum RunMode {
+		Run,
 		GsubReaderTest,
 		FontTest,
 		FairCopyFieldTest,
@@ -451,9 +501,12 @@ void Main()
 		TextInputTest,
 		MinimapViewTest,
 		TransparentRenderTest,
-	} runMode = RunMode::WholeViewTest;
+	} runMode = RunMode::Run;
 
-	if (runMode == RunMode::GsubReaderTest) {
+	if (runMode == RunMode::Run) {
+		UnnamedEditor::Run();
+	}
+	else if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();
 	}
 	else if (runMode == RunMode::FontTest) {
