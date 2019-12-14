@@ -110,7 +110,7 @@ void WholeView::draw() {
 	{
 		BlendState bs = BlendState::Default;
 		bs.srcAlpha = Blend::One;
-		bs.dstAlpha = Blend::Zero;
+		bs.dstAlpha = Blend::InvSrcAlpha;
 		ScopedRenderStates2D renderState(bs);
 		ScopedRenderTarget2D target(_maskee);
 
@@ -597,7 +597,7 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			ScopedRenderTarget2D target(msrt);
 			BlendState bs = BlendState::Default;
 			bs.srcAlpha = Blend::One;
-			bs.dstAlpha = Blend::Zero;
+			bs.dstAlpha = Blend::InvSrcAlpha;
 			ScopedRenderStates2D state(bs);
 			LineIterator b = head;
 			Vec2 lineOrigin(textureWidth - ascender, 0);
@@ -1128,7 +1128,7 @@ MinimapView::MinimapView(RectF area, SP<GA> ga)
 void MinimapView::draw() {
 	BlendState bs = BlendState::Default;
 	bs.srcAlpha = Blend::One;
-	bs.dstAlpha = Blend::Zero;
+	bs.dstAlpha = Blend::InvSrcAlpha;
 	ScopedRenderStates2D state(bs);
 	_area.draw(Palette::White);
 	{
