@@ -24,7 +24,7 @@ void FairCopyField::setText(const String & text) {
 	_chars.clear();
 
 	CharPos charPos(0, 0);
-	for each (char16_t c in u16Text) {
+	for (char16_t c : u16Text) {
 		SP<const Font::Glyph> glyph = _font.renderChar(c);
 		_chars.push_back(Char(*glyph, charPos));
 		charPos = charPos.Add(glyph->getAdvance().y, _lineHeight);
@@ -52,7 +52,7 @@ void FairCopyField::update() {
 	DevicePos origin(_pos.x + _size.x - _lineInterval*0.5, _pos.y);
 
 	RectF((Vec2)_pos, _size).draw(Palette::White);
-	for each (Char c in _chars) {
+	for (Char c : _chars) {
 		DevicePos pos = DevicePos(origin + c._pos.toDeviceDelta(_lineInterval, _lineHeight));
 		c._glyph.draw(pos);
 	}

@@ -30,6 +30,7 @@ UnnamedEditor/**/*.sbr
 UnnamedEditor/**/*.xml
 UnnamedEditor/**/*.metagen
 UnnamedEditor/**/*.bi
+UnnamedEditor/App/*.exe
 FontDataPicker/**/*.cdf
 FontDataPicker/**/*.cache
 FontDataPicker/**/*.obj
@@ -61,9 +62,37 @@ FontDataPicker/**/*.sbr
 FontDataPicker/**/*.xml
 FontDataPicker/**/*.metagen
 FontDataPicker/**/*.bi
-
-
-
+freetype-2.10.1/**/*.cdf
+freetype-2.10.1/**/*.cache
+freetype-2.10.1/**/*.obj
+freetype-2.10.1/**/*.obj.enc
+freetype-2.10.1/**/*.ilk
+freetype-2.10.1/**/*.ipdb
+freetype-2.10.1/**/*.iobj
+freetype-2.10.1/**/*.resources
+freetype-2.10.1/**/*.tlb
+freetype-2.10.1/**/*.tli
+freetype-2.10.1/**/*.tlh
+freetype-2.10.1/**/*.tmp
+freetype-2.10.1/**/*.rsp
+freetype-2.10.1/**/*.pgc
+freetype-2.10.1/**/*.pgd
+freetype-2.10.1/**/*.meta
+freetype-2.10.1/**/*.tlog
+freetype-2.10.1/**/*.manifest
+freetype-2.10.1/**/*.res
+freetype-2.10.1/**/*.pch
+freetype-2.10.1/**/*.exp
+freetype-2.10.1/**/*.idb
+freetype-2.10.1/**/*.rep
+freetype-2.10.1/**/*.xdc
+freetype-2.10.1/**/*.pdb
+freetype-2.10.1/**/*_manifest.rc
+freetype-2.10.1/**/*.bsc
+freetype-2.10.1/**/*.sbr
+freetype-2.10.1/**/*.xml
+freetype-2.10.1/**/*.metagen
+freetype-2.10.1/objs/*
 
 
 

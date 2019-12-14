@@ -10,14 +10,20 @@ namespace UnnamedEditor {
 namespace Font {
 
 
-FixedFont::FixedFont(FT_Library lib, std::string fontPath, int pixelSize, bool isVertical)
-: FontBase(lib, fontPath, isVertical)
+FixedFont::FixedFont(FTLibraryWrapper lib, FTFaceWrapper face, int pixelSize, bool isVertical)
+: FontBase(lib, face, isVertical)
 , _fontSize(pixelSize) {
-	
 }
+
+FixedFont::FixedFont(FTLibraryWrapper lib, std::string fontPath, int pixelSize, bool isVertical)
+: FixedFont(lib, FTFaceWrapper(lib, fontPath), pixelSize, isVertical) { }
 
 int FixedFont::getFontSize() {
 	return _fontSize;
+}
+
+bool FixedFont::isVertical() {
+	return _isVertical;
 }
 
 Line FixedFont::getCursor(Vec2 pen) {
@@ -33,7 +39,7 @@ SP<const Glyph> FixedFont::renderChar(char16_t charCode) {
 
 std::vector<SP<const Glyph>> FixedFont::renderString(std::u16string charCodes) {
 	std::vector<SP<const Glyph>> ret;
-	for each (char16_t var in charCodes) {
+	for (char16_t var : charCodes) {
 		ret.push_back(renderChar(var));
 	}
 	return ret;

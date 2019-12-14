@@ -12,18 +12,22 @@ namespace UnnamedEditor {
 namespace Font {
 
 
-class FixedFont : FontBase {
+class FixedFont : public FontBase {
 private:
 	
 	int _fontSize;
 
-	std::map<FontDataPicker::GlyphIndex, SP<Glyph>> _glyphMemo;
+	std::unordered_map<FontDataPicker::GlyphIndex, SP<Glyph>> _glyphMemo;
 
 public:
 
-	FixedFont(FT_Library lib, std::string fontPath, int pixelSize, bool isVertical = false);
+	FixedFont(FTLibraryWrapper lib, FTFaceWrapper face, int pixelSize, bool isVertical = false);
+
+	FixedFont(FTLibraryWrapper lib, std::string fontPath, int pixelSize, bool isVertical = false);
 
 	int getFontSize();
+
+	bool isVertical();
 
 	Line getCursor(Vec2 pen);
 
