@@ -435,6 +435,7 @@ public:
 	FloatingAnimation(int lineInterval, int maxLineLength);
 	Step step() const;
 	bool isInactive() const;
+	bool isFloating() const;
 	GA::CharIterator floatingBegin() const;
 	bool isStable() const; //•¶š‚ª®”À•W‚ÉÃ~‚µ‚Ä‚¢‚é‚©
 	void startFloating(GA& ga, GA::CharIterator floatingBegin);
@@ -489,7 +490,7 @@ public:
 	bool isInputing() const;
 	SP<FloatingAnimation> floatingAnimation() const;
 	SP<CleanCopyCursor> cleanCopyCursor() const;
-	void inputText(SP<GA> ga, const String& addend, const String& editing);
+	void update(SP<GA> ga, String addend, String editing);
 	void stopInputing();
 	void startInputing(SP<GA> ga);
 	void deleteLightChar(SP<GA> ga);

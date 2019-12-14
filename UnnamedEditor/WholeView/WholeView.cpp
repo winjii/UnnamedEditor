@@ -67,7 +67,7 @@ void WholeView::draw() {
 			_scrollDelta.stopScroll();
 		}
 	}
-	if (_inputManager.isInputing()) {
+	if (_inputManager.isInputing() && editing.size() == 0) {
 		bool onEnd = *_ga->cursor() == cccursor->drawingPos().first && cccursor->isStable();
 		if (!cccursor->isStable()) addend = U"";
 		if (KeyEnter.down() && !onEnd && _ju.isSettled()) cccursor->startAdvancing();
@@ -80,6 +80,14 @@ void WholeView::draw() {
 		}
 		else if (KeyBackspace.up()) cccursor->stop();
 		if (!cccursor->isStable()) addend = U"";
+		if (KeyDown.down() || KeyUp.down()) {
+			_inputManager.deleteLightChar(_ga);
+			_inputManager.stopInputing();
+		}
+	}
+	if (!_inputManager.isInputing()) {
+		if (KeyDown.down()) _ga->next(_ga->cursor());
+		if (KeyUp.down()) _ga->prev(_ga->cursor());
 	}
 
 	/*_floatingProgress.update();
@@ -102,8 +110,8 @@ void WholeView::draw() {
 		_ga->scroll(-delta);
 	}
 
-	_inputManager.inputText(_ga, addend, editing);
-	if (_inputManager.isInputing()) cccursor->update(_tmpData);
+	_inputManager.update(_ga, addend, editing);
+	if (!_floating->isInactive()) cccursor->update(_tmpData);
 
 	_tmpData.update();
 
@@ -157,7 +165,7 @@ void WholeView::draw() {
 			litr = _ga->tryNext(litr);
 		}
 	}
-	if (!_floating->isInactive()) {
+	if (_floating->isFloating()) {
 		ScopedRenderTarget2D target(_masker);
 		int lines = (int)(-(maskEnd.x - maskStart.x) / _lineInterval + 0.5);
 		Vec2 st = maskStart;
@@ -784,12 +792,14 @@ GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr, bool 
 }
 
 void GlyphArrangement2::next(SP<CharIterator> citr) {
+	if (citr->first == _data.end()) return;
 	removeItr(citr);
 	*citr = next(*citr, true);
 	citr->second->itrs.push_back(citr);
 }
 
 void GlyphArrangement2::prev(SP<CharIterator> citr) {
+	if (*citr == lineBegin(begin())) return;
 	removeItr(citr);
 	*citr = prev(*citr, true);
 	citr->second->itrs.push_back(citr);
@@ -880,6 +890,10 @@ bool FloatingAnimation::isInactive() const {
 	return _step == Step::Inactive;
 }
 
+bool FloatingAnimation::isFloating() const {
+	return _step == Step::Floating;
+}
+
 FloatingAnimation::GA::CharIterator FloatingAnimation::floatingBegin() const {
 	return *_floatingBegin;
 }
@@ -940,7 +954,7 @@ Vec2 FloatingAnimation::getPos(GA::CharIterator citr) {
 		d *= EaseOut(Easing::Expo, _inOutAP.getProgress());
 	}
 	else if (_step == Step::Stopping) {
-		d *= EaseIn(Easing::Expo, _inOutAP.getProgress());
+		d *= EaseIn(Easing::Expo, 1 - _inOutAP.getProgress());
 	}
 
 	if (citr.first != _floatingBegin->first) {
@@ -969,8 +983,10 @@ SP<CleanCopyCursor> InputManager::cleanCopyCursor() const {
 	return _cccursor;
 }
 
-void InputManager::inputText(SP<GA> ga, const String& addend, const String& editing) {
-	if (!_isInputing) return;
+void InputManager::update(SP<GA> ga, String addend, String editing) {
+	if (!_isInputing) {
+		addend = editing = U"";
+	}
 	String all = addend + editing;
 	int prefixLength = [&]() {
 		int i = 0;
@@ -1013,6 +1029,7 @@ void InputManager::startInputing(SP<GA> ga) {
 
 void InputManager::deleteLightChar(SP<GA> ga) {
 	_cccursor->changeItr(ga->eraseText(_cccursor->pos(), *ga->cursor()));
+	_fa->updatePos(*ga);
 }
 
 //void InputManager::stopInputing() {
