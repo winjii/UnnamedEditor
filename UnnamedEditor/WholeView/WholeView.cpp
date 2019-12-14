@@ -8,30 +8,6 @@ namespace UnnamedEditor {
 namespace WholeView {
 
 
-Vec2 WholeView::floatingTextIn(Vec2 source, Vec2 target, double t, int i)
-{
-	return EaseOut(Easing::Back, source, target, t);
-}
-
-//TODO: 禁則処理などでareaの外に出るケースは考慮できていない
-//Vec2 WholeView::floatingTextOut(Vec2 source, Vec2 target, double t, int i)
-//{
-//	RectF area = _textArea;
-//
-//	double rate = EaseOut(Easing::Expo, 3.0, 1.0, std::min(1.0, i / 200.0));
-//	t = std::min(1.0, t*rate);
-//
-//	double d1 = source.y - area.y;
-//	double d2 = area.h;
-//	double d3 = area.y + area.h - target.y;
-//	double delta = EaseOut(Easing::Expo, t) * (d1 + d2 + d3);
-//	if (delta <= d1) return Vec2(source.x, source.y - delta);
-//	delta -= d1;
-//	if (delta <= d2) return Vec2((source.x + target.x) / 2.0, area.y + area.h - delta);
-//	delta -= d2;
-//	return Vec2(target.x, area.y + area.h - delta);
-//}
-
 WholeView::WholeView(const Rect area, SP<Font::FixedFont> font)
 : _area(area)
 , _textArea(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1))
@@ -122,12 +98,14 @@ void WholeView::draw() {
 	}
 
 	_inputManager.inputText(_ga, addend, editing);
-	if (_inputManager.isInputing()) cccursor->update();
+	if (_inputManager.isInputing()) cccursor->update(_tmpData);
+
+	_tmpData.update();
 
 	Vec2 maskStart, maskEnd;
 	_masker.clear(Palette::White);
 	_maskee.clear(ColorF(0, 0, 0, 0));
-	_area.draw(Palette::White);
+	_area.draw(Palette::Orangered);
 	_foreground.clear(ColorF(0, 0, 0, 0));
 	{
 		BlendState bs = BlendState::Default;
@@ -153,8 +131,12 @@ void WholeView::draw() {
 
 				Vec2 p = lineOrigin + citr.second->pos;
 				if (flt) p = lineOrigin + _floating->getPos(citr);
-				if (_maskee.region().stretched(_lineInterval, 0).contains(p))
-					citr.second->glyph->draw(p);
+				if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
+					if (!CharAnimation::IsEmpty(citr.second->animation)) {
+						citr.second->animation->draw(p, citr.second->glyph);
+					}
+					else citr.second->glyph->draw(p);
+				}
 				if (citr == *_ga->cursor()) {
 					drawCursor(p);
 					maskEnd = p;
@@ -1083,7 +1065,7 @@ void CleanCopyCursor::stop() {
 	_sw.reset();
 }
 
-void CleanCopyCursor::update() {
+void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 	if (isStable()) return;
 	double velocity = 30; //TODO: フォントサイズに比例
 	if (_step == Step::Advancing) {
@@ -1096,6 +1078,7 @@ void CleanCopyCursor::update() {
 				break; //_stepはStableにしない
 			}
 			if (_drawingPos.second < advance) break;
+			registerPaint(tmpData, *_drawingPos.first);
 			_ga->next(_drawingPos.first);
 			_drawingPos.second -= advance;
 			_sw.set(_sw.elapsed() - SecondsF(advance / velocity));
@@ -1106,6 +1089,7 @@ void CleanCopyCursor::update() {
 			double advance = _drawingPos.first->second->glyph->getAdvance().y;
 			_drawingPos.second = advance - velocity * _sw.sF();
 			if (_drawingPos.second > 0) break;
+			registerUnpaint(tmpData, *_drawingPos.first);
 			if (*_drawingPos.first == _ga->lineBegin(_ga->begin())) {
 				_drawingPos.second = 0;
 				_sw.pause();
@@ -1117,6 +1101,22 @@ void CleanCopyCursor::update() {
 			_sw.set(_sw.elapsed() - SecondsF(advance / velocity));
 		}
 	}
+}
+
+void CleanCopyCursor::registerPaint(TemporaryData::Manager& tmpData, GA::CharIterator citr) {
+	auto paint = [&](Vec2 pos, SP<const Font::Glyph> glyph, double t) {
+		glyph->draw(pos, Palette::Black, 0, 1 + 0.4*Sin(t*Math::Pi));
+	};
+	citr.second->animation.reset(new CharAnimation(paint, 0.5));
+	tmpData.registerPointer(citr.second->animation);
+}
+
+void CleanCopyCursor::registerUnpaint(TemporaryData::Manager& tmpData, GA::CharIterator citr) {
+	auto unpaint = [&](Vec2 pos, SP<const Font::Glyph> glyph, double t) {
+		glyph->draw(pos, Palette::Black, 0, 1 - 0.4*Sin(t*Math::Pi));
+	};
+	citr.second->animation.reset(new CharAnimation(unpaint, 0.5));
+	tmpData.registerPointer(citr.second->animation);
 }
 
 MinimapView::MinimapView(RectF area, SP<GA> ga)

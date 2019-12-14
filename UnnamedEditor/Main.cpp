@@ -451,7 +451,7 @@ void Main()
 		TextInputTest,
 		MinimapViewTest,
 		TransparentRenderTest,
-	} runMode = RunMode::MinimapViewTest;
+	} runMode = RunMode::WholeViewTest;
 
 	if (runMode == RunMode::GsubReaderTest) {
 		UnnamedEditor::GsubReaderTest();

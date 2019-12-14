@@ -293,6 +293,37 @@ public:
 };
 
 
+class CharAnimation : public TemporaryData {
+public:
+	using Drawer = std::function<void(Vec2, SP<const Font::Glyph>, double)>;
+private:
+	class Inner {
+		friend CharAnimation;
+		AnimationProgress _ap;
+		Drawer _drawer;
+		bool update() {
+			_ap.update();
+			if (_ap.isStable()) return false;
+			return true;
+		}
+		void draw(Vec2 pos, SP<const Font::Glyph> glyph) {
+			_drawer(pos, glyph, _ap.getProgress());
+		}
+	};
+	UP<Inner> _inner;
+public:
+	CharAnimation(Drawer drawer, double animationTime) {
+		_inner.reset(new Inner());
+		_inner->_drawer = drawer;
+		_inner->_ap.start(animationTime);
+	}
+	virtual bool update() { return _inner->update(); }
+	virtual void destroy() { _inner.reset(); }
+	virtual bool isEmpty() { return _inner == nullptr; }
+	void draw(Vec2 pos, SP<const Font::Glyph> glyph) { _inner->draw(pos, glyph); }
+};
+
+
 //TODO: あるlineからn（1000とか10000とか）文字以下のlineまでのミニマップをキャッシュ（バケット法）
 //↑line1つのミニマップもキャッシュ
 //↑ミニマップ描画をshortcutできるイメージ
@@ -314,6 +345,7 @@ public:
 		SP<const Font::Glyph> blurred;
 		std::list<SP<CharIterator>> itrs;
 		Point pos; //line内での相対的な位置
+		SP<CharAnimation> animation;
 	};
 	struct BucketHeader {
 		int wrapCount;
@@ -437,7 +469,9 @@ public:
 	void startAdvancing();
 	void startRetreating();
 	void stop();
-	void update();
+	void update(TemporaryData::Manager& tmpData);
+	void registerPaint(TemporaryData::Manager& tmpData, GA::CharIterator citr);
+	void registerUnpaint(TemporaryData::Manager& tmpData, GA::CharIterator citr);
 };
 
 
@@ -526,9 +560,7 @@ private:
 	RenderTexture _maskee;
 	MSRenderTexture _foreground;
 	const PixelShader _maskPS;
-
-	Vec2 floatingTextIn(Vec2 source, Vec2 target, double t, int i);
-	Vec2 floatingTextOut(Vec2 source, Vec2 target, double t, int i);
+	TemporaryData::Manager _tmpData;
 
 public:
 
