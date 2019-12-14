@@ -50,7 +50,7 @@ void WholeView::draw() {
 	//if (KeyDown.down()) _textWindow.cursorNext();
 	//if (KeyUp.down()) _textWindow.cursorPrev();
 
-	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0)) {
+	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0 || KeyBackspace.down())) {
 		_inputManager.startInputing(_ga);
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
@@ -67,12 +67,17 @@ void WholeView::draw() {
 			_scrollDelta.stopScroll();
 		}
 	}
-	if (!_floating->isInactive()) {
+	if (_inputManager.isInputing()) {
 		bool onEnd = *_ga->cursor() == cccursor->drawingPos().first && cccursor->isStable();
 		if (!cccursor->isStable()) addend = U"";
 		if (KeyEnter.down() && !onEnd && _ju.isSettled()) cccursor->startAdvancing();
 		else if (KeyEnter.up()) cccursor->stop();
-		else if (KeyBackspace.down()) cccursor->startRetreating();
+		else if (KeyBackspace.down()) {
+			if (cccursor->pos() == *_ga->cursor())
+				cccursor->startRetreating();
+			else
+				_inputManager.deleteLightChar(_ga);
+		}
 		else if (KeyBackspace.up()) cccursor->stop();
 		if (!cccursor->isStable()) addend = U"";
 	}
@@ -105,7 +110,7 @@ void WholeView::draw() {
 	Vec2 maskStart, maskEnd;
 	_masker.clear(Palette::White);
 	_maskee.clear(ColorF(0, 0, 0, 0));
-	_area.draw(Palette::Orangered);
+	_area.draw(Palette::White);
 	_foreground.clear(ColorF(0, 0, 0, 0));
 	{
 		BlendState bs = BlendState::Default;
@@ -1006,6 +1011,10 @@ void InputManager::startInputing(SP<GA> ga) {
 	_fa->startFloating(*ga, floatingBegin);
 }
 
+void InputManager::deleteLightChar(SP<GA> ga) {
+	_cccursor->changeItr(ga->eraseText(_cccursor->pos(), *ga->cursor()));
+}
+
 //void InputManager::stopInputing() {
 //	_isInputing = false;
 //}
@@ -1068,6 +1077,7 @@ void CleanCopyCursor::stop() {
 void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 	if (isStable()) return;
 	double velocity = 30; //TODO: フォントサイズに比例
+	if (_step == Step::Retreating) velocity *= 4;
 	if (_step == Step::Advancing) {
 		while (true) {
 			_drawingPos.second = velocity * _sw.sF();
@@ -1107,7 +1117,7 @@ void CleanCopyCursor::registerPaint(TemporaryData::Manager& tmpData, GA::CharIte
 	auto paint = [&](Vec2 pos, SP<const Font::Glyph> glyph, double t) {
 		glyph->draw(pos, Palette::Black, 0, 1 + 0.4*Sin(t*Math::Pi));
 	};
-	citr.second->animation.reset(new CharAnimation(paint, 0.5));
+	citr.second->animation.reset(new CharAnimation(paint, 1));
 	tmpData.registerPointer(citr.second->animation);
 }
 

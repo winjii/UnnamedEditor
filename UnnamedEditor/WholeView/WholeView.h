@@ -492,6 +492,7 @@ public:
 	void inputText(SP<GA> ga, const String& addend, const String& editing);
 	void stopInputing();
 	void startInputing(SP<GA> ga);
+	void deleteLightChar(SP<GA> ga);
 	void startAdvancingCCC();
 	void startRetreatingCCC();
 	void stopCCC();
