@@ -8,21 +8,20 @@ namespace UnnamedEditor {
 namespace WholeView {
 
 
-WholeView::WholeView(const Rect area, SP<Font::FixedFont> font)
+WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, bool isVertical)
 : _area(area)
 , _textArea(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1))
 , _lineInterval((int)(font->getFontSize()*1.25))
+, _isVertical(isVertical)
 , _font(font)
 , _ga(new GlyphArrangement2(_font, _lineInterval, _textArea.h))
 , _ju()
 , _scrollDelta(_lineInterval)
-, _floating()
 , _inputManager(_lineInterval, _textArea.h)
 , _masker(_textArea.size)
 , _maskee(_textArea.size)
 , _foreground(area.size)
 , _maskPS(U"example/shader/2d/multi_texture_mask" SIV3D_SELECT_SHADER(U".hlsl", U".frag"), { { U"PSConstants2D", 0 } }) {
-	_floating = _inputManager.floatingAnimation();
 }
 
 void WholeView::setText(const String &text) {
@@ -38,7 +37,7 @@ void WholeView::draw() {
 	editing = TextInput::GetEditingText();
 	_ju.update(editing.length());
 
-	_floating->updateTime();
+	SP<FloatingAnimation> floating = _inputManager.floatingAnimation();
 
 	//if ((_floatingStep == FloatingStep::Stable || _floatingStep == FloatingStep::AnimatingIn) && (KeyDown.down() || KeyUp.down())) {
 	//	// FloatingI—¹‚ðŠJŽn
@@ -55,7 +54,7 @@ void WholeView::draw() {
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
 
-	if (_floating->step() != FloatingAnimation::Step::Floating) {
+	if (floating->step() != FloatingAnimation::Step::Floating) {
 		if (KeyLeft.down()) _scrollDelta.startScroll(1);
 		if (KeyRight.down()) _scrollDelta.startScroll(-1);
 	}
@@ -111,7 +110,7 @@ void WholeView::draw() {
 	}
 
 	_inputManager.update(_ga, addend, editing);
-	if (!_floating->isInactive()) cccursor->update(_tmpData);
+	if (!floating->isInactive()) cccursor->update(_tmpData);
 
 	_tmpData.update();
 
@@ -140,10 +139,10 @@ void WholeView::draw() {
 		while (lineOrigin.x > -_lineInterval && litr != _ga->end()) {
 			auto citr = _ga->lineBegin(litr);
 			while (citr != _ga->lineEnd(litr)) {
-				if (!_floating->isInactive() && _floating->floatingBegin() == citr) flt = true;
+				if (!floating->isInactive() && floating->floatingBegin() == citr) flt = true;
 
 				Vec2 p = lineOrigin + citr.second->pos;
-				if (flt) p = lineOrigin + _floating->getPos(citr);
+				if (flt) p = lineOrigin + floating->getPos(citr);
 				if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
 					if (!CharAnimation::IsEmpty(citr.second->animation)) {
 						citr.second->animation->draw(p, citr.second->glyph);
@@ -154,7 +153,7 @@ void WholeView::draw() {
 					drawCursor(p);
 					maskEnd = p;
 				}
-				if (!_floating->isInactive() && citr == cccursor->drawingPos().first) {
+				if (!floating->isInactive() && citr == cccursor->drawingPos().first) {
 					Vec2 cp = p + Vec2(0, cccursor->drawingPos().second);
 					drawCursor(cp);
 					maskStart = cp;
@@ -165,7 +164,7 @@ void WholeView::draw() {
 			litr = _ga->tryNext(litr);
 		}
 	}
-	if (_floating->isFloating()) {
+	if (floating->isFloating()) {
 		ScopedRenderTarget2D target(_masker);
 		int lines = (int)(-(maskEnd.x - maskStart.x) / _lineInterval + 0.5);
 		Vec2 st = maskStart;
@@ -982,6 +981,7 @@ bool InputManager::isInputing() const {
 }
 
 SP<FloatingAnimation> InputManager::floatingAnimation() const {
+	_fa->updateTime();
 	return _fa;
 }
 

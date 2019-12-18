@@ -553,11 +553,11 @@ private:
 	RectF _area;
 	Rect _textArea;
 	int _lineInterval;
+	bool _isVertical;
 	SP<Font::FixedFont> _font;
 	SP<GlyphArrangement2> _ga;
 	JudgeUnsettled _ju;
 	ScrollDelta _scrollDelta;
-	SP<FloatingAnimation> _floating;
 	InputManager _inputManager;
 	RenderTexture _masker;
 	RenderTexture _maskee;
@@ -568,7 +568,7 @@ private:
 public:
 
 	//font: verticalÇ≈Ç»ÇØÇÍÇŒÇ»ÇÁÇ»Ç¢(Ç±ÇÍê›åvâòÇ≠Ç»Ç¢ÅH)
-	WholeView(Rect area, SP<Font::FixedFont> font);
+	WholeView(Rect area, SP<Font::FixedFont> font, bool isVertical);
 
 	void setText(const String &text);
 	void draw();
