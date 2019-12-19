@@ -464,8 +464,8 @@ public:
 	SP<FloatingAnimation> floatingAnimation() const;
 	SP<CleanCopyCursor> cleanCopyCursor() const;
 	void update(SP<GA> ga, String addend, String editing);
-	void stopInputing();
-	void startInputing(SP<GA> ga);
+	void stopInputting();
+	void startInputting(SP<GA> ga);
 	void deleteLightChar(SP<GA> ga);
 	void startAdvancingCCC();
 	void startRetreatingCCC();

@@ -51,7 +51,7 @@ void WholeView::draw() {
 	//if (KeyUp.down()) _textWindow.cursorPrev();
 
 	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0 || KeyBackspace.down())) {
-		_inputManager.startInputing(_ga);
+		_inputManager.startInputting(_ga);
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
 
@@ -82,7 +82,7 @@ void WholeView::draw() {
 		if (!cccursor->isStable()) addend = U"";
 		if (KeyDown.down() || KeyUp.down()) {
 			_inputManager.deleteLightChar(_ga);
-			_inputManager.stopInputing();
+			_inputManager.stopInputting();
 		}
 	}
 	if (!_inputManager.isInputing()) {
@@ -736,13 +736,13 @@ void InputManager::update(SP<GA> ga, String addend, String editing) {
 	_editing = editing;
 }
 
-void InputManager::stopInputing() {
+void InputManager::stopInputting() {
 	_isInputing = false;
 	_editing = U"";
 	_fa->stopFloating();
 }
 
-void InputManager::startInputing(SP<GA> ga) {
+void InputManager::startInputting(SP<GA> ga) {
 	_isInputing = true;
 	_cursor = ga->makeNull(*ga->cursor());
 	auto floatingBegin = *ga->cursor();
@@ -756,15 +756,6 @@ void InputManager::deleteLightChar(SP<GA> ga) {
 	_cccursor->changeItr(ga->eraseText(_cccursor->pos(), *ga->cursor()));
 	_fa->updatePos(*ga);
 }
-
-//void InputManager::stopInputing() {
-//	_isInputing = false;
-//}
-//
-//void InputManager::startInputing(const GlyphArrangement2& ga) {
-//	_isInputing = true;
-//	_fa->floatingStart(ga);
-//}
 
 CleanCopyCursor::CleanCopyCursor(SP<GA> ga, GA::CharIterator citr)
 : _step(Step::Stable)
