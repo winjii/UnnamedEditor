@@ -21,8 +21,8 @@ namespace UnnamedEditor {
 
 void Run() {
 	Font::FTLibraryWrapper lib;
-	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, true));
-	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font, true);
+	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", 20, false));
+	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font, false);
 	String IamACat = TextReader(U"IamACat.txt").readAll();
 	wholeView.setText(IamACat);
 	WholeView::MinimapView mview(Rect(Window::ClientSize()), wholeView.glyphArrangement());

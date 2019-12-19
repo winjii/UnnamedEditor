@@ -9,7 +9,106 @@ namespace UnnamedEditor {
 namespace WholeView {
 
 
-using DevicePos = Vec2;
+template <class T>
+struct PosOnText;
+
+template class PosOnText<Point>;
+template class PosOnText<Vec2>;
+using PointOnText = PosOnText<Point>;
+using Vec2OnText = PosOnText<Vec2>;
+
+template <class T>
+struct PosOnText : protected T {
+public:
+	using Element = decltype(T::x);
+	Element& parallel = T::x;
+	Element& perpendicular = T::y;
+	Element& prl = T::x;
+	Element& prp = T::y;
+private:
+	PosOnText(const T& p) : T(p.x, p.y) { }
+public:
+	PosOnText() : T() {}
+	PosOnText(const PosOnText& p) : T(p.x, p.y) {}
+	PosOnText(const T& p, bool isVertical) {
+		if (isVertical) {
+			parallel = p.y;
+			perpendicular = -p.x;
+		}
+		else {
+			parallel = p.x;
+			perpendicular = p.x;
+		}
+	}
+	PosOnText(Element parallel, Element perpendicular)
+		: T(parallel, perpendicular) {}
+	T toRealPos(bool isVertical) {
+		if (isVertical) return T(-perpendicular, parallel);
+		return T(parallel, perpendicular);
+	}
+	PosOnText& operator=(const PosOnText& p) { T::operator=(p); return *this; }
+	Vec2OnText toTextVec2() { return { (double)parallel, (double)perpendicular }; }
+	PointOnText toTextPoint() { return { (int)(parallel + 0.5), (int)(perpendicular + 0.5) }; }
+	PosOnText operator+(const PosOnText& p) const { return T::operator+(p); }
+	PosOnText operator-(const PosOnText& p) const { return T::operator-(p); }
+	PosOnText& operator+=(const PosOnText& p) { T::operator+=(p); return *this; }
+	PosOnText& operator-=(const PosOnText& p) { T::operator-=(p); return *this; }
+	PosOnText operator*(Element e) const { return T::operator*(e); }
+	PosOnText operator/(Element e) const { return T::operator/(e); }
+	PosOnText& operator*=(Element e) { T::operator*=(e); return *this; }
+	PosOnText& operator/=(Element e) { T::operator/=(e); return *this; }
+};
+
+
+template <class T>
+struct RectangleOnText;
+
+template class RectangleOnText<Point>;
+template class RectangleOnText<Vec2>;
+using RectOnText = RectangleOnText<Point>;
+using RectFOnText = RectangleOnText<Vec2>;
+
+template <class T>
+struct RectangleOnText {
+	PosOnText<T> pos;
+	PosOnText<T> size;
+	RectangleOnText() {}
+	RectangleOnText(const PosOnText<T>& pos, const PosOnText<T>& size) : pos(pos), size(size) {}
+	Rectangle<T> toRealRect(bool isVertical) {
+		if (isVertical) {
+			return Rectangle<T>(-pos.prp - size.prp, -pos.prl, size.prp, size.prl);
+		}
+		return Rectangle<T>(pos.prl, pos.prp, size.prl, size.prp);
+	}
+};
+
+
+struct TextArea {
+	Point origin;
+	PointOnText size;
+	TextArea() {}
+	TextArea(const Rect& r, bool isVertical) {
+		if (isVertical) {
+			origin = r.tr();
+			size = PointOnText(r.size.y, r.size.x);
+		}
+		else {
+			origin = r.tl();
+			size = PointOnText(r.size.x, r.size.y);
+		}
+	}
+	Size realSize(bool isVertical) {
+		if (isVertical) return Size(size.prp, size.prl);
+		return Size(size.prl, size.prp);
+	}
+	Point realPos(bool isVertical) {
+		if (isVertical) return Point(origin.x - size.prp, origin.y);
+		return origin;
+	}
+	Rect toRect(bool isVertical) {
+		return Rect(realPos(isVertical), realSize(isVertical));
+	}
+};
 
 
 //未確定文字列入力モードかどうかを判定するクラス
@@ -66,134 +165,6 @@ public:
 			_step = Step::Stable;
 		}
 	}
-};
-
-
-//↓xとyを取り替えるだけでなく正負なども変えなきゃいけない...
-//仮想的なテキスト内座標を作って描画時に変換したほうが良さそう
-//class TextDirection {
-//private:
-//	bool _isVertical;
-//public:
-//	bool isVertical() { return _isVertical; }
-//	int& perpendicular(Point& p) {
-//		if (_isVertical) return p.x;
-//		return p.y;
-//	}
-//	int& parallel(Point& p) {
-//		if (_isVertical) return p.y;
-//		return p.x;
-//	}
-//	double& perpendicular(Vec2& p) {
-//		if (_isVertical) return p.x;
-//		return p.y;
-//	}
-//	double& parallel(Vec2& p) {
-//		if (_isVertical) return p.y;
-//		return p.x;
-//	}
-//};
-
-
-
-//テキストを表示するためのグリフ配置を計算する
-//テキストの更新はできず、テキストが削除された部分のText::Iteratorは壊れる（更新に対応するにはTextWindowを使う）
-//外部で勝手にiteratorを動かしたり参照先に書き込んだりしちゃいけない
-//TODO: ↑本来は型で制限すべき←このクラスを介さないとアクセスできない独自イテレータを定義
-//見かけ上の窓（_beginから_endまで）はXXXExtendedによってしか広がらない（内部で勝手に伸縮しない）
-//ある文字の位置を決めるのに絶対にその前の改行までは遡らなければいけないから折り返し文字量に応じて計算量が増えるのは仕方ない
-//文字でなく仕切りを指すイテレータはNULL文字と一緒に動く（文字を挿入などするとき仕切りの位置を動かさなくていい嬉しさがある）
-//TODO; NULL文字を適宜消す
-//TODO: beginとendの役割分かりづれーー
-//TODO: 区間の扱いもうちょっとなんとかならんか
-class GlyphArrangement {
-public:
-	using Iterator = std::pair<Text::Text::Iterator, std::list<Vec2>::iterator>;
-private:
-	SP<Text::Text> _text;
-	RectF _area;
-	double _lineInterval;
-protected:
-	std::list<Vec2> _pos; //グリフ位置キャッシュ。要素が増えても減ることはない（イテレータ壊れない）
-
-	//NULL文字に対応するイテレータ群
-	//普通の文字同様、_cacheBeginと_cacheEndの間にある限りはグリフ位置が計算される
-	Iterator _cacheBegin, _cacheEnd; //(_cachBegin, _cacheEnd]はキャッシュ済みの区間（書き間違いではない）
-	Text::Text::Iterator _begin, _end; //(_begin, _end]は外部からアクセスする範囲
-
-	Iterator next(Iterator itr);
-	Iterator prev(Iterator itr);
-	Iterator advanced(Iterator itr, int d);
-	void arrange(Iterator first, Iterator last); //firstのグリフ位置を基準にして(first, last]のグリフ位置を計算
-	bool onTextArea(Iterator itr) const; //描画エリア内に被る可能性があればon
-	bool upperTextArea(Iterator itr) const;
-	bool lowerTextArea(Iterator itr) const;
-	//Iterator eraseSafe(Iterator first, Iterator last); //NULL文字を避けて削除
-
-	//適宜_posを拡張するがグリフ位置の計算まではしない
-	std::pair<Iterator, int> lineHead(Iterator itr);
-	std::pair<Iterator, int> nextLineHead(Iterator itr);
-public:
-	GlyphArrangement(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos);
-	GlyphArrangement(GlyphArrangement& ga, Iterator begin);
-	~GlyphArrangement();
-	GlyphArrangement(GlyphArrangement&&) = default;
-	GlyphArrangement& operator=(GlyphArrangement&&) = default;
-	//ConstText::Iterator begin();
-	//ConstText::Iterator end();
-	RectF area() const;
-	double lineInterval() const;
-	void scroll(double delta); //内部で持ってる要素分時間かかる
-	Iterator calcDrawBegin(); //描画開始位置 [drawBegin,
-	Iterator calcDrawEnd(); //描画終了位置 , drawEnd)
-
-	//XXXExtended:テキストをはみ出さない限りは窓を拡張して有効なIteratorを返すことを保証する
-	//（Iterator::firstがend()でないのにIterator::secondがend()であるようなイテレータを返すことはない）
-	//nullSkipがtrueだと開始イテレータ以外のNULL文字をスキップして移動する
-	Iterator prevExtended(Iterator itr);
-	Iterator nextExtended(Iterator itr);
-	Iterator prevExtended(Iterator itr, int cnt);
-	Iterator nextExtended(Iterator itr, int cnt);
-};
-
-
-//グリフ配置と内容編集を担い、整合性を保つ
-//遅延評価的に働きなるべく必要最小限の労力で配置を計算する
-//実際にテキストを表示するには描画範囲に応じた描画コストが最大毎フレームかかるため、それと比べてネックにならないコストで働けばいい
-class TextWindow : public GlyphArrangement {
-private:
-	SP<Text::Text> _text;
-	Iterator _cursor; //視覚的なカーソルというより編集位置と思ったほうがよさそう
-	int _editedCount;
-	int _unsettledCount;
-	bool _isEditing;
-	
-	//destroyed: destroyed以降が破壊されることを示す
-	//edit: 文字列を編集しdestroyedに代わるイテレータを返す
-	//Iterator editText(Iterator destroyed, std::function<Iterator()> edit);
-public:
-	TextWindow(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos);
-	Iterator insertText(Iterator itr, const String &s, bool rearranges = true);
-	Iterator eraseText(Iterator first, Iterator last, bool rearranges = true);
-	SP<const Text::Text> text();
-	//UP<GlyphArrangement> cloneBack(Iterator newBegin); //[newBegin のGlyphArrangementを作る
-	UP<GlyphArrangement> startEditing();
-	void stopEditing();
-	bool isEditing();
-	Iterator cursor();
-	Iterator editedBegin();
-	Iterator unsettledBegin();
-	void inputText(const String& addend, const String& editing); //編集中でなければ何もしない
-	void eraseUnsettled();
-
-	//編集中はカーソルを勝手に動かせない
-	//範囲外にも動かせない
-	//動かせない場合falseを返す
-	bool cursorNext();
-	bool cursorPrev();
-
-	//カーソル移動先が安全な場合のみ正常に動く。いずれ置き換える
-	void setCursorUnsafe(Iterator cursor);
 };
 
 
@@ -344,7 +315,7 @@ public:
 		SP<const Font::Glyph> glyph;
 		SP<const Font::Glyph> blurred;
 		std::list<SP<CharIterator>> itrs;
-		Point pos; //line内での相対的な位置
+		PointOnText pos; //line内での相対的な位置
 		SP<CharAnimation> animation;
 	};
 	struct BucketHeader {
@@ -365,8 +336,9 @@ private:
 	std::list<LineData> _data;
 	int _lineInterval;
 	int _maxLineLnegth;
+	bool _isVertical;
 	LineIterator _origin;
-	Point _originPos;
+	PointOnText _originPos;
 	SP<CharIterator> _cursor;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
@@ -377,7 +349,7 @@ private:
 
 	void initBucket(LineIterator first, LineIterator last);
 public:
-	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength);
+	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, bool isVertical);
 
 	SP<Font::FixedFont> font();
 	void registerItr(SP<CharIterator> itr);
@@ -393,7 +365,7 @@ public:
 	void next(SP<CharIterator> citr); //管理されたイテレータを動かす
 	void prev(SP<CharIterator> citr); //管理されたイテレータを動かす
 	LineIterator origin() const;
-	Point originPos() const;
+	PointOnText originPos() const;
 	SP<CharIterator> cursor() const;
 	LineIterator begin();
 	LineIterator end();
@@ -403,7 +375,7 @@ public:
 	LineIterator nextBucket(LineIterator litr) const;
 	double minimapLineInterval() const;
 	double minimapScale() const;
-	void resetOrigin(LineIterator origin, Point pos);
+	void resetOrigin(LineIterator origin, PointOnText pos);
 
 	//NULL文字を挿入すると番兵などに使える。ただしそれを含む範囲をeraseしないよう注意
 	//NULL文字は参照が切れていたらinitLine時に自動で削除される
@@ -426,12 +398,12 @@ private:
 	SP<GA::CharIterator> _floatingBegin; //管理されたイテレータ
 	AnimationProgress _inOutAP;
 	AnimationProgress _updateAP;
-	std::vector<Vec2> _oldHeadPos;
-	std::vector<Vec2> _newHeadPos;
+	std::vector<Vec2OnText> _oldHeadPos;
+	std::vector<Vec2OnText> _newHeadPos;
 	double _oldAdvance; //headのadvance
 	double _newAdvance;
 
-	Vec2 easeOverLine(Vec2 source, Vec2 target, double t, int i);
+	Vec2OnText easeOverLine(Vec2OnText source, Vec2OnText target, double t, int i);
 public:
 	FloatingAnimation(int lineInterval, int maxLineLength);
 	Step step() const;
@@ -447,7 +419,7 @@ public:
 	//citrはfloatingStart以降であること
 	//Inactiveのときに呼び出さない
 	//各行の行頭の静止座標からの相対位置を返す（描画する側で行頭の静止座標を足す）
-	Vec2 getPos(GA::CharIterator citr);
+	Vec2OnText getPos(GA::CharIterator citr);
 };
 
 
@@ -551,7 +523,7 @@ public:
 class WholeView {
 private:
 	RectF _area;
-	Rect _textArea;
+	TextArea _textArea;
 	int _lineInterval;
 	bool _isVertical;
 	SP<Font::FixedFont> _font;

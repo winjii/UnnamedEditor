@@ -38,7 +38,7 @@ DraftPaper::DraftPaper(const std::vector<SP<const Font::Glyph>> &glyphs, double 
 				pen = (lineHead += inclinedLineDelta);
 			}
 			else {
-				pen += glyphs[i]->getAdvance(angle);
+				pen += glyphs[i]->advance(angle);
 			}
 		}
 		center = (max + min)/2.0;
@@ -69,7 +69,7 @@ DraftPaper::DraftPaper(const std::vector<SP<const Font::Glyph>> &glyphs, double 
 				pen = (lineHead += lineDelta);
 			}
 			else {
-				pen += glyphs[i]->getAdvance();
+				pen += Vec2(0, glyphs[i]->advance());
 			}
 		}
 		_paper = RectF(min - center.rotated(-angle) - Vec2(_lineInterval, _lineInterval),

@@ -29,10 +29,14 @@ Vec2 Glyph::draw(const Vec2 &pen, const Color &color, double angle, double scale
 		//_texture.scale(scale).rotateAt(0, 0, angle).draw((pen + _bearing.rotated(angle)*scale), color);
 		_texture.scaled(scale).rotatedAt(0, 0, angle).draw((pen + _bearing.rotated(angle)*scale), color);
 	}
-	return pen + getAdvance(angle)*scale;
+	return pen + advance(angle)*scale;
 }
 
-Vec2 Glyph::getAdvance(double angle) const {
+double Glyph::advance() const {
+	return _advance;
+}
+
+Vec2 Glyph::advance(double angle) const {
 	if (_isVertical) return Vec2(0, _advance).rotate(angle);
 	return Vec2(_advance, 0).rotate(angle);
 }

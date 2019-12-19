@@ -27,7 +27,7 @@ void FairCopyField::setText(const String & text) {
 	for (char16_t c : u16Text) {
 		SP<const Font::Glyph> glyph = _font.renderChar(c);
 		_chars.push_back(Char(*glyph, charPos));
-		charPos = charPos.Add(glyph->getAdvance().y, _lineHeight);
+		charPos = charPos.Add(glyph->advance(), _lineHeight);
 	}
 }
 

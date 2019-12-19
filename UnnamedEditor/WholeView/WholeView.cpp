@@ -10,18 +10,19 @@ namespace WholeView {
 
 WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, bool isVertical)
 : _area(area)
-, _textArea(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1))
+, _textArea(Rect(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1)), isVertical)
 , _lineInterval((int)(font->getFontSize()*1.25))
 , _isVertical(isVertical)
 , _font(font)
-, _ga(new GlyphArrangement2(_font, _lineInterval, _textArea.h))
+, _ga(new GlyphArrangement2(_font, _lineInterval, _textArea.size.prl, isVertical))
 , _ju()
 , _scrollDelta(_lineInterval)
-, _inputManager(_lineInterval, _textArea.h)
-, _masker(_textArea.size)
-, _maskee(_textArea.size)
+, _inputManager(_lineInterval, _textArea.size.prl)
+, _masker(_textArea.realSize(isVertical))
+, _maskee(_textArea.realSize(isVertical))
 , _foreground(area.size)
 , _maskPS(U"example/shader/2d/multi_texture_mask" SIV3D_SELECT_SHADER(U".hlsl", U".frag"), { { U"PSConstants2D", 0 } }) {
+	jump(_ga->begin());
 }
 
 void WholeView::setText(const String &text) {
@@ -114,7 +115,7 @@ void WholeView::draw() {
 
 	_tmpData.update();
 
-	Vec2 maskStart, maskEnd;
+	Vec2OnText maskStart, maskEnd;
 	_masker.clear(Palette::White);
 	_maskee.clear(ColorF(0, 0, 0, 0));
 	_area.draw(Palette::White);
@@ -129,20 +130,23 @@ void WholeView::draw() {
 		auto drawCursor = [&](Vec2 pos) {
 			ScopedRenderTarget2D tmp(_foreground);
 			double t = Scene::Time() * 2 * Math::Pi / 2.5;
-			_font->getCursor(pos + _textArea.pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
+			_font->getCursor(pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
 		};
 
 		using GA = GlyphArrangement2;
 		auto litr = _ga->origin();
 		bool flt = false;
-		Point lineOrigin = Point(_textArea.w - _lineInterval / 2, 0) + _ga->originPos();
-		while (lineOrigin.x > -_lineInterval && litr != _ga->end()) {
+		Point origin = _textArea.origin - _textArea.realPos(_isVertical);
+		PointOnText lineOrigin = _ga->originPos();
+
+		while (lineOrigin.prp < _textArea.size.prp +_lineInterval && litr != _ga->end()) {
 			auto citr = _ga->lineBegin(litr);
 			while (citr != _ga->lineEnd(litr)) {
 				if (!floating->isInactive() && floating->floatingBegin() == citr) flt = true;
 
-				Vec2 p = lineOrigin + citr.second->pos;
-				if (flt) p = lineOrigin + floating->getPos(citr);
+				Vec2OnText tp = (lineOrigin + citr.second->pos).toTextVec2();
+				if (flt) tp = lineOrigin.toTextVec2() + floating->getPos(citr);
+				Vec2 p = origin + tp.toRealPos(_isVertical);
 				if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
 					if (!CharAnimation::IsEmpty(citr.second->animation)) {
 						citr.second->animation->draw(p, citr.second->glyph);
@@ -151,37 +155,39 @@ void WholeView::draw() {
 				}
 				if (citr == *_ga->cursor()) {
 					drawCursor(p);
-					maskEnd = p;
+					maskEnd = tp;
 				}
 				if (!floating->isInactive() && citr == cccursor->drawingPos().first) {
+					//TODO: 横書き対応
 					Vec2 cp = p + Vec2(0, cccursor->drawingPos().second);
 					drawCursor(cp);
-					maskStart = cp;
+					maskStart = tp;
 				}
 				citr = _ga->next(citr);
 			}
-			lineOrigin.x -= litr->wrapCount * _lineInterval;
+			lineOrigin.prp += litr->wrapCount * _lineInterval;
 			litr = _ga->tryNext(litr);
 		}
 	}
 	if (floating->isFloating()) {
 		ScopedRenderTarget2D target(_masker);
-		int lines = (int)(-(maskEnd.x - maskStart.x) / _lineInterval + 0.5);
-		Vec2 st = maskStart;
+		int lines = (int)((maskEnd.prp - maskStart.prp) / _lineInterval + 0.5);
+		Vec2OnText st = maskStart;
 		ColorF color(Palette::Black, 0.5);
 		double hfs = _font->getFontSize() / 2.0;
+		Point origin = _textArea.origin - _textArea.realPos(_isVertical);
 		for (int i = 0; i < lines; i++) {
-			RectF r(st.x - hfs, st.y, 2*hfs, _textArea.h - st.y);
-			r.draw(color);
-			st = Vec2(st.x - _lineInterval, 0);
+			RectFOnText r({ st.prl, st.prp - hfs }, { _textArea.size.prl - st.prl, 2 * hfs });
+			r.toRealRect(_isVertical).movedBy(origin).draw(color);
+			st = Vec2OnText(0, st.prp + _lineInterval);
 		}
-		RectF r(st.x - hfs, st.y, 2*hfs, maskEnd.y - st.y);
-		r.draw(color);
+		RectFOnText r({ st.prl, st.prp - hfs }, { maskEnd.prl - st.prl, 2 * hfs });
+		r.toRealRect(_isVertical).movedBy(origin).draw(color);
 	}
 	{
 		Graphics2D::SetTexture(1, _masker);
 		ScopedCustomShader2D shader(_maskPS); //TODO: _maskPSのプリコンパイル
-		_maskee.draw(_textArea.pos);
+		_maskee.draw(_textArea.realPos(_isVertical));
 		Graphics2D::SetTexture(1, none);
 	}
 	Graphics2D::Flush();
@@ -233,313 +239,19 @@ SP<GlyphArrangement2> WholeView::glyphArrangement() const {
 }
 
 void WholeView::jump(GlyphArrangement2::LineIterator litr) {
-	_ga->resetOrigin(litr, Point(-_textArea.w / 2, 0));
-}
-
-GlyphArrangement::GlyphArrangement(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos)
-: _text(text)
-, _area(area)
-, _lineInterval(lineInterval)
-, _pos()
-, _cacheBegin()
-, _cacheEnd()
-, _begin()
-, _end() {
-	_begin = _text->beginSentinel();
-	_end = _text->endSentinel();
-	auto [nlhead, cnt] = _text->nextLineHead(_text->next(_begin));
-	_pos = decltype(_pos)(cnt + 2, Vec2());
-	_cacheBegin = { _begin, _pos.begin() };
-	_cacheEnd = { nlhead, std::prev(_pos.end()) };
-	*next(_cacheBegin).second = originPos;
-	arrange(next(_cacheBegin), _cacheEnd);
-}
-
-GlyphArrangement::GlyphArrangement(GlyphArrangement& ga, Iterator begin)
-: _text()
-, _area(ga._area)
-, _lineInterval(ga._lineInterval)
-, _pos()
-, _cacheBegin()
-, _cacheEnd()
-, _begin()
-, _end() {
-	auto lheadOld = ga.lineHead(begin).first;
-	auto nlheadOld = ga.nextLineHead(begin).first;
-	_text.reset(new Text::TextWithHead(*ga._text, begin.first, lheadOld.first));
-	_begin = _text->prev(begin.first);
-	_end = _text->endSentinel();
-	_pos = std::list<Vec2>(lheadOld.second, std::next(nlheadOld.second));
-	_pos.push_front(Vec2());
-	auto lhead = _text->lineHead(begin.first).first;
-	auto nlhead = _text->nextLineHead(begin.first).first;
-	_cacheBegin = { _text->prev(lhead), _pos.begin() };
-	_cacheEnd = { nlhead, std::prev(_pos.end()) };
-}
-
-//TODO: 実装（NULL文字が増殖するだけで致命的なバグが起こるわけではないので後回し）
-GlyphArrangement::~GlyphArrangement() {
-	_pos.clear();
-}
-
-GlyphArrangement::Iterator GlyphArrangement::next(Iterator itr) {
-	assert(itr.first != _text->endSentinel());
-	if (itr.second == --_pos.end()) _pos.push_back(Vec2());
-	return { _text->next(itr.first), ++itr.second };
-}
-
-GlyphArrangement::Iterator GlyphArrangement::prev(Iterator itr) {
-	assert(itr.first != _text->beginSentinel());
-	if (itr.second == _pos.begin()) _pos.push_front(Vec2());
-	return { _text->prev(itr.first), --itr.second };
-}
-
-GlyphArrangement::Iterator GlyphArrangement::advanced(Iterator itr, int d) {
-	if (0 <= d) {
-		for (int i = 0; i < d; i++) itr = next(itr);
-	}
-	else {
-		for (int i = 0; i < -d; i++) itr = prev(itr);
-	}
-	return itr;
-}
-
-//TODO: NULL文字は_fontに渡さずに処理したほうが良いかも
-//TODO: (first, last]にする
-void GlyphArrangement::arrange(Iterator first, Iterator last) {
-	Vec2 pen = *first.second;
-	Iterator itr = first;
-	while (itr != last) {
-		pen += itr.first->glyph->getAdvance();
-		if (_text->isNewline(itr.first) || _area.y + _area.h < pen.y) {
-			pen = Vec2(pen.x - _lineInterval, _area.y);
-		}
-		itr.first = _text->next(itr.first);
-		itr.second++;
-		*itr.second = pen;
-	}
-}
-
-RectF GlyphArrangement::area() const {
-	return _area;
-}
-
-double GlyphArrangement::lineInterval() const {
-	return _lineInterval;
-}
-
-bool GlyphArrangement::onTextArea(Iterator itr) const {
-	return !upperTextArea(itr) && !lowerTextArea(itr);
-}
-
-bool GlyphArrangement::upperTextArea(Iterator itr) const {
-	Vec2 p = *itr.second;
-	return p.x < _area.x - _lineInterval;
-}
-
-bool GlyphArrangement::lowerTextArea(Iterator itr) const {
-	Vec2 p = *itr.second;
-	return _area.x + _area.w + _lineInterval < p.x;
-}
-
-void GlyphArrangement::scroll(double delta) {
-	for (Vec2& p : _pos) {
-		p += Vec2(-delta, 0);
-	}
-}
-
-std::pair<TextWindow::Iterator, int> GlyphArrangement::lineHead(Iterator itr) {
-	auto [lhead, cnt] = _text->lineHead(itr.first);
-	return { advanced(itr, -cnt), cnt };
-}
-
-std::pair<TextWindow::Iterator, int> GlyphArrangement::nextLineHead(Iterator itr) {
-	auto [nlhead, cnt] = _text->nextLineHead(itr.first);
-	return { advanced(itr, cnt), cnt };
-}
-
-GlyphArrangement::Iterator GlyphArrangement::calcDrawBegin() {
-	Iterator ret = _cacheEnd;
-	while (true) {
-		Iterator prv = prevExtended(ret);
-		if (prv.first == _begin || lowerTextArea(prv)) break;
-		ret = prv;
-	}
-	while (ret.first != _end && lowerTextArea(ret))
-		ret = nextExtended(ret);
-	Iterator lhead = lineHead(ret).first;
-	_pos.erase(_pos.begin(), lhead.second);
-	_cacheBegin = prev(lhead);
-	return ret;
-}
-
-GlyphArrangement::Iterator GlyphArrangement::calcDrawEnd() {
-	Iterator ret = next(_cacheBegin);
-	while (ret.first != _end && !upperTextArea(ret))
-		ret = nextExtended(ret);
-	while (true) {
-		Iterator prv = prevExtended(ret);
-		if (prv.first == _begin || !upperTextArea(prv)) break;
-		ret = prv;
-	}
-	Iterator nlhead = nextLineHead(prev(ret)).first;
-	_pos.erase(std::next(nlhead.second), _pos.end());
-	_cacheEnd = nlhead;
-	return ret;
-}
-
-GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr) {
-	assert(itr.first != _text->beginSentinel());
-	if (itr != next(_cacheBegin) || _cacheBegin.first == _text->beginSentinel()) return prev(itr); //グリフ位置キャッシュ済み or キャッシュの必要なし
-
-	Vec2 p = *itr.second;
-	Iterator lhead = lineHead(_cacheBegin).first;
-	_cacheBegin = prev(lhead);
-	*lhead.second = Vec2(0, _area.y);
-	arrange(lhead, itr);
-	double d = p.x - itr.second->x;
-	std::transform(_pos.begin(), std::next(itr.second), _pos.begin(), [d](Vec2 v) { return v + Vec2(d, 0); });
-	return prev(itr);
-}
-
-GlyphArrangement::Iterator GlyphArrangement::nextExtended(Iterator itr) {
-	assert(itr.first != _text->endSentinel());
-	if (itr != _cacheEnd) return next(itr); //グリフ位置キャッシュ済み
-
-	//itrは必ず行頭
-	Iterator nlhead = nextLineHead(itr).first;
-	_cacheEnd = nlhead;
-	arrange(itr, nlhead);
-	return next(itr);
-}
-
-GlyphArrangement::Iterator GlyphArrangement::prevExtended(Iterator itr, int cnt) {
-	for (int i = 0; i < cnt; i++) itr = prevExtended(itr);
-	return itr;
-}
-
-GlyphArrangement::Iterator GlyphArrangement::nextExtended(Iterator itr, int cnt) {
-	for (int i = 0; i < cnt; i++) itr = nextExtended(itr);
-	return itr;
-}
-
-TextWindow::TextWindow(SP<Text::Text> text, const RectF& area, double lineInterval, Vec2 originPos)
-: GlyphArrangement(text, area, lineInterval, originPos)
-, _text(text)
-, _cursor()
-, _editedCount(0)
-, _unsettledCount(0)
-, _isEditing(false) {
-	_cursor = next(_cacheBegin);
-}
-
-//TODO: _posに全てinsertしてしまってるけどOK？
-TextWindow::Iterator TextWindow::insertText(Iterator itr, const String &s, bool rearranges) {
-	auto titr = _text->insert(itr.first, s);
-	auto pitr = _pos.insert(itr.second, s.size(), *itr.second);
-	Iterator ret(titr, pitr);
-	if (rearranges) {
-		_cacheEnd = nextLineHead(ret).first;
-		//int cb = std::distance(_pos.begin(), _cacheBegin.second);
-		//int ce = std::distance(_pos.begin(), _cacheEnd.second);
-		arrange(lineHead(ret).first, _cacheEnd);
-	}
-	else {
-		_cacheEnd = lineHead(itr).first;
-	}
-	return { titr, pitr };
-}
-
-TextWindow::Iterator TextWindow::eraseText(Iterator first, Iterator last, bool rearranges) {
-	Vec2 p = *first.second;
-	auto titr = _text->erase(first.first, last.first);
-	auto pitr = _pos.erase(first.second, last.second);
-	Iterator ret{ titr, pitr };
-	*pitr = p;
-	if (rearranges) {
-		_cacheEnd = nextLineHead(ret).first;
-		arrange(lineHead(ret).first, _cacheEnd);
-	}
-	else {
-		_cacheEnd = lineHead(ret).first;
-	}
-	return ret;
-}
-
-SP<const Text::Text> TextWindow::text() {
-	return _text;
-}
-
-UP<GlyphArrangement> TextWindow::startEditing() {
-	assert(_isEditing == false);
-	_isEditing = true;
-	//floatingした文字列と元の文字列の間に隙間ができるので、"隙間へのカーソル"を表現するためにNULL文字を置いておく
-	Vec2 p = *_cursor.second;
-	Iterator floatingBegin = _cursor;
-	_cursor = insertText(_cursor, {  Text::Text::NULL_CHAR }, false);
-	*_cursor.second = p;
-	return UP<GlyphArrangement>(new GlyphArrangement(*this, floatingBegin));
-}
-
-void TextWindow::stopEditing() {
-	assert(_isEditing == true);
-	_isEditing = false;
-	_cursor = eraseText(_cursor, next(_cursor), false);
-	_editedCount = _unsettledCount = 0;
-}
-
-bool TextWindow::isEditing() {
-	return _isEditing;
-}
-
-TextWindow::Iterator TextWindow::cursor() {
-	return _cursor;
-}
-
-TextWindow::Iterator TextWindow::editedBegin() {
-	return prevExtended(_cursor, _editedCount);
-}
-
-TextWindow::Iterator TextWindow::unsettledBegin() {
-	return prevExtended(_cursor, _unsettledCount + _editedCount);
-}
-
-void TextWindow::inputText(const String& addend, const String& editing) {
-	if (!_isEditing) return;
-	eraseText(editedBegin(), _cursor, false);
-	_unsettledCount += addend.size();
-	_editedCount = editing.size();
-	insertText(_cursor, addend + editing, true);
-}
-
-bool TextWindow::cursorNext() {
-	if (_isEditing || _cursor.first == _end) return false;
-	_cursor = nextExtended(_cursor);
-	return true;
-}
-
-bool TextWindow::cursorPrev() {
-	if (_isEditing) return false;
-	Iterator prv = prev(_cursor);
-	if (prv.first == _text->beginSentinel()) return false;
-	_cursor = prv;
-	return true;
-}
-
-void TextWindow::setCursorUnsafe(Iterator cursor) {
-	_cursor = cursor;
+	_ga->resetOrigin(litr, PointOnText(0, _textArea.size.prp / 2));
 }
 
 GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 	if (litr->cd.empty()) {
 		return _data.erase(litr);
 	}
-	Point pen(0, 0);
+	PointOnText pen(0, 0);
 	decltype(litr->cd)::iterator itr = litr->cd.begin();
 	int wrapCount = 0;
 	while (itr != litr->cd.end()) {
-		if (pen.y > _maxLineLnegth - _font->getFontSize()) {
-			pen = Point(pen.x - _lineInterval, 0);
+		if (pen.parallel > _maxLineLnegth - _font->getFontSize()) {
+			pen = PointOnText(0, pen.perpendicular + _lineInterval);
 			wrapCount++;
 		}
 		itr->pos = pen;
@@ -553,7 +265,7 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 			}
 		}
 		//TODO: Glyphをちゃんと整数座標に対応
-		pen += itr->glyph->getAdvance().asPoint();
+		pen.parallel += itr->glyph->advance();
 		for (auto itrtrtritrtr = itr->itrs.begin(); itrtrtritrtr != itr->itrs.end();) {
 			if (itrtrtritrtr->use_count() <= 1) itrtrtritrtr = itr->itrs.erase(itrtrtritrtr);
 			else {
@@ -603,9 +315,14 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			size += add;
 			bl = next;
 		}
-		int textureWidth = (int)(sr * (size + 1) * _lineInterval + 1);
+		int textureLength = (int)(sr * (size + 1) * _lineInterval + 1);
+		Size textureSize = [&]() {
+			if (_isVertical) return Size(textureLength, (int)(sr * _maxLineLnegth + 1));
+			return Size((int)(sr * _maxLineLnegth + 1), textureLength);
+		}();
+		Point origin = _isVertical ? Point(textureLength, 0) : Point(0, 0);
 		double ascender = fs_ / 2.0;
-		MSRenderTexture msrt(Size(textureWidth, (int)(sr * _maxLineLnegth + 1)));
+		MSRenderTexture msrt(textureSize);
 		msrt.clear(ColorF(Palette::White, 0));
 		{
 			double a = 3;
@@ -616,12 +333,13 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			bs.dstAlpha = Blend::InvSrcAlpha;
 			ScopedRenderStates2D state(bs);
 			LineIterator b = head;
-			Vec2 lineOrigin(textureWidth - ascender, 0);
+			Vec2OnText lineOrigin(0, ascender);
 			while (b != bl) {
 				for (auto c : b->cd) {
-					c.blurred->draw(lineOrigin + sr * c.pos, Palette::White, 0, sr);
+					Vec2OnText tp = (lineOrigin + c.pos.toTextVec2() * sr);
+					c.blurred->draw(origin + tp.toRealPos(_isVertical), Palette::White, 0, sr);
 				}
-				lineOrigin.x -= sr * b->wrapCount * _lineInterval;
+				lineOrigin.prp += sr * b->wrapCount * _lineInterval;
 				b = tryNext(b);
 			}
 		}
@@ -631,7 +349,7 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 		head->bucketHeader->minimap = msrt;
 		head->bucketHeader->wrapCount = size;
 		head->bucketHeader->advance = (int)(sr * size * _lineInterval + 1);
-		head->bucketHeader->origin = Vec2(textureWidth - ascender, 0);
+		head->bucketHeader->origin = Vec2(textureLength - ascender, 0);
 
 		head = bl;
 	}
@@ -659,12 +377,13 @@ void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 	}
 }
 
-GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength)
+GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, bool isVertical)
 : _font(font)
 , _blurredFont(new Font::FixedFont(font->ftLibrary(), font->ftFace(), font->getFontSize(), font->isVertical()))
 , _data()
 , _lineInterval(lineInterval)
 , _maxLineLnegth(maxLineLength)
+, _isVertical(isVertical)
 , _origin()
 , _originPos(0, 0)
 , _cursor(new CharIterator()) {
@@ -753,14 +472,14 @@ GlyphArrangement2::CharIterator GlyphArrangement2::replaceText(CharIterator firs
 }
 
 void GlyphArrangement2::scroll(int delta) {
-	_originPos.x -= delta;
-	while (_origin != _data.end() && _lineInterval < _originPos.x - _origin->wrapCount * _lineInterval) {
-		_originPos.x -= _origin->wrapCount * _lineInterval;
+	_originPos.prp += delta;
+	while (_origin != _data.end() && -_lineInterval > _originPos.prp + _origin->wrapCount * _lineInterval) {
+		_originPos.prp += _origin->wrapCount * _lineInterval;
 		_origin = std::next(_origin);
 	}
-	while (_origin != _data.begin() && _lineInterval > _originPos.x) {
+	while (_origin != _data.begin() && _lineInterval < _originPos.prp) {
 		_origin = std::prev(_origin);
-		_originPos.x += _origin->wrapCount * _lineInterval;
+		_originPos.prp -= _origin->wrapCount * _lineInterval;
 	}
 }
 
@@ -808,7 +527,7 @@ GlyphArrangement2::LineIterator GlyphArrangement2::origin() const {
 	return _origin;
 }
 
-Point GlyphArrangement2::originPos() const {
+PointOnText GlyphArrangement2::originPos() const {
 	return _originPos;
 }
 
@@ -850,7 +569,7 @@ double GlyphArrangement2::minimapLineInterval() const {
 	return _minimapFontSize / (double)_font->getFontSize() * _lineInterval;
 }
 
-void GlyphArrangement2::resetOrigin(LineIterator origin, Point pos) {
+void GlyphArrangement2::resetOrigin(LineIterator origin, PointOnText pos) {
 	_origin = origin;
 	_originPos = pos;
 	scroll(0);
@@ -871,15 +590,15 @@ void GlyphArrangement2::deleteNull(SP<CharIterator> nullItr) {
 	initLine(nullItr->first);
 }
 
-Vec2 FloatingAnimation::easeOverLine(Vec2 source, Vec2 target, double t, int i) {
+Vec2OnText FloatingAnimation::easeOverLine(Vec2OnText source, Vec2OnText target, double t, int i) {
 	double rate = EaseOut(Easing::Expo, 3.0, 1.0, std::min(1.0, i / 200.0));
 	t = std::min(1.0, t * rate);
 
-	int lineDiff = std::round(-(target.x - source.x) / _lineInterval);
-	double sum = target.y + _maxLineLength * lineDiff - source.y;
+	int lineDiff = std::round((target.prp - source.prp) / _lineInterval);
+	double sum = target.prl + _maxLineLength * lineDiff - source.prl;
 	double delta = EaseInOut(Easing::Sine, t) * sum;
-	double flr = std::floor((delta + source.y) / _maxLineLength);
-	return Vec2(source.x - flr * _lineInterval, source.y + delta - flr * _maxLineLength);
+	double flr = std::floor((delta + source.prl) / _maxLineLength);
+	return Vec2OnText(source.prl + delta - flr * _maxLineLength, source.prp + flr * _lineInterval);
 }
 
 FloatingAnimation::FloatingAnimation(int lineInterval, int maxLineLength)
@@ -919,7 +638,7 @@ void FloatingAnimation::startFloating(GA& ga, GA::CharIterator floatingBegin) {
 	_newHeadPos.resize(size);
 	for (int i = 0; i < size; i++) {
 		auto ritr = std::next(floatingBegin.second, i);
-		_oldHeadPos[i] = _newHeadPos[i] = ritr->pos;
+		_oldHeadPos[i] = _newHeadPos[i] = ritr->pos.toTextVec2();
 	}
 	_step = Step::Floating;
 	_inOutAP.start(1.5);
@@ -947,14 +666,14 @@ void FloatingAnimation::updatePos(const GA& ga) {
 		auto ritr = std::next(_floatingBegin->second, i);
 		//TODO: アニメーション位置をoldにするとなめらかに遷移できる
 		_oldHeadPos[i] = easeOverLine(_oldHeadPos[i], _newHeadPos[i], _updateAP.getProgress(), i);
-		_newHeadPos[i] = ritr->pos;
+		_newHeadPos[i] = ritr->pos.toTextVec2();
 	}
 	_updateAP.start(2.0);
 }
 
-Vec2 FloatingAnimation::getPos(GA::CharIterator citr) {
+Vec2OnText FloatingAnimation::getPos(GA::CharIterator citr) {
 	assert(_step != Step::Inactive);
-	Vec2 d(-2 * _lineInterval, 0);
+	Vec2OnText d(0, 2 * _lineInterval);
 	if (_step == Step::Floating) {
 		d *= EaseOut(Easing::Expo, _inOutAP.getProgress());
 	}
@@ -964,8 +683,8 @@ Vec2 FloatingAnimation::getPos(GA::CharIterator citr) {
 
 	if (citr.first != _floatingBegin->first) {
 		double t = _updateAP.getProgress();
-		Vec2 e = EaseOut(Easing::Expo, Vec2((-_oldAdvance) - (-_newAdvance), 0), Vec2(0, 0), t);
-		return citr.second->pos + d + e;
+		Vec2OnText e = Vec2OnText(0, (-_oldAdvance) - (-_newAdvance)) * EaseOut(Easing::Expo, t);
+		return citr.second->pos.toTextVec2() + d + e;
 	}
 	int idx = citr.second - _floatingBegin->second;
 	return easeOverLine(_oldHeadPos[idx], _newHeadPos[idx], _updateAP.getProgress(), idx) + d;
@@ -1104,7 +823,7 @@ void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 	if (_step == Step::Advancing) {
 		while (true) {
 			_drawingPos.second = velocity * _sw.sF();
-			double advance = _drawingPos.first->second->glyph->getAdvance().y;
+			double advance = _drawingPos.first->second->glyph->advance();
 			if (*_drawingPos.first == *_ga->cursor()) {
 				_drawingPos.second = 0;
 				_sw.pause();
@@ -1119,7 +838,7 @@ void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 	}
 	else if (_step == Step::Retreating) {
 		while (true) {
-			double advance = _drawingPos.first->second->glyph->getAdvance().y;
+			double advance = _drawingPos.first->second->glyph->advance();
 			_drawingPos.second = advance - velocity * _sw.sF();
 			if (_drawingPos.second > 0) break;
 			registerUnpaint(tmpData, *_drawingPos.first);
@@ -1129,7 +848,7 @@ void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 				return; //_stepはStableにしない
 			}
 			_ga->prev(_drawingPos.first);
-			double newAdvance = _drawingPos.first->second->glyph->getAdvance().y;
+			double newAdvance = _drawingPos.first->second->glyph->advance();
 			_drawingPos.second += newAdvance;
 			_sw.set(_sw.elapsed() - SecondsF(advance / velocity));
 		}

@@ -30,7 +30,9 @@ public:
 	//angle: rad
 	Vec2 draw(const Vec2 &pen, const Color &color = Palette::Black, double angle = 0.0, double scale = 1.0) const;
 
-	Vec2 getAdvance(double angle = 0.0) const;
+	double advance() const;
+
+	Vec2 advance(double angle) const;
 
 	int getFontSize() const;
 

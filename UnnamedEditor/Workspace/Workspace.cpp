@@ -99,14 +99,14 @@ void Workspace::update() {
 		DevicePos charPos = head;
 		for (auto g : unsettledGlyhps) {
 			g->draw(charPos, Palette::Gray);
-			charPos += g->getAdvance();
+			charPos += Vec2(0, g->advance());
 		}
 	}
 
 	DevicePos charPos = head;
 	for (int cnt = 0; cnt < (int)_glyphs.size(); cnt++) {
 		int i = (int)_glyphs.size() - 1 - cnt;
-		charPos -= _glyphs[i]->getAdvance();
+		charPos -= Vec2(0, _glyphs[i]->advance());
 		Color color = (cnt < _draftCharCount ? Palette::Red : Palette::Black);
 		_glyphs[i]->draw(charPos, color);
 		if (charPos.y < _pos.y) break;
