@@ -124,8 +124,9 @@ void WholeView::draw() {
 		BlendState bs = BlendState::Default;
 		bs.srcAlpha = Blend::One;
 		bs.dstAlpha = Blend::InvSrcAlpha;
-		ScopedRenderStates2D renderState(bs);
-		ScopedRenderTarget2D target(_maskee);
+		const ScopedRenderStates2D renderState(bs);
+		const ScopedRenderTarget2D target(_maskee);
+		const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_isVertical)));
 
 		auto drawCursor = [&](Vec2 pos) {
 			ScopedRenderTarget2D tmp(_foreground);
@@ -136,7 +137,6 @@ void WholeView::draw() {
 		using GA = GlyphArrangement2;
 		auto litr = _ga->origin();
 		bool flt = false;
-		Point origin = _textArea.origin - _textArea.realPos(_isVertical);
 		PointOnText lineOrigin = _ga->originPos();
 
 		while (lineOrigin.prp < _textArea.size.prp +_lineInterval && litr != _ga->end()) {
@@ -146,7 +146,7 @@ void WholeView::draw() {
 
 				Vec2OnText tp = (lineOrigin + citr.second->pos).toTextVec2();
 				if (flt) tp = lineOrigin.toTextVec2() + floating->getPos(citr);
-				Vec2 p = origin + tp.toRealPos(_isVertical);
+				Vec2 p = tp.toRealPos(_isVertical);
 				if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
 					if (!CharAnimation::IsEmpty(citr.second->animation)) {
 						citr.second->animation->draw(p, citr.second->glyph);
@@ -170,7 +170,9 @@ void WholeView::draw() {
 		}
 	}
 	if (floating->isFloating()) {
-		ScopedRenderTarget2D target(_masker);
+		const ScopedRenderTarget2D target(_masker);
+		const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_isVertical)));
+
 		int lines = (int)((maskEnd.prp - maskStart.prp) / _lineInterval + 0.5);
 		Vec2OnText st = maskStart;
 		ColorF color(Palette::Black, 0.5);
@@ -186,7 +188,7 @@ void WholeView::draw() {
 	}
 	{
 		Graphics2D::SetTexture(1, _masker);
-		ScopedCustomShader2D shader(_maskPS); //TODO: _maskPSのプリコンパイル
+		const ScopedCustomShader2D shader(_maskPS); //TODO: _maskPSのプリコンパイル
 		_maskee.draw(_textArea.realPos(_isVertical));
 		Graphics2D::SetTexture(1, none);
 	}
@@ -326,12 +328,12 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 		msrt.clear(ColorF(Palette::White, 0));
 		{
 			double a = 3;
-			ScopedColorMul2D mul(1, a);
-			ScopedRenderTarget2D target(msrt);
+			const ScopedColorMul2D mul(1, a);
+			const ScopedRenderTarget2D target(msrt);
 			BlendState bs = BlendState::Default;
 			bs.srcAlpha = Blend::One;
 			bs.dstAlpha = Blend::InvSrcAlpha;
-			ScopedRenderStates2D state(bs);
+			const ScopedRenderStates2D state(bs);
 			LineIterator b = head;
 			Vec2OnText lineOrigin(0, ascender);
 			while (b != bl) {
@@ -874,11 +876,11 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 	BlendState bs = BlendState::Default;
 	bs.srcAlpha = Blend::One;
 	bs.dstAlpha = Blend::InvSrcAlpha;
-	ScopedRenderStates2D state(bs);
+	const ScopedRenderStates2D state(bs);
 	_area.draw(Palette::White);
 	{
-		ScopedViewport2D viewport(_body);
-		Transformer2D transform(Mat3x2::Identity(), Mat3x2::Translate(_body.pos));
+		const ScopedViewport2D viewport(_body);
+		const Transformer2D transform(Mat3x2::Identity(), Mat3x2::Translate(_body.pos));
 		ColorF c = Palette::Blueviolet;
 		//ScopedColorAdd2D colorAdd(c);
 		//ScopedColorMul2D colorMul(ColorF(1, 1, 1) - c);
