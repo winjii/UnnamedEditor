@@ -25,7 +25,7 @@ private:
 public:
 	FTLibraryWrapper() : FTLibraryWrapper(CreateLibrary()) {}
 	FTLibraryWrapper(FT_Library lib) : _inner(new Inner(lib)) {}
-	FT_Library operator->() { return _inner->_lib; }
+	FT_Library operator->() const { return _inner->_lib; }
 	FT_Library raw() { return _inner->_lib; }
 };
 
@@ -50,7 +50,7 @@ public:
 	FTFaceWrapper(FTLibraryWrapper lib, const std::string &fontPath)
 		: _inner(new Inner(CreateFace(lib, fontPath))) {}
 	FTFaceWrapper(FT_Face face) : _inner(new Inner(face)) {}
-	FT_Face operator->() { return _inner->_face; }
+	FT_Face operator->() const { return _inner->_face; }
 	FT_Face raw() { return _inner->_face; }
 };
 
@@ -88,9 +88,9 @@ public:
 
 	FTFaceWrapper ftFace();
 
-	double ascender();
+	double ascender(double fontSize) const;
 
-	double descender();
+	double descender(double fontSize) const;
 
 	Line getCursor(Vec2 pen, double fontSize);
 

@@ -64,8 +64,6 @@ FontBase::FontBase(FTLibraryWrapper lib, FTFaceWrapper face, bool isVertical)
 , _isVertical(isVertical) {
 	FT_Select_Charmap(_face.raw(), FT_Encoding_::FT_ENCODING_UNICODE);
 	_gsubReader = SP<GsubReader>(new GsubReader(_face.raw()));
-	_ascender = _face->ascender/64.0; //TODO: scalable(outline)ƒtƒHƒ“ƒg‚Ìê‡‚Í26.6 pixcel format‚¶‚á‚È‚¢
-	_descender = _face->descender/64.0;
 }
 
 FontBase::FontBase(FTLibraryWrapper lib, std::string fontPath, bool isVertical)
@@ -80,16 +78,17 @@ FTFaceWrapper FontBase::ftFace() {
 	return _face;
 }
 
-double FontBase::ascender() {
-	return _ascender;
+double FontBase::ascender(double fontSize) const {
+	return fontSize * (_face->ascender / (double)_face->units_per_EM);
 }
 
-double FontBase::descender() {
-	return _descender;
+double FontBase::descender(double fontSize) const {
+	return fontSize * (_face->descender / (double)_face->units_per_EM);
 }
 
 Line FontBase::getCursor(Vec2 pen, double fontSize) {
-	if (!_isVertical) return Line(pen.x, pen.y + _ascender, pen.x, pen.y + _descender);
+	if (!_isVertical)
+		return Line(pen.x, pen.y + ascender(fontSize), pen.x, pen.y + descender(fontSize));
 	return Line(Vec2(pen.x - fontSize/2, pen.y), Vec2(pen.x + fontSize/2, pen.y));
 }
 

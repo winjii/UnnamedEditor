@@ -18,6 +18,14 @@ FixedFont::FixedFont(FTLibraryWrapper lib, FTFaceWrapper face, int pixelSize, bo
 FixedFont::FixedFont(FTLibraryWrapper lib, std::string fontPath, int pixelSize, bool isVertical)
 : FixedFont(lib, FTFaceWrapper(lib, fontPath), pixelSize, isVertical) { }
 
+int FixedFont::ascender() const {
+	return (int)(FontBase::ascender(_fontSize) + 0.5);
+}
+
+int FixedFont::descender() const {
+	return (int)(FontBase::descender(_fontSize) + 0.5);
+}
+
 int FixedFont::getFontSize() {
 	return _fontSize;
 }

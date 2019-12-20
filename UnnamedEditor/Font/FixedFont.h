@@ -29,6 +29,10 @@ public:
 
 	bool isVertical();
 
+	int ascender() const;
+
+	int descender() const;
+
 	Line getCursor(Vec2 pen);
 
 	SP<const Glyph> renderChar(char16_t charCode);
