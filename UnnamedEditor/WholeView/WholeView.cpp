@@ -126,7 +126,7 @@ void WholeView::draw() {
 		bs.dstAlpha = Blend::InvSrcAlpha;
 		const ScopedRenderStates2D renderState(bs);
 		const ScopedRenderTarget2D target(_maskee);
-		const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_textDir)));
+		Point textOrigin = _textArea.origin - _textArea.realPos(_textDir);
 
 		auto drawCursor = [&](Vec2 pos) {
 			ScopedRenderTarget2D tmp(_foreground);
@@ -147,12 +147,14 @@ void WholeView::draw() {
 
 				Vec2OnText tp = (lineOrigin + citr.second->pos).toTextVec2();
 				if (flt) tp = lineOrigin.toTextVec2() + floating->getPos(citr);
-				Vec2 p = tp.toRealPos(_textDir);
+				Vec2 p = tp.toRealPos(_textDir) + textOrigin;
+				//Circle(p, 3).draw(Palette::Red);
 				if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
 					if (!CharAnimation::IsEmpty(citr.second->animation)) {
 						citr.second->animation->draw(p, citr.second->glyph);
 					}
-					else citr.second->glyph->draw(p);
+					else
+						citr.second->glyph->draw(p);
 				}
 				if (citr == *_ga->cursor()) {
 					drawCursor(p);
@@ -868,9 +870,9 @@ void CleanCopyCursor::registerUnpaint(TemporaryData::Manager& tmpData, GA::CharI
 
 MinimapView::MinimapView(RectF area, SP<GA> ga)
 : _area(area)
-, _body(area, ga->textDirection())
 , _ga(ga)
-, _mapDir(TD::SwapAxis(_ga->textDirection())){
+, _mapDir(TD::SwapAxis(ga->textDirection()))
+, _body(area, _mapDir) {
 }
 
 GlyphArrangement2::LineIterator MinimapView::draw() {
@@ -885,12 +887,14 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 		const ScopedViewport2D viewport(_body.toRect(_mapDir));
 		const Transformer2D inv(Mat3x2::Translate(-_body.realPos(_mapDir)), Mat3x2::Identity());
 		ColorF c = Palette::Blueviolet;
-		const Transformer2D transformer(Mat3x2::Translate(_body.origin));
+		const Transformer2D transformer(Mat3x2::Translate(_body.origin), Mat3x2::Translate(_body.origin));
 		//ScopedColorAdd2D colorAdd(c);
 		//ScopedColorMul2D colorMul(ColorF(1, 1, 1) - c);
 		double li = _ga->minimapLineInterval();
 		GA::LineIterator bucket = _ga->begin();
 		PointOnText pen(0, 0);
+		//Circle(pen.toRealPos(_mapDir), 100).draw(ColorF(Palette::Red, 0.4));
+		//Circle(Cursor::Pos(), 100).draw(ColorF(Palette::Red, 0.4));
 		while (bucket != _ga->end()) {
 			if (_body.size.prp < pen.prp) break;
 			GA::LineIterator nextBucket = _ga->nextBucket(_ga->tryNext(bucket));
@@ -898,8 +902,8 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 			const auto& map = header->minimap;
 			
 			while (true) {
-				//Circle(pen.toRealPos(_mapDir), 3).draw(Palette::Red);
-				RectOnText mapRect(pen, PointOnText(map.size(), _mapDir));
+				//Circle(pen.toRealPos(_mapDir), 3).draw(Palette::Blue);
+				RectOnText mapRect(pen, PointOnText(map.size(), _mapDir).abs());
 				map.draw(mapRect.toRealRect(_mapDir).pos, Palette::Black);
 				//mapRect.toRealRect(_mapDir).drawFrame(2.0, Palette::Red);
 				if (mapRect.toRealRect(_mapDir).contains(Cursor::Pos())) {
@@ -919,9 +923,10 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 						ret = litr;
 						if (MinimapHighlight::IsEmpty(litr->highlight)) {
 							RectFOnText tr(Vec2OnText(prl, pen.prp) - mapRect.pos.toTextVec2(), Vec2OnText(nprl - prl, mapRect.size.prp));
-							RectF r = tr.toRealRect(_mapDir);
-							Vec2 pos = Vec2OnText(prl, pen.prp).toRealPos(_mapDir);
-							litr->highlight.reset(new MinimapHighlight(map, r, pos));
+							RectF r = RectFOnText(Vec2OnText(prl, pen.prp), Vec2OnText(nprl - prl, mapRect.size.prp)).toRealRect(_mapDir);
+							//Circle(r.pos, 3).draw(Palette::Red);
+							RectF region = r.movedBy(-mapRect.toRealRect(_mapDir).pos);
+							litr->highlight.reset(new MinimapHighlight(map, region, r.pos));
 							_tmpManager.registerPointer(litr->highlight);
 						}
 						litr->highlight->keep();
@@ -934,8 +939,8 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 			pen.prl += header->advance;
 			bucket = nextBucket;
 		}
+		_tmpManager.update();
 	}
-	_tmpManager.update();
 	return ret;
 }
 

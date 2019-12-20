@@ -39,14 +39,16 @@ public:
 	template <class T>
 	static decltype(T::x) Dot(const T& p, const T& q) { return p.x * q.x + p.y * q.y; }
 
-	template <class T>
-	static T Times(const T& p, const T& q) { return { p.x * q.x, p.y * q.y }; } //óvëfÇ≤Ç∆ÇÃêœ
-
-	template <class T>
-	static T Abs(const T& p) { return { Abs(p.x), Abs(p.y) }; } //óvëfÇ≤Ç∆ÇÃê‚ëŒíl
-
 	static bool isVertical(Direction d) {
 		return d == Direction::DownLeft || d == Direction::DownRight;
+	}
+
+	template <class T>
+	static std::pair<T, T> ToPositiveRect(const T& pos, const T& size) {
+		T rpos = pos, rsize = size;
+		if (rsize.x < 0) { rpos.x += rsize.x; rsize.x *= -1; }
+		if (rsize.y < 0) { rpos.y += rsize.y; rsize.y *= -1; }
+		return { rpos, rsize };
 	}
 };
 
@@ -61,6 +63,7 @@ using Vec2OnText = PosOnText<Vec2>;
 template <class T>
 struct PosOnText : protected T {
 	using TD = TextDirection;
+	friend TextDirection;
 public:
 	using Element = decltype(T::x);
 	Element& parallel = T::x;
@@ -81,6 +84,7 @@ public:
 	T toRealPos(TD::Direction d) {
 		return parallel * TD::Dir1[d] + perpendicular * TD::Dir2[d];
 	}
+	PosOnText abs() const { return { Abs(parallel), Abs(perpendicular) }; }
 	PosOnText& operator=(const PosOnText& p) { T::operator=(p); return *this; }
 	Vec2OnText toTextVec2() { return { (double)parallel, (double)perpendicular }; }
 	PointOnText toTextPoint() { return { (int)(parallel + 0.5), (int)(perpendicular + 0.5) }; }
@@ -92,14 +96,6 @@ public:
 	PosOnText operator/(Element e) const { return T::operator/(e); }
 	PosOnText& operator*=(Element e) { T::operator*=(e); return *this; }
 	PosOnText& operator/=(Element e) { T::operator/=(e); return *this; }
-
-	template <class T>
-	static std::pair<T, T> ToPositiveRect(const T& pos, const T& size) {
-		T rpos = pos, rsize = size;
-		if (rsize.x < 0) { rpos.x -= rsize.x; rsize.x *= -1; }
-		if (rsize.y < 0) { rpos.y -= rsize.y; rsize.y *= -1; }
-		return { rpos, rsize };
-	}
 };
 
 
@@ -119,7 +115,7 @@ struct RectangleOnText {
 	RectangleOnText() {}
 	RectangleOnText(const PosOnText<T>& pos, const PosOnText<T>& size) : pos(pos), size(size) {}
 	Rectangle<T> toRealRect(TD::Direction d) {
-		auto [rpos, rsize] = PosOnText<T>::ToPositiveRect(pos.toRealPos(d), size.toRealPos(d));
+		auto [rpos, rsize] = TD::ToPositiveRect(pos.toRealPos(d), size.toRealPos(d));
 		return Rectangle<T>(rpos, rsize);
 	}
 };
@@ -133,7 +129,7 @@ struct TextArea {
 	TextArea(const Rect& r, TD::Direction d) {
 		PointOnText tpos_(r.pos, d);
 		PointOnText tsize_(r.size, d);
-		auto [tpos, tsize] = PointOnText::ToPositiveRect(tpos_, tsize_);
+		auto [tpos, tsize] = TD::ToPositiveRect(tpos_, tsize_);
 		size = tsize;
 		origin = tpos.toRealPos(d);
 	}
@@ -145,7 +141,7 @@ struct TextArea {
 		return toRect(d).pos;
 	}
 	Rect toRect(TD::Direction d) {
-		auto [rpos, rsize] = PointOnText::ToPositiveRect(origin, size.toRealPos(d));
+		auto [rpos, rsize] = TD::ToPositiveRect(origin, size.toRealPos(d));
 		return Rect(rpos, rsize);
 	}
 };
@@ -598,10 +594,10 @@ class MinimapView {
 	using TD = TextDirection;
 private:
 	RectF _area;
-	TextArea _body;
 	SP<GA> _ga;
-	TemporaryData::Manager _tmpManager;
 	TD::Direction _mapDir;
+	TextArea _body;
+	TemporaryData::Manager _tmpManager;
 public:
 	MinimapView(RectF area, SP<GA> ga);
 	GA::LineIterator draw();
