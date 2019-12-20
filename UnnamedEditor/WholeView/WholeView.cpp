@@ -325,7 +325,7 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			return Size((int)(sr * _maxLineLnegth + 1), textureLength);
 		}();
 		Point origin = _isVertical ? Point(textureLength, 0) : Point(0, 0);
-		double ascender = fs_ / 2.0;
+		double ascender = _font->ascender() * sr;
 		MSRenderTexture msrt(textureSize);
 		msrt.clear(ColorF(Palette::White, 0));
 		{
