@@ -8,18 +8,18 @@ namespace UnnamedEditor {
 namespace WholeView {
 
 
-WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, bool isVertical)
+WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, TD::Direction textDir)
 : _area(area)
-, _textArea(Rect(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1)), isVertical)
+, _textArea(Rect(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1)), textDir)
 , _lineInterval((int)(font->getFontSize()*1.25))
-, _isVertical(isVertical)
+, _textDir(textDir)
 , _font(font)
-, _ga(new GlyphArrangement2(_font, _lineInterval, _textArea.size.prl, isVertical))
+, _ga(new GlyphArrangement2(_font, _lineInterval, _textArea.size.prl, textDir))
 , _ju()
 , _scrollDelta(_lineInterval)
 , _inputManager(_lineInterval, _textArea.size.prl)
-, _masker(_textArea.realSize(isVertical))
-, _maskee(_textArea.realSize(isVertical))
+, _masker(_textArea.realSize(textDir))
+, _maskee(_textArea.realSize(textDir))
 , _foreground(area.size)
 , _maskPS(U"example/shader/2d/multi_texture_mask" SIV3D_SELECT_SHADER(U".hlsl", U".frag"), { { U"PSConstants2D", 0 } }) {
 	jump(_ga->begin());
@@ -126,11 +126,11 @@ void WholeView::draw() {
 		bs.dstAlpha = Blend::InvSrcAlpha;
 		const ScopedRenderStates2D renderState(bs);
 		const ScopedRenderTarget2D target(_maskee);
-		const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_isVertical)));
+		const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_textDir)));
 
 		auto drawCursor = [&](Vec2 pos) {
 			ScopedRenderTarget2D tmp(_foreground);
-			pos += _textArea.realPos(_isVertical);
+			pos += _textArea.realPos(_textDir);
 			double t = Scene::Time() * 2 * Math::Pi / 2.5;
 			_font->getCursor(pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
 		};
@@ -147,7 +147,7 @@ void WholeView::draw() {
 
 				Vec2OnText tp = (lineOrigin + citr.second->pos).toTextVec2();
 				if (flt) tp = lineOrigin.toTextVec2() + floating->getPos(citr);
-				Vec2 p = tp.toRealPos(_isVertical);
+				Vec2 p = tp.toRealPos(_textDir);
 				if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
 					if (!CharAnimation::IsEmpty(citr.second->animation)) {
 						citr.second->animation->draw(p, citr.second->glyph);
@@ -161,7 +161,7 @@ void WholeView::draw() {
 				if (!floating->isInactive() && citr == cccursor->drawingPos().first) {
 					//TODO: 横書き対応
 					Vec2OnText cp = tp + Vec2OnText(cccursor->drawingPos().second, 0);
-					drawCursor(cp.toRealPos(_isVertical));
+					drawCursor(cp.toRealPos(_textDir));
 					maskStart = cp;
 				}
 				citr = _ga->next(citr);
@@ -172,7 +172,7 @@ void WholeView::draw() {
 	}
 	if (floating->isFloating()) {
 		const ScopedRenderTarget2D target(_masker);
-		const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_isVertical)));
+		const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_textDir)));
 
 		int lines = (int)((maskEnd.prp - maskStart.prp) / _lineInterval + 0.5);
 		Vec2OnText st = maskStart;
@@ -182,16 +182,16 @@ void WholeView::draw() {
 		asd += lineGap / 2; dsd -= lineGap / 2;
 		for (int i = 0; i < lines; i++) {
 			RectFOnText r({ st.prl, st.prp - asd }, { _textArea.size.prl - st.prl, asd - dsd });
-			r.toRealRect(_isVertical).draw(color);
+			r.toRealRect(_textDir).draw(color);
 			st = Vec2OnText(0, st.prp + _lineInterval);
 		}
 		RectFOnText r({ st.prl, st.prp - asd }, { maskEnd.prl - st.prl, asd - dsd });
-		r.toRealRect(_isVertical).draw(color);
+		r.toRealRect(_textDir).draw(color);
 	}
 	{
 		Graphics2D::SetTexture(1, _masker);
 		const ScopedCustomShader2D shader(_maskPS); //TODO: _maskPSのプリコンパイル
-		_maskee.draw(_textArea.realPos(_isVertical));
+		_maskee.draw(_textArea.realPos(_textDir));
 		Graphics2D::SetTexture(1, none);
 	}
 	Graphics2D::Flush();
@@ -320,13 +320,10 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			bl = next;
 		}
 		int textureLength = (int)(sr * (size + 1) * _lineInterval + 1);
-		Size textureSize = [&]() {
-			if (_isVertical) return Size(textureLength, (int)(sr * _maxLineLnegth + 1));
-			return Size((int)(sr * _maxLineLnegth + 1), textureLength);
-		}();
-		Point origin = _isVertical ? Point(textureLength, 0) : Point(0, 0);
+		TextArea ta(Point(0, 0), PointOnText((int)(sr * _maxLineLnegth + 1), textureLength));
+		ta.origin -= ta.realPos(_textDir);
 		double ascender = _font->ascender() * sr;
-		MSRenderTexture msrt(textureSize);
+		MSRenderTexture msrt(ta.realSize(_textDir));
 		msrt.clear(ColorF(Palette::White, 0));
 		{
 			double a = 3;
@@ -341,7 +338,7 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			while (b != bl) {
 				for (auto c : b->cd) {
 					Vec2OnText tp = (lineOrigin + c.pos.toTextVec2() * sr);
-					c.blurred->draw(origin + tp.toRealPos(_isVertical), Palette::White, 0, sr);
+					c.blurred->draw(ta.origin + tp.toRealPos(_textDir), Palette::White, 0, sr);
 				}
 				lineOrigin.prp += sr * b->wrapCount * _lineInterval;
 				b = tryNext(b);
@@ -353,7 +350,6 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 		head->bucketHeader->minimap = msrt;
 		head->bucketHeader->wrapCount = size;
 		head->bucketHeader->advance = (int)(sr * size * _lineInterval + 1);
-		head->bucketHeader->origin = Vec2(textureLength - ascender, 0);
 
 		head = bl;
 	}
@@ -381,13 +377,13 @@ void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 	}
 }
 
-GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, bool isVertical)
+GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TD::Direction textDir)
 : _font(font)
 , _blurredFont(new Font::FixedFont(font->ftLibrary(), font->ftFace(), font->getFontSize(), font->isVertical()))
 , _data()
 , _lineInterval(lineInterval)
 , _maxLineLnegth(maxLineLength)
-, _isVertical(isVertical)
+, _textDir(textDir)
 , _origin()
 , _originPos(0, 0)
 , _cursor(new CharIterator()) {
@@ -577,6 +573,10 @@ void GlyphArrangement2::resetOrigin(LineIterator origin, PointOnText pos) {
 	_origin = origin;
 	_originPos = pos;
 	scroll(0);
+}
+
+TextDirection::Direction GlyphArrangement2::textDirection() const {
+	return _textDir;
 }
 
 SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator citr) {
@@ -868,8 +868,9 @@ void CleanCopyCursor::registerUnpaint(TemporaryData::Manager& tmpData, GA::CharI
 
 MinimapView::MinimapView(RectF area, SP<GA> ga)
 : _area(area)
-, _body(area)
-, _ga(ga) {
+, _body(area, ga->textDirection())
+, _ga(ga)
+, _mapDir(TD::SwapAxis(_ga->textDirection())){
 }
 
 GlyphArrangement2::LineIterator MinimapView::draw() {
@@ -881,51 +882,56 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 	const ScopedRenderStates2D state(bs);
 	_area.draw(Palette::White);
 	{
-		const ScopedViewport2D viewport(_body);
-		const Transformer2D transform(Mat3x2::Identity(), Mat3x2::Translate(_body.pos));
+		const ScopedViewport2D viewport(_body.toRect(_mapDir));
+		const Transformer2D inv(Mat3x2::Translate(-_body.realPos(_mapDir)), Mat3x2::Identity());
 		ColorF c = Palette::Blueviolet;
+		const Transformer2D transformer(Mat3x2::Translate(_body.origin));
 		//ScopedColorAdd2D colorAdd(c);
 		//ScopedColorMul2D colorMul(ColorF(1, 1, 1) - c);
 		double li = _ga->minimapLineInterval();
 		GA::LineIterator bucket = _ga->begin();
-		Point pen(_body.w, 0);
+		PointOnText pen(0, 0);
 		while (bucket != _ga->end()) {
-			if (_body.h < pen.y) break;
+			if (_body.size.prp < pen.prp) break;
 			GA::LineIterator nextBucket = _ga->nextBucket(_ga->tryNext(bucket));
 			SP<GA::BucketHeader> header = bucket->bucketHeader;
 			const auto& map = header->minimap;
 			
 			while (true) {
-				header->minimap.draw(Arg::topRight(pen), Palette::Black);
-				int xEnd = pen.x, xBegin = std::max(0, pen.x - header->advance);
-				if (Rect(xBegin, pen.y, xEnd - xBegin, map.height()).contains(Cursor::Pos())) {
+				//Circle(pen.toRealPos(_mapDir), 3).draw(Palette::Red);
+				RectOnText mapRect(pen, PointOnText(map.size(), _mapDir));
+				map.draw(mapRect.toRealRect(_mapDir).pos, Palette::Black);
+				//mapRect.toRealRect(_mapDir).drawFrame(2.0, Palette::Red);
+				if (mapRect.toRealRect(_mapDir).contains(Cursor::Pos())) {
 					//header->minimap.region(pen + Point(delta - header->minimap.width(), 0)).draw(Palette::Orange);
 					//RectF(xBegin, pen.y, xEnd - xBegin, map.height()).draw(Palette::Red);
 					GA::LineIterator litr = bucket;
-					double x = pen.x;
-					double nx = x;
+					double prl = pen.prl;
+					double nprl = prl;
 					while (litr != nextBucket) {
-						nx = x - litr->wrapCount * li;
-						if (nx < Cursor::PosF().x) break;
-						x = nx;
+						nprl = prl + litr->wrapCount * li;
+						if (nprl > Vec2OnText(Cursor::PosF(), _mapDir).prl) break;
+						prl = nprl;
 						litr = _ga->tryNext(litr);
 					}
 
 					if (litr != nextBucket) {
 						ret = litr;
 						if (MinimapHighlight::IsEmpty(litr->highlight)) {
-							RectF r(nx - (pen.x - map.width()), 0, x - nx, map.height());
-							litr->highlight.reset(new MinimapHighlight(map, r, Vec2(x, pen.y)));
+							RectFOnText tr(Vec2OnText(prl, pen.prp) - mapRect.pos.toTextVec2(), Vec2OnText(nprl - prl, mapRect.size.prp));
+							RectF r = tr.toRealRect(_mapDir);
+							Vec2 pos = Vec2OnText(prl, pen.prp).toRealPos(_mapDir);
+							litr->highlight.reset(new MinimapHighlight(map, r, pos));
 							_tmpManager.registerPointer(litr->highlight);
 						}
 						litr->highlight->keep();
 					}
 				}
-				if (pen.x - header->minimap.width() >= 0) break;
-				pen = Point(_body.w + pen.x, pen.y + header->minimap.height() + (int)(li * 2));
+				if (pen.prl + mapRect.size.prl <= _body.size.prl) break;
+				pen += PointOnText(-_body.size.prl, mapRect.size.prp + (int)(li * 2));
 			}
 
-			pen.x -= header->advance;
+			pen.prl += header->advance;
 			bucket = nextBucket;
 		}
 	}

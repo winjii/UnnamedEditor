@@ -9,6 +9,47 @@ namespace UnnamedEditor {
 namespace WholeView {
 
 
+//TODO: TextDirectionとPosOnTextあたりの設計が雑（実装方針は良いが関数の置き場所や全体の構造が雑）
+class TextDirection {
+public:
+	// 上方向は考慮しない。上方向を扱い始めるとascenderとdescenderの扱いが面倒
+	enum Direction {
+		RightDown,
+		LeftDown,
+		DownRight,
+		DownLeft,
+		DirectionCount // 列挙体の要素数
+	};
+	inline const static Point Dir1[(int)DirectionCount] = {
+		{  1,  0 },
+		{ -1,  0 },
+		{  0,  1 },
+		{  0,  1 },
+	};
+	inline const static Point Dir2[(int)DirectionCount] = {
+		{  0,  1 },
+		{  0,  1 },
+		{  1,  0 },
+		{ -1,  0 },
+	};
+	static Direction SwapAxis(Direction d) {
+		return (Direction)((d + DirectionCount / 2) % DirectionCount);
+	}
+
+	template <class T>
+	static decltype(T::x) Dot(const T& p, const T& q) { return p.x * q.x + p.y * q.y; }
+
+	template <class T>
+	static T Times(const T& p, const T& q) { return { p.x * q.x, p.y * q.y }; } //要素ごとの積
+
+	template <class T>
+	static T Abs(const T& p) { return { Abs(p.x), Abs(p.y) }; } //要素ごとの絶対値
+
+	static bool isVertical(Direction d) {
+		return d == Direction::DownLeft || d == Direction::DownRight;
+	}
+};
+
 template <class T>
 struct PosOnText;
 
@@ -19,6 +60,7 @@ using Vec2OnText = PosOnText<Vec2>;
 
 template <class T>
 struct PosOnText : protected T {
+	using TD = TextDirection;
 public:
 	using Element = decltype(T::x);
 	Element& parallel = T::x;
@@ -30,21 +72,14 @@ private:
 public:
 	PosOnText() : T() {}
 	PosOnText(const PosOnText& p) : T(p.x, p.y) {}
-	PosOnText(const T& p, bool isVertical) {
-		if (isVertical) {
-			parallel = p.y;
-			perpendicular = -p.x;
-		}
-		else {
-			parallel = p.x;
-			perpendicular = p.x;
-		}
+	PosOnText(const T& p, TD::Direction d) {
+		parallel = TD::Dot<T>(TD::Dir1[d], p);
+		perpendicular = TD::Dot<T>(TD::Dir2[d], p);
 	}
 	PosOnText(Element parallel, Element perpendicular)
 		: T(parallel, perpendicular) {}
-	T toRealPos(bool isVertical) {
-		if (isVertical) return T(-perpendicular, parallel);
-		return T(parallel, perpendicular);
+	T toRealPos(TD::Direction d) {
+		return parallel * TD::Dir1[d] + perpendicular * TD::Dir2[d];
 	}
 	PosOnText& operator=(const PosOnText& p) { T::operator=(p); return *this; }
 	Vec2OnText toTextVec2() { return { (double)parallel, (double)perpendicular }; }
@@ -57,6 +92,14 @@ public:
 	PosOnText operator/(Element e) const { return T::operator/(e); }
 	PosOnText& operator*=(Element e) { T::operator*=(e); return *this; }
 	PosOnText& operator/=(Element e) { T::operator/=(e); return *this; }
+
+	template <class T>
+	static std::pair<T, T> ToPositiveRect(const T& pos, const T& size) {
+		T rpos = pos, rsize = size;
+		if (rsize.x < 0) { rpos.x -= rsize.x; rsize.x *= -1; }
+		if (rsize.y < 0) { rpos.y -= rsize.y; rsize.y *= -1; }
+		return { rpos, rsize };
+	}
 };
 
 
@@ -70,43 +113,40 @@ using RectFOnText = RectangleOnText<Vec2>;
 
 template <class T>
 struct RectangleOnText {
+	using TD = TextDirection;
 	PosOnText<T> pos;
 	PosOnText<T> size;
 	RectangleOnText() {}
 	RectangleOnText(const PosOnText<T>& pos, const PosOnText<T>& size) : pos(pos), size(size) {}
-	Rectangle<T> toRealRect(bool isVertical) {
-		if (isVertical) {
-			return Rectangle<T>(-pos.prp - size.prp, -pos.prl, size.prp, size.prl);
-		}
-		return Rectangle<T>(pos.prl, pos.prp, size.prl, size.prp);
+	Rectangle<T> toRealRect(TD::Direction d) {
+		auto [rpos, rsize] = PosOnText<T>::ToPositiveRect(pos.toRealPos(d), size.toRealPos(d));
+		return Rectangle<T>(rpos, rsize);
 	}
 };
 
 
 struct TextArea {
+	using TD = TextDirection;
 	Point origin;
 	PointOnText size;
 	TextArea() {}
-	TextArea(const Rect& r, bool isVertical) {
-		if (isVertical) {
-			origin = r.tr();
-			size = PointOnText(r.size.y, r.size.x);
-		}
-		else {
-			origin = r.tl();
-			size = PointOnText(r.size.x, r.size.y);
-		}
+	TextArea(const Rect& r, TD::Direction d) {
+		PointOnText tpos_(r.pos, d);
+		PointOnText tsize_(r.size, d);
+		auto [tpos, tsize] = PointOnText::ToPositiveRect(tpos_, tsize_);
+		size = tsize;
+		origin = tpos.toRealPos(d);
 	}
-	Size realSize(bool isVertical) {
-		if (isVertical) return Size(size.prp, size.prl);
-		return Size(size.prl, size.prp);
+	TextArea(const Point& pos, const PointOnText& size) : origin(pos), size(size) {}
+	Size realSize(TD::Direction d) {
+		return Abs(size.toRealPos(d));
 	}
-	Point realPos(bool isVertical) {
-		if (isVertical) return Point(origin.x - size.prp, origin.y);
-		return origin;
+	Point realPos(TD::Direction d) {
+		return toRect(d).pos;
 	}
-	Rect toRect(bool isVertical) {
-		return Rect(realPos(isVertical), realSize(isVertical));
+	Rect toRect(TD::Direction d) {
+		auto [rpos, rsize] = PointOnText::ToPositiveRect(origin, size.toRealPos(d));
+		return Rect(rpos, rsize);
 	}
 };
 
@@ -237,8 +277,8 @@ private:
 			_step = _nextStep;
 			_nextStep = Step::Out;
 
-			RectF(Vec2(_pos.x - _region.w, _pos.y), _region.w, _region.h).draw(Palette::White);
-			Vec2 c = Vec2(_pos.x - _region.w / 2.0, _pos.y + _region.h / 2.0);
+			RectF(_pos, _region.w, _region.h).draw(Palette::White);
+			Vec2 c = Vec2(_pos.x + _region.w / 2.0, _pos.y + _region.h / 2.0);
 			_texture(_region).scaled(_scale).draw(Arg::center(c), Palette::Red);
 			return true;
 		}
@@ -305,6 +345,7 @@ public:
 //TODO: cursor持つのこいつか？
 //TODO: 管理されたイテレータは自分でremoveItrを呼び出すようにすればいいのでは
 class GlyphArrangement2 {
+	using TD = TextDirection;
 public:
 	struct LineData;
 	struct CharData;
@@ -322,7 +363,6 @@ public:
 		int wrapCount;
 		MSRenderTexture minimap;
 		int advance;
-		Vec2 origin;
 	};
 	struct LineData {
 		std::vector<CharData> cd; //テキスト末尾に改行
@@ -336,7 +376,8 @@ private:
 	std::list<LineData> _data;
 	int _lineInterval;
 	int _maxLineLnegth;
-	bool _isVertical;
+	TD::Direction _textDir;
+
 	LineIterator _origin;
 	PointOnText _originPos;
 	SP<CharIterator> _cursor;
@@ -349,7 +390,7 @@ private:
 
 	void initBucket(LineIterator first, LineIterator last);
 public:
-	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, bool isVertical);
+	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TD::Direction textDir);
 
 	SP<Font::FixedFont> font();
 	void registerItr(SP<CharIterator> itr);
@@ -376,6 +417,7 @@ public:
 	double minimapLineInterval() const;
 	double minimapScale() const;
 	void resetOrigin(LineIterator origin, PointOnText pos);
+	TD::Direction textDirection() const;
 
 	//NULL文字を挿入すると番兵などに使える。ただしそれを含む範囲をeraseしないよう注意
 	//NULL文字は参照が切れていたらinitLine時に自動で削除される
@@ -521,11 +563,12 @@ public:
 
 
 class WholeView {
+	using TD = TextDirection;
 private:
 	RectF _area;
 	TextArea _textArea;
 	int _lineInterval;
-	bool _isVertical;
+	TD::Direction _textDir;
 	SP<Font::FixedFont> _font;
 	SP<GlyphArrangement2> _ga;
 	JudgeUnsettled _ju;
@@ -540,7 +583,7 @@ private:
 public:
 
 	//font: verticalでなければならない(これ設計汚くない？)
-	WholeView(Rect area, SP<Font::FixedFont> font, bool isVertical);
+	WholeView(Rect area, SP<Font::FixedFont> font, TD::Direction textDir);
 
 	void setText(const String &text);
 	void draw();
@@ -552,11 +595,13 @@ public:
 
 class MinimapView {
 	using GA = GlyphArrangement2;
+	using TD = TextDirection;
 private:
 	RectF _area;
-	Rect _body;
+	TextArea _body;
 	SP<GA> _ga;
 	TemporaryData::Manager _tmpManager;
+	TD::Direction _mapDir;
 public:
 	MinimapView(RectF area, SP<GA> ga);
 	GA::LineIterator draw();
