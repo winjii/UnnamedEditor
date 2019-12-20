@@ -130,6 +130,7 @@ void WholeView::draw() {
 
 		auto drawCursor = [&](Vec2 pos) {
 			ScopedRenderTarget2D tmp(_foreground);
+			pos += _textArea.realPos(_isVertical);
 			double t = Scene::Time() * 2 * Math::Pi / 2.5;
 			_font->getCursor(pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
 		};
@@ -159,9 +160,9 @@ void WholeView::draw() {
 				}
 				if (!floating->isInactive() && citr == cccursor->drawingPos().first) {
 					//TODO: ‰¡‘‚«‘Î‰
-					Vec2 cp = p + Vec2(0, cccursor->drawingPos().second);
-					drawCursor(cp);
-					maskStart = tp;
+					Vec2OnText cp = tp + Vec2OnText(cccursor->drawingPos().second, 0);
+					drawCursor(cp.toRealPos(_isVertical));
+					maskStart = cp;
 				}
 				citr = _ga->next(citr);
 			}
@@ -176,15 +177,16 @@ void WholeView::draw() {
 		int lines = (int)((maskEnd.prp - maskStart.prp) / _lineInterval + 0.5);
 		Vec2OnText st = maskStart;
 		ColorF color(Palette::Black, 0.5);
-		double hfs = _font->getFontSize() / 2.0;
-		Point origin = _textArea.origin - _textArea.realPos(_isVertical);
+		double asd = _font->ascender(), dsd = _font->descender();
+		double lineGap = _lineInterval - (asd - dsd);
+		asd += lineGap / 2; dsd -= lineGap / 2;
 		for (int i = 0; i < lines; i++) {
-			RectFOnText r({ st.prl, st.prp - hfs }, { _textArea.size.prl - st.prl, 2 * hfs });
-			r.toRealRect(_isVertical).movedBy(origin).draw(color);
+			RectFOnText r({ st.prl, st.prp - asd }, { _textArea.size.prl - st.prl, asd - dsd });
+			r.toRealRect(_isVertical).draw(color);
 			st = Vec2OnText(0, st.prp + _lineInterval);
 		}
-		RectFOnText r({ st.prl, st.prp - hfs }, { maskEnd.prl - st.prl, 2 * hfs });
-		r.toRealRect(_isVertical).movedBy(origin).draw(color);
+		RectFOnText r({ st.prl, st.prp - asd }, { maskEnd.prl - st.prl, asd - dsd });
+		r.toRealRect(_isVertical).draw(color);
 	}
 	{
 		Graphics2D::SetTexture(1, _masker);

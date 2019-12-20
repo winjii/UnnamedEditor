@@ -88,7 +88,7 @@ double FontBase::descender(double fontSize) const {
 
 Line FontBase::getCursor(Vec2 pen, double fontSize) {
 	if (!_isVertical)
-		return Line(pen.x, pen.y + ascender(fontSize), pen.x, pen.y + descender(fontSize));
+		return Line(pen.x, pen.y - ascender(fontSize), pen.x, pen.y - descender(fontSize));
 	return Line(Vec2(pen.x - fontSize/2, pen.y), Vec2(pen.x + fontSize/2, pen.y));
 }
 
