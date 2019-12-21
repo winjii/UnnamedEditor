@@ -249,8 +249,10 @@
     <ClInclude Include="Font\FixedFont.h" />
     <ClInclude Include="Font\FontBase.h" />
     <ClInclude Include="Font\Glyph.h" />
+    <ClInclude Include="Geometry.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Text.h" />
+    <ClInclude Include="TextGeometry.h" />
     <ClInclude Include="UnnamedEditor.h" />
     <ClInclude Include="WholeView\WholeView.h" />
     <ClInclude Include="Workspace\DraftPaper.h" />
