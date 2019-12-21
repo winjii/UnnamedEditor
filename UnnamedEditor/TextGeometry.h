@@ -80,12 +80,6 @@ public:
 	PosOnText& operator/=(Element e) { T::operator/=(e); return *this; }
 };
 
-// decltype(T::x)& ÇÕ decltype(PosOnText<T>::Element)& Ç∆ÇÕèëÇØÇ»Ç¢
-template<class T> decltype(T::x)& X(PosOnText<T>& p) { return p.prl; }
-template<class T> decltype(T::y)& Y(PosOnText<T>& p) { return p.prp; }
-template<class T> decltype(T::x) X(const PosOnText<T>& p) { return p.prl; }
-template<class T> decltype(T::y) Y(const PosOnText<T>& p) { return p.prp; }
-
 
 template <class T>
 struct RectangleOnText;
