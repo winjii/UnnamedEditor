@@ -512,15 +512,17 @@ GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr, bool 
 
 void GlyphArrangement2::next(SP<CharIterator> citr) {
 	if (citr->first == _data.end()) return;
+	CharIterator nxt = next(*citr, true);
 	removeItr(citr);
-	*citr = next(*citr, true);
+	*citr = nxt;
 	citr->second->itrs.push_back(citr);
 }
 
 void GlyphArrangement2::prev(SP<CharIterator> citr) {
 	if (*citr == lineBegin(begin())) return;
+	CharIterator prv = prev(*citr, true);
 	removeItr(citr);
-	*citr = prev(*citr, true);
+	*citr = prv;
 	citr->second->itrs.push_back(citr);
 }
 
