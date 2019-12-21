@@ -415,11 +415,9 @@ public:
 	void resetOrigin(LineIterator origin, PointOnText pos);
 	TD::Direction textDirection() const;
 
-	//NULL文字を挿入すると番兵などに使える。ただしそれを含む範囲をeraseしないよう注意
-	//NULL文字は参照が切れていたらinitLine時に自動で削除される
-	//↑しかしいつ削除されるか分からないのでdeleteNullしたほうがいい
+	//NULL文字を挿入すると番兵などに使える
+	//NULL文字はremoveItr時に参照が切れたら自動で削除される
 	SP<CharIterator> makeNull(CharIterator citr);
-	void deleteNull(SP<CharIterator> nullItr); //イテレータは壊れる
 };
 
 

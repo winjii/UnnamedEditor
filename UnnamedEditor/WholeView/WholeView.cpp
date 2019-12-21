@@ -249,9 +249,6 @@ void WholeView::jump(GlyphArrangement2::LineIterator litr) {
 }
 
 GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
-	if (litr->cd.empty()) {
-		return _data.erase(litr);
-	}
 	PointOnText pen(0, 0);
 	decltype(litr->cd)::iterator itr = litr->cd.begin();
 	int wrapCount = 0;
@@ -270,8 +267,7 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 				itr->blurred = _blurredFont->renderChar(itr->code);
 			}
 		}
-		//TODO: Glyph‚ð‚¿‚á‚ñ‚Æ®”À•W‚É‘Î‰ž
-		pen.parallel += itr->glyph->advance();
+		pen.parallel += (int)(itr->glyph->advance() + 0.5);
 		for (auto itrtrtritrtr = itr->itrs.begin(); itrtrtritrtr != itr->itrs.end();) {
 			if (itrtrtritrtr->use_count() <= 1) itrtrtritrtr = itr->itrs.erase(itrtrtritrtr);
 			else {
@@ -279,10 +275,12 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 				++itrtrtritrtr;
 			}
 		}
-		if (itr->code == Text::Text::NULL_CHAR && itr->itrs.empty()) //—v‚ç‚È‚­‚È‚Á‚½NULL•¶Žš‚Ìíœ
+		if (itr->code == Text::Text::NULL_CHAR && itr->itrs.empty()) { //—v‚ç‚È‚­‚È‚Á‚½NULL•¶Žš‚Ìíœ
 			itr = litr->cd.erase(itr);
+		}
 		else itr = std::next(itr);
 	}
+	if (litr->cd.empty()) return _data.erase(litr);
 	litr->wrapCount = wrapCount + 1;
 	return litr;
 }
@@ -377,6 +375,7 @@ void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 		if (itr == *i) i = itrs.erase(i);
 		else ++i;
 	}
+	initLine(itr->first);
 }
 
 GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TD::Direction textDir)
@@ -589,11 +588,6 @@ SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator cit
 	registerItr(ret);
 	initLine(citr.first);
 	return ret;
-}
-
-void GlyphArrangement2::deleteNull(SP<CharIterator> nullItr) {
-	nullItr->first->cd.erase(nullItr->second);
-	initLine(nullItr->first);
 }
 
 Vec2OnText FloatingAnimation::easeOverLine(Vec2OnText source, Vec2OnText target, double t, int i) {
