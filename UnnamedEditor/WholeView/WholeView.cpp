@@ -70,9 +70,9 @@ void WholeView::draw() {
 	if (_inputManager.isInputing() && editing.size() == 0) {
 		bool onEnd = *_ga->cursor() == cccursor->drawingPos().first && cccursor->isStable();
 		if (!cccursor->isStable()) addend = U"";
-		if (KeyEnter.down() && !onEnd && _ju.isSettled()) cccursor->startAdvancing();
+		if (KeyEnter.down() && !onEnd && _ju.isEditing()) cccursor->startAdvancing();
 		else if (KeyEnter.up()) cccursor->stop();
-		else if (_ju.isSettled() && KeyBackspace.down()) {
+		else if (_ju.isEditing() && KeyBackspace.down()) {
 			if (cccursor->pos() == *_ga->cursor())
 				cccursor->startRetreating();
 			else

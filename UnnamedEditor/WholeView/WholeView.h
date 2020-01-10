@@ -150,25 +150,23 @@ struct TextArea {
 //未確定文字列入力モードかどうかを判定するクラス
 //未確定文字列を削除した時に、既にその削除のために使われた入力が、確定文字列の削除をやってしまう（ラグのせい）ことへの対処ができる
 //（確定文字列への編集を一定時間ブロックするだけ）
-//TODO: 未確定文字はunsettledじゃなくeditingで名前統一
-class JudgeUnsettled {
+class JudgeEditing {
 private:
 	int _count;
 public:
-	JudgeUnsettled() : _count(0) {}
-	bool isUnsettled() { return _count > 0; }
-	bool isSettled() { return _count == 0; }
+	JudgeEditing() : _count(0) {}
+	bool isNotEditing() { return _count > 0; }
+	bool isEditing() { return _count == 0; }
 
 	//1フレーム一回
-	//unsettledStrSize: 現在の未確定文字列の長さ
-	void update(int unsettledStrLength) {
-		if (unsettledStrLength == 0) _count = std::max(_count - 1, 0);
+	//editLength: 現在の未確定文字列の長さ
+	void update(int editLength) {
+		if (editLength == 0) _count = std::max(_count - 1, 0);
 		else _count = 5;
 	}
 };
 
 
-//TODO: startまで空でもよくないか
 class AnimationProgress {
 public:
 	enum class Step {
@@ -330,17 +328,21 @@ public:
 	void draw(Vec2 pos, SP<const Font::Glyph> glyph) { _inner->draw(pos, glyph); }
 };
 
-
-//TODO: あるlineからn（1000とか10000とか）文字以下のlineまでのミニマップをキャッシュ（バケット法）
-//↑line1つのミニマップもキャッシュ
-//↑ミニマップ描画をshortcutできるイメージ
-//↑文字列編集されたときはどうする？
-//↑あるバケットが更新されたらその一つ手前のバケットから再計算→統合できるのにされていない隣接バケットが生まれない→例えばn=1000だとしたら、最悪ケースでも500と501や1000と1のバケットが交互に並ぶだけ→バケットの最大個数は2√nくらいで抑えられる
-//テキストの変更をまたいで使うイテレータはちゃんとregisterItr()する。ただしこれらのイテレータを含む範囲を削除してはいけない...
 //TODO: 末尾の改行消さないようにする
 //TODO: cursor持つのこいつか？
 //TODO: 管理されたイテレータは自分でremoveItrを呼び出すようにすればいいのでは
+
+//グリフ位置を計算&キャッシュする。ミニマップ(縮小表示版)も計算&キャッシュしておく
 class GlyphArrangement2 {
+
+	//ミニマップについて:
+	//あるlineからn（1000とか10000とか）文字以下のlineまでのミニマップをキャッシュ（バケット法）
+	//↑line1つのミニマップもキャッシュ
+	//↑ミニマップ描画をshortcutできるイメージ
+	//↑文字列編集されたときはどうする？
+	//↑あるバケットが更新されたらその一つ手前のバケットから再計算→統合できるのにされていない隣接バケットが生まれない→例えばn=1000だとしたら、最悪ケースでも500と501や1000と1のバケットが交互に並ぶだけ→バケットの最大個数は2√nくらいで抑えられる
+	//テキストの変更をまたいで使うイテレータはちゃんとregisterItr()する。ただしこれらのイテレータを含む範囲を削除してはいけない...
+
 	using TD = TextDirection;
 public:
 	struct LineData;
@@ -567,7 +569,7 @@ private:
 	TD::Direction _textDir;
 	SP<Font::FixedFont> _font;
 	SP<GlyphArrangement2> _ga;
-	JudgeUnsettled _ju;
+	JudgeEditing _ju;
 	ScrollDelta _scrollDelta;
 	InputManager _inputManager;
 	RenderTexture _masker;
