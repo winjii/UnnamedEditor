@@ -8,7 +8,7 @@ namespace UnnamedEditor {
 namespace WholeView {
 
 
-WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, TD::Direction textDir)
+WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, TG::Direction textDir)
 : _area(area)
 , _textArea(Rect(_area.pos.asPoint() + font->getFontSize() * Point(1, 1), _area.size.asPoint() - 2 * font->getFontSize() * Point(1, 1)), textDir)
 , _lineInterval((int)(font->getFontSize()*1.25))
@@ -115,7 +115,7 @@ void WholeView::draw() {
 
 	_tmpData.update();
 
-	Vec2OnText maskStart, maskEnd;
+	TG::Vec2OnText maskStart, maskEnd;
 	_masker.clear(Palette::White);
 	_maskee.clear(ColorF(0, 0, 0, 0));
 	_area.draw(Palette::White);
@@ -138,14 +138,14 @@ void WholeView::draw() {
 		using GA = GlyphArrangement2;
 		auto litr = _ga->origin();
 		bool flt = false;
-		PointOnText lineOrigin = _ga->originPos();
+		TG::PointOnText lineOrigin = _ga->originPos();
 
 		while (lineOrigin.prp < _textArea.size.prp +_lineInterval && litr != _ga->end()) {
 			auto citr = _ga->lineBegin(litr);
 			while (citr != _ga->lineEnd(litr)) {
 				if (!floating->isInactive() && floating->floatingBegin() == citr) flt = true;
 
-				Vec2OnText tp = (lineOrigin + citr.second->pos).toTextVec2();
+				TG::Vec2OnText tp = (lineOrigin + citr.second->pos).toTextVec2();
 				if (flt) tp = lineOrigin.toTextVec2() + floating->getPos(citr);
 				Vec2 p = tp.toRealPos(_textDir) + textOrigin;
 				//Circle(p, 3).draw(Palette::Red);
@@ -162,7 +162,7 @@ void WholeView::draw() {
 				}
 				if (!floating->isInactive() && citr == cccursor->drawingPos().first) {
 					//TODO: ‰¡‘‚«‘Î‰ž
-					Vec2OnText cp = tp + Vec2OnText(cccursor->drawingPos().second, 0);
+					TG::Vec2OnText cp = tp + TG::Vec2OnText(cccursor->drawingPos().second, 0);
 					drawCursor(cp.toRealPos(_textDir));
 					maskStart = cp;
 				}
@@ -177,17 +177,17 @@ void WholeView::draw() {
 		const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_textDir)));
 
 		int lines = (int)((maskEnd.prp - maskStart.prp) / _lineInterval + 0.5);
-		Vec2OnText st = maskStart;
+		TG::Vec2OnText st = maskStart;
 		ColorF color(Palette::Black, 0.5);
 		double asd = _font->ascender(), dsd = _font->descender();
 		double lineGap = _lineInterval - (asd - dsd);
 		asd += lineGap / 2; dsd -= lineGap / 2;
 		for (int i = 0; i < lines; i++) {
-			RectFOnText r({ st.prl, st.prp - asd }, { _textArea.size.prl - st.prl, asd - dsd });
+			TG::RectFOnText r({ st.prl, st.prp - asd }, { _textArea.size.prl - st.prl, asd - dsd });
 			r.toRealRect(_textDir).draw(color);
-			st = Vec2OnText(0, st.prp + _lineInterval);
+			st = TG::Vec2OnText(0, st.prp + _lineInterval);
 		}
-		RectFOnText r({ st.prl, st.prp - asd }, { maskEnd.prl - st.prl, asd - dsd });
+		TG::RectFOnText r({ st.prl, st.prp - asd }, { maskEnd.prl - st.prl, asd - dsd });
 		r.toRealRect(_textDir).draw(color);
 	}
 	{
@@ -245,19 +245,16 @@ SP<GlyphArrangement2> WholeView::glyphArrangement() const {
 }
 
 void WholeView::jump(GlyphArrangement2::LineIterator litr) {
-	_ga->resetOrigin(litr, PointOnText(0, _textArea.size.prp / 2));
+	_ga->resetOrigin(litr, TG::PointOnText(0, _textArea.size.prp / 2));
 }
 
 GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
-	if (litr->cd.empty()) {
-		return _data.erase(litr);
-	}
-	PointOnText pen(0, 0);
+	TG::PointOnText pen(0, 0);
 	decltype(litr->cd)::iterator itr = litr->cd.begin();
 	int wrapCount = 0;
 	while (itr != litr->cd.end()) {
 		if (pen.parallel > _maxLineLnegth - _font->getFontSize()) {
-			pen = PointOnText(0, pen.perpendicular + _lineInterval);
+			pen = TG::PointOnText(0, pen.perpendicular + _lineInterval);
 			wrapCount++;
 		}
 		itr->pos = pen;
@@ -270,8 +267,7 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 				itr->blurred = _blurredFont->renderChar(itr->code);
 			}
 		}
-		//TODO: Glyph‚ð‚¿‚á‚ñ‚Æ®”À•W‚É‘Î‰ž
-		pen.parallel += itr->glyph->advance();
+		pen.parallel += (int)(itr->glyph->advance() + 0.5);
 		for (auto itrtrtritrtr = itr->itrs.begin(); itrtrtritrtr != itr->itrs.end();) {
 			if (itrtrtritrtr->use_count() <= 1) itrtrtritrtr = itr->itrs.erase(itrtrtritrtr);
 			else {
@@ -279,10 +275,12 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 				++itrtrtritrtr;
 			}
 		}
-		if (itr->code == Text::Text::NULL_CHAR && itr->itrs.empty()) //—v‚ç‚È‚­‚È‚Á‚½NULL•¶Žš‚Ìíœ
+		if (itr->code == Text::Text::NULL_CHAR && itr->itrs.empty()) { //—v‚ç‚È‚­‚È‚Á‚½NULL•¶Žš‚Ìíœ
 			itr = litr->cd.erase(itr);
+		}
 		else itr = std::next(itr);
 	}
+	if (litr->cd.empty()) return _data.erase(litr);
 	litr->wrapCount = wrapCount + 1;
 	return litr;
 }
@@ -322,7 +320,7 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			bl = next;
 		}
 		int textureLength = (int)(sr * (size + 1) * _lineInterval + 1);
-		TextArea ta(Point(0, 0), PointOnText((int)(sr * _maxLineLnegth + 1), textureLength));
+		TG::TextArea ta(Point(0, 0), TG::PointOnText((int)(sr * _maxLineLnegth + 1), textureLength));
 		ta.origin -= ta.realPos(_textDir);
 		double ascender = _font->ascender() * sr;
 		MSRenderTexture msrt(ta.realSize(_textDir));
@@ -336,10 +334,10 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			bs.dstAlpha = Blend::InvSrcAlpha;
 			const ScopedRenderStates2D state(bs);
 			LineIterator b = head;
-			Vec2OnText lineOrigin(0, ascender);
+			TG::Vec2OnText lineOrigin(0, ascender);
 			while (b != bl) {
 				for (auto c : b->cd) {
-					Vec2OnText tp = (lineOrigin + c.pos.toTextVec2() * sr);
+					TG::Vec2OnText tp = (lineOrigin + c.pos.toTextVec2() * sr);
 					c.blurred->draw(ta.origin + tp.toRealPos(_textDir), Palette::White, 0, sr);
 				}
 				lineOrigin.prp += sr * b->wrapCount * _lineInterval;
@@ -377,9 +375,10 @@ void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 		if (itr == *i) i = itrs.erase(i);
 		else ++i;
 	}
+	initLine(itr->first);
 }
 
-GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TD::Direction textDir)
+GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TG::Direction textDir)
 : _font(font)
 , _blurredFont(new Font::FixedFont(font->ftLibrary(), font->ftFace(), font->getFontSize(), font->isVertical()))
 , _data()
@@ -513,15 +512,17 @@ GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr, bool 
 
 void GlyphArrangement2::next(SP<CharIterator> citr) {
 	if (citr->first == _data.end()) return;
+	CharIterator nxt = next(*citr, true);
 	removeItr(citr);
-	*citr = next(*citr, true);
+	*citr = nxt;
 	citr->second->itrs.push_back(citr);
 }
 
 void GlyphArrangement2::prev(SP<CharIterator> citr) {
 	if (*citr == lineBegin(begin())) return;
+	CharIterator prv = prev(*citr, true);
 	removeItr(citr);
-	*citr = prev(*citr, true);
+	*citr = prv;
 	citr->second->itrs.push_back(citr);
 }
 
@@ -529,7 +530,7 @@ GlyphArrangement2::LineIterator GlyphArrangement2::origin() const {
 	return _origin;
 }
 
-PointOnText GlyphArrangement2::originPos() const {
+TG::PointOnText GlyphArrangement2::originPos() const {
 	return _originPos;
 }
 
@@ -571,13 +572,13 @@ double GlyphArrangement2::minimapLineInterval() const {
 	return _minimapFontSize / (double)_font->getFontSize() * _lineInterval;
 }
 
-void GlyphArrangement2::resetOrigin(LineIterator origin, PointOnText pos) {
+void GlyphArrangement2::resetOrigin(LineIterator origin, TG::PointOnText pos) {
 	_origin = origin;
 	_originPos = pos;
 	scroll(0);
 }
 
-TextDirection::Direction GlyphArrangement2::textDirection() const {
+TG::Direction GlyphArrangement2::textDirection() const {
 	return _textDir;
 }
 
@@ -591,12 +592,7 @@ SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator cit
 	return ret;
 }
 
-void GlyphArrangement2::deleteNull(SP<CharIterator> nullItr) {
-	nullItr->first->cd.erase(nullItr->second);
-	initLine(nullItr->first);
-}
-
-Vec2OnText FloatingAnimation::easeOverLine(Vec2OnText source, Vec2OnText target, double t, int i) {
+TG::Vec2OnText FloatingAnimation::easeOverLine(TG::Vec2OnText source, TG::Vec2OnText target, double t, int i) {
 	double rate = EaseOut(Easing::Expo, 3.0, 1.0, std::min(1.0, i / 200.0));
 	t = std::min(1.0, t * rate);
 
@@ -604,7 +600,7 @@ Vec2OnText FloatingAnimation::easeOverLine(Vec2OnText source, Vec2OnText target,
 	double sum = target.prl + _maxLineLength * lineDiff - source.prl;
 	double delta = EaseInOut(Easing::Sine, t) * sum;
 	double flr = std::floor((delta + source.prl) / _maxLineLength);
-	return Vec2OnText(source.prl + delta - flr * _maxLineLength, source.prp + flr * _lineInterval);
+	return TG::Vec2OnText(source.prl + delta - flr * _maxLineLength, source.prp + flr * _lineInterval);
 }
 
 FloatingAnimation::FloatingAnimation(int lineInterval, int maxLineLength)
@@ -677,9 +673,9 @@ void FloatingAnimation::updatePos(const GA& ga) {
 	_updateAP.start(2.0);
 }
 
-Vec2OnText FloatingAnimation::getPos(GA::CharIterator citr) {
+TG::Vec2OnText FloatingAnimation::getPos(GA::CharIterator citr) {
 	assert(_step != Step::Inactive);
-	Vec2OnText d(0, 2 * _lineInterval);
+	TG::Vec2OnText d(0, 2 * _lineInterval);
 	if (_step == Step::Floating) {
 		d *= EaseOut(Easing::Expo, _inOutAP.getProgress());
 	}
@@ -689,7 +685,7 @@ Vec2OnText FloatingAnimation::getPos(GA::CharIterator citr) {
 
 	if (citr.first != _floatingBegin->first) {
 		double t = _updateAP.getProgress();
-		Vec2OnText e = Vec2OnText(0, (-_oldAdvance) - (-_newAdvance)) * EaseOut(Easing::Expo, t);
+		TG::Vec2OnText e = TG::Vec2OnText(0, (-_oldAdvance) - (-_newAdvance)) * EaseOut(Easing::Expo, t);
 		return citr.second->pos.toTextVec2() + d + e;
 	}
 	int idx = citr.second - _floatingBegin->second;
@@ -871,7 +867,7 @@ void CleanCopyCursor::registerUnpaint(TemporaryData::Manager& tmpData, GA::CharI
 MinimapView::MinimapView(RectF area, SP<GA> ga)
 : _area(area)
 , _ga(ga)
-, _mapDir(TD::SwapAxis(ga->textDirection()))
+, _mapDir(TG::SwapAxis(ga->textDirection()))
 , _body(area, _mapDir) {
 }
 
@@ -892,7 +888,7 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 		//ScopedColorMul2D colorMul(ColorF(1, 1, 1) - c);
 		double li = _ga->minimapLineInterval();
 		GA::LineIterator bucket = _ga->begin();
-		PointOnText pen(0, 0);
+		TG::PointOnText pen(0, 0);
 		//Circle(pen.toRealPos(_mapDir), 100).draw(ColorF(Palette::Red, 0.4));
 		//Circle(Cursor::Pos(), 100).draw(ColorF(Palette::Red, 0.4));
 		while (bucket != _ga->end()) {
@@ -903,7 +899,7 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 			
 			while (true) {
 				//Circle(pen.toRealPos(_mapDir), 3).draw(Palette::Blue);
-				RectOnText mapRect(pen, PointOnText(map.size(), _mapDir).abs());
+				TG::RectOnText mapRect(pen, G::Abs(TG::PointOnText(map.size(), _mapDir)));
 				map.draw(mapRect.toRealRect(_mapDir).pos, Palette::Black);
 				//mapRect.toRealRect(_mapDir).drawFrame(2.0, Palette::Red);
 				if (mapRect.toRealRect(_mapDir).contains(Cursor::Pos())) {
@@ -914,7 +910,7 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 					double nprl = prl;
 					while (litr != nextBucket) {
 						nprl = prl + litr->wrapCount * li;
-						if (nprl > Vec2OnText(Cursor::PosF(), _mapDir).prl) break;
+						if (nprl > TG::Vec2OnText(Cursor::PosF(), _mapDir).prl) break;
 						prl = nprl;
 						litr = _ga->tryNext(litr);
 					}
@@ -922,8 +918,8 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 					if (litr != nextBucket) {
 						ret = litr;
 						if (MinimapHighlight::IsEmpty(litr->highlight)) {
-							RectFOnText tr(Vec2OnText(prl, pen.prp) - mapRect.pos.toTextVec2(), Vec2OnText(nprl - prl, mapRect.size.prp));
-							RectF r = RectFOnText(Vec2OnText(prl, pen.prp), Vec2OnText(nprl - prl, mapRect.size.prp)).toRealRect(_mapDir);
+							TG::RectFOnText tr(TG::Vec2OnText(prl, pen.prp) - mapRect.pos.toTextVec2(), TG::Vec2OnText(nprl - prl, mapRect.size.prp));
+							RectF r = TG::RectFOnText(TG::Vec2OnText(prl, pen.prp), TG::Vec2OnText(nprl - prl, mapRect.size.prp)).toRealRect(_mapDir);
 							//Circle(r.pos, 3).draw(Palette::Red);
 							RectF region = r.movedBy(-mapRect.toRealRect(_mapDir).pos);
 							litr->highlight.reset(new MinimapHighlight(map, region, r.pos));
@@ -933,7 +929,7 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 					}
 				}
 				if (pen.prl + mapRect.size.prl <= _body.size.prl) break;
-				pen += PointOnText(-_body.size.prl, mapRect.size.prp + (int)(li * 2));
+				pen += TG::PointOnText(-_body.size.prl, mapRect.size.prp + (int)(li * 2));
 			}
 
 			pen.prl += header->advance;

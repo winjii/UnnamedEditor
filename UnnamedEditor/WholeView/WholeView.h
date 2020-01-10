@@ -1,6 +1,8 @@
 #pragma once
 #include "Font\FixedFont.h"
 #include "Text.h"
+#include "Geometry.h"
+#include "TextGeometry.h"
 #include <list>
 #include <cmath>
 
@@ -8,143 +10,8 @@
 namespace UnnamedEditor {
 namespace WholeView {
 
-
-//TODO: TextDirectionとPosOnTextあたりの設計が雑（実装方針は良いが関数の置き場所や全体の構造が雑）
-class TextDirection {
-public:
-	// 上方向は考慮しない。上方向を扱い始めるとascenderとdescenderの扱いが面倒
-	enum Direction {
-		RightDown,
-		LeftDown,
-		DownRight,
-		DownLeft,
-		DirectionCount // 列挙体の要素数
-	};
-	inline const static Point Dir1[(int)DirectionCount] = {
-		{  1,  0 },
-		{ -1,  0 },
-		{  0,  1 },
-		{  0,  1 },
-	};
-	inline const static Point Dir2[(int)DirectionCount] = {
-		{  0,  1 },
-		{  0,  1 },
-		{  1,  0 },
-		{ -1,  0 },
-	};
-	static Direction SwapAxis(Direction d) {
-		return (Direction)((d + DirectionCount / 2) % DirectionCount);
-	}
-
-	template <class T>
-	static decltype(T::x) Dot(const T& p, const T& q) { return p.x * q.x + p.y * q.y; }
-
-	static bool isVertical(Direction d) {
-		return d == Direction::DownLeft || d == Direction::DownRight;
-	}
-
-	template <class T>
-	static std::pair<T, T> ToPositiveRect(const T& pos, const T& size) {
-		T rpos = pos, rsize = size;
-		if (rsize.x < 0) { rpos.x += rsize.x; rsize.x *= -1; }
-		if (rsize.y < 0) { rpos.y += rsize.y; rsize.y *= -1; }
-		return { rpos, rsize };
-	}
-};
-
-template <class T>
-struct PosOnText;
-
-template class PosOnText<Point>;
-template class PosOnText<Vec2>;
-using PointOnText = PosOnText<Point>;
-using Vec2OnText = PosOnText<Vec2>;
-
-template <class T>
-struct PosOnText : protected T {
-	using TD = TextDirection;
-	friend TextDirection;
-public:
-	using Element = decltype(T::x);
-	Element& parallel = T::x;
-	Element& perpendicular = T::y;
-	Element& prl = T::x;
-	Element& prp = T::y;
-private:
-	PosOnText(const T& p) : T(p.x, p.y) { }
-public:
-	PosOnText() : T() {}
-	PosOnText(const PosOnText& p) : T(p.x, p.y) {}
-	PosOnText(const T& p, TD::Direction d) {
-		parallel = TD::Dot<T>(TD::Dir1[d], p);
-		perpendicular = TD::Dot<T>(TD::Dir2[d], p);
-	}
-	PosOnText(Element parallel, Element perpendicular)
-		: T(parallel, perpendicular) {}
-	T toRealPos(TD::Direction d) {
-		return parallel * TD::Dir1[d] + perpendicular * TD::Dir2[d];
-	}
-	PosOnText abs() const { return { Abs(parallel), Abs(perpendicular) }; }
-	PosOnText& operator=(const PosOnText& p) { T::operator=(p); return *this; }
-	Vec2OnText toTextVec2() { return { (double)parallel, (double)perpendicular }; }
-	PointOnText toTextPoint() { return { (int)(parallel + 0.5), (int)(perpendicular + 0.5) }; }
-	PosOnText operator+(const PosOnText& p) const { return T::operator+(p); }
-	PosOnText operator-(const PosOnText& p) const { return T::operator-(p); }
-	PosOnText& operator+=(const PosOnText& p) { T::operator+=(p); return *this; }
-	PosOnText& operator-=(const PosOnText& p) { T::operator-=(p); return *this; }
-	PosOnText operator*(Element e) const { return T::operator*(e); }
-	PosOnText operator/(Element e) const { return T::operator/(e); }
-	PosOnText& operator*=(Element e) { T::operator*=(e); return *this; }
-	PosOnText& operator/=(Element e) { T::operator/=(e); return *this; }
-};
-
-
-template <class T>
-struct RectangleOnText;
-
-template class RectangleOnText<Point>;
-template class RectangleOnText<Vec2>;
-using RectOnText = RectangleOnText<Point>;
-using RectFOnText = RectangleOnText<Vec2>;
-
-template <class T>
-struct RectangleOnText {
-	using TD = TextDirection;
-	PosOnText<T> pos;
-	PosOnText<T> size;
-	RectangleOnText() {}
-	RectangleOnText(const PosOnText<T>& pos, const PosOnText<T>& size) : pos(pos), size(size) {}
-	Rectangle<T> toRealRect(TD::Direction d) {
-		auto [rpos, rsize] = TD::ToPositiveRect(pos.toRealPos(d), size.toRealPos(d));
-		return Rectangle<T>(rpos, rsize);
-	}
-};
-
-
-struct TextArea {
-	using TD = TextDirection;
-	Point origin;
-	PointOnText size;
-	TextArea() {}
-	TextArea(const Rect& r, TD::Direction d) {
-		PointOnText tpos_(r.pos, d);
-		PointOnText tsize_(r.size, d);
-		auto [tpos, tsize] = TD::ToPositiveRect(tpos_, tsize_);
-		size = tsize;
-		origin = tpos.toRealPos(d);
-	}
-	TextArea(const Point& pos, const PointOnText& size) : origin(pos), size(size) {}
-	Size realSize(TD::Direction d) {
-		return Abs(size.toRealPos(d));
-	}
-	Point realPos(TD::Direction d) {
-		return toRect(d).pos;
-	}
-	Rect toRect(TD::Direction d) {
-		auto [rpos, rsize] = TD::ToPositiveRect(origin, size.toRealPos(d));
-		return Rect(rpos, rsize);
-	}
-};
+namespace G = Geometry;
+namespace TG = TextGeometry;
 
 
 //未確定文字列入力モードかどうかを判定するクラス
@@ -343,7 +210,6 @@ class GlyphArrangement2 {
 	//↑あるバケットが更新されたらその一つ手前のバケットから再計算→統合できるのにされていない隣接バケットが生まれない→例えばn=1000だとしたら、最悪ケースでも500と501や1000と1のバケットが交互に並ぶだけ→バケットの最大個数は2√nくらいで抑えられる
 	//テキストの変更をまたいで使うイテレータはちゃんとregisterItr()する。ただしこれらのイテレータを含む範囲を削除してはいけない...
 
-	using TD = TextDirection;
 public:
 	struct LineData;
 	struct CharData;
@@ -354,7 +220,7 @@ public:
 		SP<const Font::Glyph> glyph;
 		SP<const Font::Glyph> blurred;
 		std::list<SP<CharIterator>> itrs;
-		PointOnText pos; //line内での相対的な位置
+		TG::PointOnText pos; //line内での相対的な位置
 		SP<CharAnimation> animation;
 	};
 	struct BucketHeader {
@@ -374,10 +240,10 @@ private:
 	std::list<LineData> _data;
 	int _lineInterval;
 	int _maxLineLnegth;
-	TD::Direction _textDir;
+	TG::Direction _textDir;
 
 	LineIterator _origin;
-	PointOnText _originPos;
+	TG::PointOnText _originPos;
 	SP<CharIterator> _cursor;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
@@ -388,7 +254,7 @@ private:
 
 	void initBucket(LineIterator first, LineIterator last);
 public:
-	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TD::Direction textDir);
+	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TG::Direction textDir);
 
 	SP<Font::FixedFont> font();
 	void registerItr(SP<CharIterator> itr);
@@ -404,7 +270,7 @@ public:
 	void next(SP<CharIterator> citr); //管理されたイテレータを動かす
 	void prev(SP<CharIterator> citr); //管理されたイテレータを動かす
 	LineIterator origin() const;
-	PointOnText originPos() const;
+	TG::PointOnText originPos() const;
 	SP<CharIterator> cursor() const;
 	LineIterator begin();
 	LineIterator end();
@@ -414,14 +280,12 @@ public:
 	LineIterator nextBucket(LineIterator litr) const;
 	double minimapLineInterval() const;
 	double minimapScale() const;
-	void resetOrigin(LineIterator origin, PointOnText pos);
-	TD::Direction textDirection() const;
+	void resetOrigin(LineIterator origin, TG::PointOnText pos);
+	TG::Direction textDirection() const;
 
-	//NULL文字を挿入すると番兵などに使える。ただしそれを含む範囲をeraseしないよう注意
-	//NULL文字は参照が切れていたらinitLine時に自動で削除される
-	//↑しかしいつ削除されるか分からないのでdeleteNullしたほうがいい
+	//NULL文字を挿入すると番兵などに使える
+	//NULL文字はremoveItr時に参照が切れたら自動で削除される
 	SP<CharIterator> makeNull(CharIterator citr);
-	void deleteNull(SP<CharIterator> nullItr); //イテレータは壊れる
 };
 
 
@@ -438,12 +302,12 @@ private:
 	SP<GA::CharIterator> _floatingBegin; //管理されたイテレータ
 	AnimationProgress _inOutAP;
 	AnimationProgress _updateAP;
-	std::vector<Vec2OnText> _oldHeadPos;
-	std::vector<Vec2OnText> _newHeadPos;
+	std::vector<TG::Vec2OnText> _oldHeadPos;
+	std::vector<TG::Vec2OnText> _newHeadPos;
 	double _oldAdvance; //headのadvance
 	double _newAdvance;
 
-	Vec2OnText easeOverLine(Vec2OnText source, Vec2OnText target, double t, int i);
+	TG::Vec2OnText easeOverLine(TG::Vec2OnText source, TG::Vec2OnText target, double t, int i);
 public:
 	FloatingAnimation(int lineInterval, int maxLineLength);
 	Step step() const;
@@ -459,8 +323,19 @@ public:
 	//citrはfloatingStart以降であること
 	//Inactiveのときに呼び出さない
 	//各行の行頭の静止座標からの相対位置を返す（描画する側で行頭の静止座標を足す）
-	Vec2OnText getPos(GA::CharIterator citr);
+	TG::Vec2OnText getPos(GA::CharIterator citr);
 };
+
+
+//class EditingCursor {
+//	using GA = GlyphArrangement2;
+//private:
+//	
+//public:
+//	GA::CharIterator pos() const;
+//	Vec2OnText drawingPos();
+//	void move()
+//};
 
 
 class CleanCopyCursor {
@@ -561,12 +436,11 @@ public:
 
 
 class WholeView {
-	using TD = TextDirection;
 private:
 	RectF _area;
-	TextArea _textArea;
+	TG::TextArea _textArea;
 	int _lineInterval;
-	TD::Direction _textDir;
+	TG::Direction _textDir;
 	SP<Font::FixedFont> _font;
 	SP<GlyphArrangement2> _ga;
 	JudgeEditing _ju;
@@ -580,8 +454,7 @@ private:
 
 public:
 
-	//font: verticalでなければならない(これ設計汚くない？)
-	WholeView(Rect area, SP<Font::FixedFont> font, TD::Direction textDir);
+	WholeView(Rect area, SP<Font::FixedFont> font, TG::Direction textDir);
 
 	void setText(const String &text);
 	void draw();
@@ -593,12 +466,11 @@ public:
 
 class MinimapView {
 	using GA = GlyphArrangement2;
-	using TD = TextDirection;
 private:
 	RectF _area;
 	SP<GA> _ga;
-	TD::Direction _mapDir;
-	TextArea _body;
+	TG::Direction _mapDir;
+	TG::TextArea _body;
 	TemporaryData::Manager _tmpManager;
 public:
 	MinimapView(RectF area, SP<GA> ga);
