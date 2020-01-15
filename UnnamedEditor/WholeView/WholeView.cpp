@@ -369,6 +369,12 @@ void GlyphArrangement2::registerItr(SP<CharIterator> itr) {
 	itr->second->itrs.push_back(itr);
 }
 
+SP<GlyphArrangement2::CharIterator> GlyphArrangement2::registerItr(CharIterator citr) {
+	SP<CharIterator> itr(new CharIterator(citr));
+	registerItr(itr);
+	return itr;
+}
+
 void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 	auto& itrs = itr->second->itrs;
 	for (auto i = itrs.begin(); i != itrs.end();) {
@@ -386,15 +392,11 @@ GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval,
 , _maxLineLnegth(maxLineLength)
 , _textDir(textDir)
 , _origin()
-, _originPos(0, 0)
-, _cursor(new CharIterator()) {
+, _originPos(0, 0) {
 	_data.push_back(LineData());
 	CharData cd;
 	cd.code = Text::Text::NEWLINE;
 	_data.back().cd.push_back(cd);
-	_cursor->first = _origin = _data.begin();
-	_cursor->second = _data.begin()->cd.begin();
-	registerItr(_cursor);
 
 	auto blur = [&](Image& img) {
 		img.gaussianBlur(2, 2);
@@ -532,10 +534,6 @@ GlyphArrangement2::LineIterator GlyphArrangement2::origin() const {
 
 TG::PointOnText GlyphArrangement2::originPos() const {
 	return _originPos;
-}
-
-SP<GlyphArrangement2::CharIterator> GlyphArrangement2::cursor() const {
-	return _cursor;
 }
 
 GlyphArrangement2::LineIterator GlyphArrangement2::begin() {
@@ -724,12 +722,11 @@ void InputManager::update(SP<GA> ga, String addend, String editing) {
 	}();
 	String replaced = addend.dropped(Min((int)addend.size(), prefixLength));
 	replaced += editing.dropped(Max(0, prefixLength - (int)addend.size()));
-	auto cursor = ga->cursor();
 	int eraseSize = _editing.size() - prefixLength;
 	if (eraseSize > 0 || !replaced.empty()) {
-		auto first = ga->prev(*cursor, true, eraseSize);
+		auto first = ga->prev(_cursor->pos(), true, eraseSize);
 		bool flg = first == _cccursor->pos();
-		auto newItr = ga->replaceText(first, *cursor, replaced);
+		auto newItr = ga->replaceText(first, _cursor->pos(), replaced);
 		if (flg) {
 			_cccursor->changeItr(newItr);
 		}

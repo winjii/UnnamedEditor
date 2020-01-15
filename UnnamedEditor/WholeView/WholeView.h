@@ -244,7 +244,6 @@ private:
 
 	LineIterator _origin;
 	TG::PointOnText _originPos;
-	SP<CharIterator> _cursor;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
 	const double _minimapFontSize = 0.8;
@@ -258,6 +257,7 @@ public:
 
 	SP<Font::FixedFont> font();
 	void registerItr(SP<CharIterator> itr);
+	SP<CharIterator> registerItr(CharIterator citr);
 	void removeItr(SP<CharIterator> itr);
 	LineIterator tryNext(LineIterator litr, int cnt = 1) const;
 	LineIterator tryPrev(LineIterator litr, int cnt = 1) const;
@@ -271,7 +271,6 @@ public:
 	void prev(SP<CharIterator> citr); //管理されたイテレータを動かす
 	LineIterator origin() const;
 	TG::PointOnText originPos() const;
-	SP<CharIterator> cursor() const;
 	LineIterator begin();
 	LineIterator end();
 	CharIterator lineBegin(LineIterator litr) const;
@@ -327,15 +326,86 @@ public:
 };
 
 
-//class EditingCursor {
-//	using GA = GlyphArrangement2;
-//private:
-//	
-//public:
-//	GA::CharIterator pos() const;
-//	Vec2OnText drawingPos();
-//	void move()
-//};
+class EditCursor {
+	using GA = GlyphArrangement2;
+private:
+	SP<GA> _ga;
+	SP<GA::CharIterator> _pos;
+	GA::CharIterator _oldPos;
+	AnimationProgress _ap;
+	double _virtualPosPrl;
+
+	int gap(GA::CharIterator citr) {
+		return std::abs(citr.second->pos.prl - _virtualPosPrl);
+	}
+public:
+	EditCursor(SP<GA> ga, GA::CharIterator pos)
+		: _ga(ga)
+		, _pos(_ga->registerItr(pos))
+		, _oldPos(*_pos)
+		, _virtualPosPrl(_pos->second->pos.prl) { }
+	GA::CharIterator pos() const {
+		return *_pos;
+	}
+	TG::Vec2OnText drawingPos() {
+		TG::Vec2OnText p = _pos->second->pos.toTextVec2();
+		TG::Vec2OnText q = _oldPos.second->pos.toTextVec2();
+		return (p - q) * EaseOut(Easing::Expo, _ap.getProgress()) + q;
+	}
+	void increasePrl() {
+		_oldPos = *_pos;
+		_ga->next(_pos);
+		_virtualPosPrl = _pos->second->pos.prl;
+		_ap.start(0.25);
+	}
+	void decreasePrl() {
+		_oldPos = *_pos;
+		_ga->prev(_pos);
+		_virtualPosPrl = _pos->second->pos.prl;
+		_ap.start(0.25);
+	}
+	void increasePrp() {
+		_oldPos = *_pos;
+		while (true) {
+			GA::CharIterator nxt = _ga->next(*_pos, true);
+			if (nxt.first == _ga->end()) break;
+			if (nxt.second->pos.prp > _oldPos.second->pos.prp &&
+				nxt.second->pos.prl > _virtualPosPrl) {
+				if (gap(nxt) < gap(*_pos)) _ga->next(_pos);
+				break;
+			}
+			_ga->next(_pos);
+		}
+		_ap.start(0.25);
+	}
+	void decreasePrp() {
+		_oldPos = *_pos;
+		while (true) {
+			if (*_pos == _ga->lineBegin(_ga->begin())) break;
+			GA::CharIterator prv = _ga->prev(*_pos, true);
+			if (prv.second->pos.prp < _oldPos.second->pos.prp &&
+				prv.second->pos.prl < _virtualPosPrl) {
+				if (gap(prv) < gap(*_pos)) _ga->prev(_pos);
+				break;
+			}
+			_ga->prev(_pos);
+		}
+		_ap.start(0.25);
+	}
+	void move(TG::PointOnText deltaInChars) {
+		for (int i = 0; i < std::abs(deltaInChars.prp); i++) {
+			if (deltaInChars.prp > 0) increasePrp();
+			else decreasePrp();
+		}
+		for (int i = 0; i < std::abs(deltaInChars.prl); i++) {
+			if (deltaInChars.prl > 0) increasePrl();
+			else increasePrl();
+		}
+	}
+	void update() {
+		_ap.update();
+	}
+};
 
 
 class CleanCopyCursor {
@@ -371,7 +441,7 @@ private:
 	SP<FloatingAnimation> _fa;
 	String _editing;
 	bool _isInputing;
-	SP<GA::CharIterator> _cursor;
+	SP<EditCursor> _cursor;
 	SP<CleanCopyCursor> _cccursor;
 public:
 	InputManager(int lineInterval, int maxLineLength);
