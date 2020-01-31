@@ -208,7 +208,6 @@ class GlyphArrangement2 {
 	//↑ミニマップ描画をshortcutできるイメージ
 	//↑文字列編集されたときはどうする？
 	//↑あるバケットが更新されたらその一つ手前のバケットから再計算→統合できるのにされていない隣接バケットが生まれない→例えばn=1000だとしたら、最悪ケースでも500と501や1000と1のバケットが交互に並ぶだけ→バケットの最大個数は2√nくらいで抑えられる
-	//テキストの変更をまたいで使うイテレータはちゃんとregisterItr()する。ただしこれらのイテレータを含む範囲を削除してはいけない...
 
 public:
 	struct LineData;
@@ -419,8 +418,9 @@ private:
 	std::pair<SP<GA::CharIterator>, double> _drawingPos;
 	Stopwatch _sw;
 	SP<GA> _ga;
+	SP<EditCursor> _editCursor;
 public:
-	CleanCopyCursor(SP<GA> ga, GA::CharIterator citr);
+	CleanCopyCursor(SP<GA> ga, SP<EditCursor> editCursor);
 	GA::CharIterator pos() const;
 	std::pair<GA::CharIterator, double> drawingPos() const;
 	void changeItr(GA::CharIterator newItr);
@@ -441,17 +441,18 @@ private:
 	SP<FloatingAnimation> _fa;
 	String _editing;
 	bool _isInputing;
+	SP<GA> _ga;
 	SP<EditCursor> _cursor;
 	SP<CleanCopyCursor> _cccursor;
 public:
-	InputManager(int lineInterval, int maxLineLength);
+	InputManager(SP<GA> ga, SP<EditCursor> cursor, int lineInterval, int maxLineLength);
 	bool isInputing() const;
 	SP<FloatingAnimation> floatingAnimation() const;
 	SP<CleanCopyCursor> cleanCopyCursor() const;
-	void update(SP<GA> ga, String addend, String editing);
+	void update(String addend, String editing);
 	void stopInputting();
-	void startInputting(SP<GA> ga);
-	void deleteLightChar(SP<GA> ga);
+	void startInputting();
+	void deleteLightChar();
 	void startAdvancingCCC();
 	void startRetreatingCCC();
 	void stopCCC();
@@ -515,12 +516,16 @@ private:
 	SP<GlyphArrangement2> _ga;
 	JudgeEditing _ju;
 	ScrollDelta _scrollDelta;
+	SP<EditCursor> _cursor;
 	InputManager _inputManager;
 	RenderTexture _masker;
 	RenderTexture _maskee;
 	MSRenderTexture _foreground;
 	const PixelShader _maskPS;
 	TemporaryData::Manager _tmpData;
+	
+	std::pair<TG::Vec2OnText, TG::Vec2OnText> drawBody(const RenderTexture& maskee, const RenderTexture& foreground);
+	void drawMasker(const RenderTexture& masker, TG::Vec2OnText maskStart, TG::Vec2OnText maskEnd);
 
 public:
 

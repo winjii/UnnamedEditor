@@ -5,8 +5,86 @@
 
 
 namespace UnnamedEditor {
+
+
 namespace WholeView {
 
+
+std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTexture& maskee, const RenderTexture& foreground) {
+	BlendState bs = BlendState::Default;
+	bs.srcAlpha = Blend::One;
+	bs.dstAlpha = Blend::InvSrcAlpha;
+	const ScopedRenderStates2D renderState(bs);
+	const ScopedRenderTarget2D target(_maskee);
+	Point textOrigin = _textArea.origin - _textArea.realPos(_textDir);
+
+	auto drawCursor = [&](Vec2 pos) {
+		ScopedRenderTarget2D tmp(_foreground);
+		pos += _textArea.realPos(_textDir);
+		double t = Scene::Time() * 2 * Math::Pi / 2.5;
+		_font->getCursor(pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
+	};
+
+	using GA = GlyphArrangement2;
+	auto litr = _ga->origin();
+	bool flt = false;
+	SP<FloatingAnimation> floating = _inputManager.floatingAnimation();
+	auto cccursor = _inputManager.cleanCopyCursor();
+	TG::PointOnText lineOrigin = _ga->originPos();
+	TG::Vec2OnText maskStart, maskEnd;
+
+	while (lineOrigin.prp < _textArea.size.prp +_lineInterval && litr != _ga->end()) {
+		auto citr = _ga->lineBegin(litr);
+		while (citr != _ga->lineEnd(litr)) {
+			if (!floating->isInactive() && floating->floatingBegin() == citr) flt = true;
+
+			TG::Vec2OnText tp = (lineOrigin + citr.second->pos).toTextVec2();
+			if (flt) tp = lineOrigin.toTextVec2() + floating->getPos(citr);
+			Vec2 p = tp.toRealPos(_textDir) + textOrigin;
+			//Circle(p, 3).draw(Palette::Red);
+			if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
+				if (!CharAnimation::IsEmpty(citr.second->animation)) {
+					citr.second->animation->draw(p, citr.second->glyph);
+				}
+				else
+					citr.second->glyph->draw(p);
+			}
+			if (citr == _cursor->pos()) {
+				drawCursor(p);
+				maskEnd = tp;
+			}
+			if (!floating->isInactive() && citr == cccursor->drawingPos().first) {
+				//TODO: ‰¡‘‚«‘Î‰ž
+				TG::Vec2OnText cp = tp + TG::Vec2OnText(cccursor->drawingPos().second, 0);
+				drawCursor(cp.toRealPos(_textDir));
+				maskStart = cp;
+			}
+			citr = _ga->next(citr);
+		}
+		lineOrigin.prp += litr->wrapCount * _lineInterval;
+		litr = _ga->tryNext(litr);
+	}
+	return { maskStart, maskEnd };
+}
+
+void WholeView::drawMasker(const RenderTexture& masker, TG::Vec2OnText maskStart, TG::Vec2OnText maskEnd) {
+	const ScopedRenderTarget2D target(masker);
+	const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_textDir)));
+
+	int lines = (int)((maskEnd.prp - maskStart.prp) / _lineInterval + 0.5);
+	TG::Vec2OnText st = maskStart;
+	ColorF color(Palette::Black, 0.5);
+	double asd = _font->ascender(), dsd = _font->descender();
+	double lineGap = _lineInterval - (asd - dsd);
+	asd += lineGap / 2; dsd -= lineGap / 2;
+	for (int i = 0; i < lines; i++) {
+		TG::RectFOnText r({ st.prl, st.prp - asd }, { _textArea.size.prl - st.prl, asd - dsd });
+		r.toRealRect(_textDir).draw(color);
+		st = TG::Vec2OnText(0, st.prp + _lineInterval);
+	}
+	TG::RectFOnText r({ st.prl, st.prp - asd }, { maskEnd.prl - st.prl, asd - dsd });
+	r.toRealRect(_textDir).draw(color);
+}
 
 WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, TG::Direction textDir)
 : _area(area)
@@ -17,7 +95,8 @@ WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, TG::Direction te
 , _ga(new GlyphArrangement2(_font, _lineInterval, _textArea.size.prl, textDir))
 , _ju()
 , _scrollDelta(_lineInterval)
-, _inputManager(_lineInterval, _textArea.size.prl)
+, _cursor(new EditCursor(_ga, _ga->lineBegin(_ga->begin())))
+, _inputManager(_ga, _cursor, _lineInterval, _textArea.size.prl)
 , _masker(_textArea.realSize(textDir))
 , _maskee(_textArea.realSize(textDir))
 , _foreground(area.size)
@@ -26,9 +105,9 @@ WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, TG::Direction te
 }
 
 void WholeView::setText(const String &text) {
-	_ga->insertText(*_ga->cursor(), U"‚Û");
-	auto itr = *_ga->cursor();
-	_ga->prev(_ga->cursor());
+	_ga->insertText(_cursor->pos(), U"‚Û");
+	auto itr = _cursor->pos();
+	_cursor->decreasePrl();
 	_ga->insertText(itr, text);
 }
 
@@ -51,7 +130,7 @@ void WholeView::draw() {
 	//if (KeyUp.down()) _textWindow.cursorPrev();
 
 	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0 || KeyBackspace.down())) {
-		_inputManager.startInputting(_ga);
+		_inputManager.startInputting();
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
 
@@ -68,27 +147,27 @@ void WholeView::draw() {
 		}
 	}
 	if (_inputManager.isInputing() && editing.size() == 0) {
-		bool onEnd = *_ga->cursor() == cccursor->drawingPos().first && cccursor->isStable();
+		bool onEnd = _cursor->pos() == cccursor->drawingPos().first && cccursor->isStable();
 		if (!cccursor->isStable()) addend = U"";
 		if (KeyEnter.down() && !onEnd && _ju.isEditing()) cccursor->startAdvancing();
 		else if (KeyEnter.up()) cccursor->stop();
 		else if (_ju.isEditing() && KeyBackspace.down()) {
-			if (cccursor->pos() == *_ga->cursor())
+			if (cccursor->pos() == _cursor->pos())
 				cccursor->startRetreating();
 			else
-				_inputManager.deleteLightChar(_ga);
+				_inputManager.deleteLightChar();
 		}
 		else if (KeyBackspace.up()) cccursor->stop();
 		if (!cccursor->isStable()) addend = U"";
 		if (KeyDown.down() || KeyUp.down()) {
-			_inputManager.deleteLightChar(_ga);
+			_inputManager.deleteLightChar();
 			_inputManager.stopInputting();
 		}
 	}
-	if (!_inputManager.isInputing()) {
-		if (KeyDown.down()) _ga->next(_ga->cursor());
-		if (KeyUp.down()) _ga->prev(_ga->cursor());
-	}
+	//if (!_inputManager.isInputing()) {
+	//	if (KeyDown.down()) _ga->next(_ga->cursor());
+	//	if (KeyUp.down()) _ga->prev(_ga->cursor());
+	//}
 
 	/*_floatingProgress.update();
 	if (_floatingProgress.getStep() == AnimationProgress::Step::Stable) {
@@ -110,85 +189,20 @@ void WholeView::draw() {
 		_ga->scroll(-delta);
 	}
 
-	_inputManager.update(_ga, addend, editing);
+	_inputManager.update(addend, editing);
 	if (!floating->isInactive()) cccursor->update(_tmpData);
 
 	_tmpData.update();
 
-	TG::Vec2OnText maskStart, maskEnd;
 	_masker.clear(Palette::White);
 	_maskee.clear(ColorF(0, 0, 0, 0));
 	_area.draw(Palette::White);
 	_foreground.clear(ColorF(0, 0, 0, 0));
 	{
-		BlendState bs = BlendState::Default;
-		bs.srcAlpha = Blend::One;
-		bs.dstAlpha = Blend::InvSrcAlpha;
-		const ScopedRenderStates2D renderState(bs);
-		const ScopedRenderTarget2D target(_maskee);
-		Point textOrigin = _textArea.origin - _textArea.realPos(_textDir);
-
-		auto drawCursor = [&](Vec2 pos) {
-			ScopedRenderTarget2D tmp(_foreground);
-			pos += _textArea.realPos(_textDir);
-			double t = Scene::Time() * 2 * Math::Pi / 2.5;
-			_font->getCursor(pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
-		};
-
-		using GA = GlyphArrangement2;
-		auto litr = _ga->origin();
-		bool flt = false;
-		TG::PointOnText lineOrigin = _ga->originPos();
-
-		while (lineOrigin.prp < _textArea.size.prp +_lineInterval && litr != _ga->end()) {
-			auto citr = _ga->lineBegin(litr);
-			while (citr != _ga->lineEnd(litr)) {
-				if (!floating->isInactive() && floating->floatingBegin() == citr) flt = true;
-
-				TG::Vec2OnText tp = (lineOrigin + citr.second->pos).toTextVec2();
-				if (flt) tp = lineOrigin.toTextVec2() + floating->getPos(citr);
-				Vec2 p = tp.toRealPos(_textDir) + textOrigin;
-				//Circle(p, 3).draw(Palette::Red);
-				if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
-					if (!CharAnimation::IsEmpty(citr.second->animation)) {
-						citr.second->animation->draw(p, citr.second->glyph);
-					}
-					else
-						citr.second->glyph->draw(p);
-				}
-				if (citr == *_ga->cursor()) {
-					drawCursor(p);
-					maskEnd = tp;
-				}
-				if (!floating->isInactive() && citr == cccursor->drawingPos().first) {
-					//TODO: ‰¡‘‚«‘Î‰ž
-					TG::Vec2OnText cp = tp + TG::Vec2OnText(cccursor->drawingPos().second, 0);
-					drawCursor(cp.toRealPos(_textDir));
-					maskStart = cp;
-				}
-				citr = _ga->next(citr);
-			}
-			lineOrigin.prp += litr->wrapCount * _lineInterval;
-			litr = _ga->tryNext(litr);
+		auto [maskStart, maskEnd] = drawBody(_maskee, _foreground);
+		if (floating->isFloating()) {
+			drawMasker(_masker, maskStart, maskEnd);
 		}
-	}
-	if (floating->isFloating()) {
-		const ScopedRenderTarget2D target(_masker);
-		const Transformer2D transformer(Mat3x2::Translate(_textArea.origin - _textArea.realPos(_textDir)));
-
-		int lines = (int)((maskEnd.prp - maskStart.prp) / _lineInterval + 0.5);
-		TG::Vec2OnText st = maskStart;
-		ColorF color(Palette::Black, 0.5);
-		double asd = _font->ascender(), dsd = _font->descender();
-		double lineGap = _lineInterval - (asd - dsd);
-		asd += lineGap / 2; dsd -= lineGap / 2;
-		for (int i = 0; i < lines; i++) {
-			TG::RectFOnText r({ st.prl, st.prp - asd }, { _textArea.size.prl - st.prl, asd - dsd });
-			r.toRealRect(_textDir).draw(color);
-			st = TG::Vec2OnText(0, st.prp + _lineInterval);
-		}
-		TG::RectFOnText r({ st.prl, st.prp - asd }, { maskEnd.prl - st.prl, asd - dsd });
-		r.toRealRect(_textDir).draw(color);
 	}
 	{
 		Graphics2D::SetTexture(1, _masker);
@@ -690,8 +704,10 @@ TG::Vec2OnText FloatingAnimation::getPos(GA::CharIterator citr) {
 	return easeOverLine(_oldHeadPos[idx], _newHeadPos[idx], _updateAP.getProgress(), idx) + d;
 }
 
-InputManager::InputManager(int lineInterval, int maxLineLength)
-: _fa(new FloatingAnimation(lineInterval, maxLineLength)) {
+InputManager::InputManager(SP<GA> ga, SP<EditCursor> cursor, int lineInterval, int maxLineLength)
+: _fa(new FloatingAnimation(lineInterval, maxLineLength))
+, _ga(ga)
+, _cursor(cursor) {
 
 }
 
@@ -708,7 +724,7 @@ SP<CleanCopyCursor> InputManager::cleanCopyCursor() const {
 	return _cccursor;
 }
 
-void InputManager::update(SP<GA> ga, String addend, String editing) {
+void InputManager::update(String addend, String editing) {
 	if (!_isInputing) {
 		addend = editing = U"";
 	}
@@ -724,13 +740,13 @@ void InputManager::update(SP<GA> ga, String addend, String editing) {
 	replaced += editing.dropped(Max(0, prefixLength - (int)addend.size()));
 	int eraseSize = _editing.size() - prefixLength;
 	if (eraseSize > 0 || !replaced.empty()) {
-		auto first = ga->prev(_cursor->pos(), true, eraseSize);
+		auto first = _ga->prev(_cursor->pos(), true, eraseSize);
 		bool flg = first == _cccursor->pos();
-		auto newItr = ga->replaceText(first, _cursor->pos(), replaced);
+		auto newItr = _ga->replaceText(first, _cursor->pos(), replaced);
 		if (flg) {
 			_cccursor->changeItr(newItr);
 		}
-		_fa->updatePos(*ga);
+		_fa->updatePos(*_ga);
 	}
 	_editing = editing;
 }
@@ -741,26 +757,24 @@ void InputManager::stopInputting() {
 	_fa->stopFloating();
 }
 
-void InputManager::startInputting(SP<GA> ga) {
+void InputManager::startInputting() {
 	_isInputing = true;
-	_cursor = ga->makeNull(*ga->cursor());
-	auto floatingBegin = *ga->cursor();
-	ga->prev(ga->cursor());
-	assert(*_cursor == *ga->cursor());
-	_cccursor.reset(new CleanCopyCursor(ga, *_cursor));
-	_fa->startFloating(*ga, floatingBegin);
+	auto null = _ga->makeNull(_cursor->pos());
+	_cursor->decreasePrl();
+	_cccursor.reset(new CleanCopyCursor(_ga, _cursor));
+	_fa->startFloating(*_ga, _ga->next(_cursor->pos()));
 }
 
-void InputManager::deleteLightChar(SP<GA> ga) {
-	_cccursor->changeItr(ga->eraseText(_cccursor->pos(), *ga->cursor()));
-	_fa->updatePos(*ga);
+void InputManager::deleteLightChar() {
+	_cccursor->changeItr(_ga->eraseText(_cccursor->pos(), _cursor->pos()));
+	_fa->updatePos(*_ga);
 }
 
-CleanCopyCursor::CleanCopyCursor(SP<GA> ga, GA::CharIterator citr)
+CleanCopyCursor::CleanCopyCursor(SP<GA> ga, SP<EditCursor> editCursor)
 : _step(Step::Stable)
-, _ga(ga) {
-	_drawingPos.first.reset(new GA::CharIterator(citr));
-	ga->registerItr(_drawingPos.first);
+, _ga(ga)
+, _editCursor(editCursor){
+	_drawingPos.first = ga->registerItr(editCursor->pos());
 	_drawingPos.second = 0;
 }
 
@@ -799,7 +813,7 @@ void CleanCopyCursor::startRetreating() {
 }
 
 void CleanCopyCursor::stop() {
-	if (_step == Step::Retreating && *_drawingPos.first != *_ga->cursor() && _sw.isRunning())
+	if (_step == Step::Retreating && *_drawingPos.first != _editCursor->pos() && _sw.isRunning())
 		_ga->next(_drawingPos.first);
 	_step = Step::Stable;
 	_drawingPos.second = 0;
@@ -814,7 +828,7 @@ void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 		while (true) {
 			_drawingPos.second = velocity * _sw.sF();
 			double advance = _drawingPos.first->second->glyph->advance();
-			if (*_drawingPos.first == *_ga->cursor()) {
+			if (*_drawingPos.first == _editCursor->pos()) {
 				_drawingPos.second = 0;
 				_sw.pause();
 				break; //_step‚ÍStable‚É‚µ‚È‚¢
