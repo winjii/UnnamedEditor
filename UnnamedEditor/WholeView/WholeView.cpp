@@ -184,8 +184,10 @@ void WholeView::draw() {
 
 	/*if (_floatingStep == FloatingStep::AnimatingIn || _floatingStep == FloatingStep::Stable)
 		_textWindow.inputText(addend, editing);*/
+	double offset = 0;
 	if (_scrollDelta.step() != ScrollDelta::Step::NotScrolling) {
-		auto [delta, offset] = _scrollDelta.useDelta();
+		auto [delta, offset_] = _scrollDelta.useDelta();
+		offset = offset_;
 		_ga->scroll(-delta);
 	}
 
@@ -198,6 +200,8 @@ void WholeView::draw() {
 	_maskee.clear(ColorF(0, 0, 0, 0));
 	_area.draw(Palette::White);
 	_foreground.clear(ColorF(0, 0, 0, 0));
+	Vec2 offsetVec = (TG::Vec2OnText(0, -1)*offset).toRealPos(_textDir);
+	const Transformer2D transform(Mat3x2::Translate(offsetVec));
 	{
 		auto [maskStart, maskEnd] = drawBody(_maskee, _foreground);
 		if (floating->isFloating()) {

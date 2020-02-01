@@ -492,7 +492,7 @@ public:
 			return -x*std::log(a) + (x + a)*std::log(x + a) - x - a*std::log(a);
 		};
 		double t = _sw.sF();
-		double sum = 1000*t;
+		double sum = _direction*1000*t;
 		if (_step == Step::StoppingScroll) {
 			sum = std::round(_used / _lineInterval) * _lineInterval;
 			_step = Step::NotScrolling;
@@ -501,7 +501,7 @@ public:
 		//sum = EaseOut(Easing::Expo, p, p + 20, (sum - p)/20);
 		int ret = (int)sum - _used;
 		_used = (int)sum;
-		return { ret * _direction, sum - (double)(int)sum };
+		return { ret, sum - (double)(int)sum };
 	}
 };
 
