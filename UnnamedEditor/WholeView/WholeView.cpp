@@ -49,10 +49,6 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 				else
 					citr.second->glyph->draw(p);
 			}
-			if (citr == _cursor->pos()) {
-				drawCursor(p);
-				maskEnd = tp;
-			}
 			if (!floating->isInactive() && citr == cccursor->drawingPos().first) {
 				//TODO: ‰¡‘‚«‘Î‰
 				TG::Vec2OnText cp = tp + TG::Vec2OnText(cccursor->drawingPos().second, 0);
@@ -129,22 +125,22 @@ void WholeView::draw() {
 	//if (KeyDown.down()) _textWindow.cursorNext();
 	//if (KeyUp.down()) _textWindow.cursorPrev();
 
+	TG::PointOnText arrowKey = [&]() {
+		Point p(0, 0);
+		if (KeyLeft.down()) p.x--;
+		if (KeyRight.down()) p.x++;
+		if (KeyUp.down()) p.y--;
+		if (KeyDown.down()) p.y++;
+		return TG::PointOnText(p, _textDir);
+	}();
+
 	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0 || KeyBackspace.down())) {
 		_inputManager.startInputting();
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
 
 	if (floating->step() != FloatingAnimation::Step::Floating) {
-		if (KeyLeft.down()) _scrollDelta.startScroll(1);
-		if (KeyRight.down()) _scrollDelta.startScroll(-1);
-	}
-	if (_scrollDelta.step() == ScrollDelta::Step::Scrolling) {
-		if (_scrollDelta.direction() == 1 && KeyLeft.up()) {
-			_scrollDelta.stopScroll();
-		}
-		if (_scrollDelta.direction() == -1 && KeyRight.up()) {
-			_scrollDelta.stopScroll();
-		}
+		if (arrowKey.prp != 0) _scrollDelta.scroll(arrowKey.prp);
 	}
 	if (_inputManager.isInputing() && editing.size() == 0) {
 		bool onEnd = _cursor->pos() == cccursor->drawingPos().first && cccursor->isStable();
@@ -164,10 +160,9 @@ void WholeView::draw() {
 			_inputManager.stopInputting();
 		}
 	}
-	//if (!_inputManager.isInputing()) {
-	//	if (KeyDown.down()) _ga->next(_ga->cursor());
-	//	if (KeyUp.down()) _ga->prev(_ga->cursor());
-	//}
+	if (!_inputManager.isInputing()) {
+		if (arrowKey.prl != 0 || arrowKey.prp != 0) _cursor->move(arrowKey);
+	}
 
 	/*_floatingProgress.update();
 	if (_floatingProgress.getStep() == AnimationProgress::Step::Stable) {
@@ -185,7 +180,7 @@ void WholeView::draw() {
 	/*if (_floatingStep == FloatingStep::AnimatingIn || _floatingStep == FloatingStep::Stable)
 		_textWindow.inputText(addend, editing);*/
 	double offset = 0;
-	if (_scrollDelta.step() != ScrollDelta::Step::NotScrolling) {
+	if (_scrollDelta.isScrolling()) {
 		auto [delta, offset_] = _scrollDelta.useDelta();
 		offset = offset_;
 		_ga->scroll(-delta);
@@ -764,7 +759,7 @@ void InputManager::stopInputting() {
 void InputManager::startInputting() {
 	_isInputing = true;
 	auto null = _ga->makeNull(_cursor->pos());
-	_cursor->decreasePrl();
+	_cursor->decreasePrl(false);
 	_cccursor.reset(new CleanCopyCursor(_ga, _cursor));
 	_fa->startFloating(*_ga, _ga->next(_cursor->pos()));
 }

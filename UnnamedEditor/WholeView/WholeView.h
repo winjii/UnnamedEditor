@@ -59,12 +59,12 @@ public:
 	}
 	void update() {
 		if (_step != Step::Animating) return;
-		_progress = _sw.sF() / _animationTime;
-		if (_progress > 1) {
+		if (_sw.sF() >= _animationTime) {
 			_progress = 1;
 			_sw.reset();
 			_step = Step::Stable;
 		}
+		else _progress = _sw.sF() / _animationTime;
 	}
 };
 
@@ -330,76 +330,91 @@ class EditCursor {
 private:
 	SP<GA> _ga;
 	SP<GA::CharIterator> _pos;
-	GA::CharIterator _oldPos;
+	SP<GA::CharIterator> _oldPos;
 	AnimationProgress _ap;
 	double _virtualPosPrl;
 
 	int gap(GA::CharIterator citr) {
 		return std::abs(citr.second->pos.prl - _virtualPosPrl);
 	}
-public:
-	EditCursor(SP<GA> ga, GA::CharIterator pos)
-		: _ga(ga)
-		, _pos(_ga->registerItr(pos))
-		, _oldPos(*_pos)
-		, _virtualPosPrl(_pos->second->pos.prl) { }
-	GA::CharIterator pos() const {
-		return *_pos;
-	}
-	TG::Vec2OnText drawingPos() {
-		TG::Vec2OnText p = _pos->second->pos.toTextVec2();
-		TG::Vec2OnText q = _oldPos.second->pos.toTextVec2();
-		return (p - q) * EaseOut(Easing::Expo, _ap.getProgress()) + q;
-	}
-	void increasePrl() {
-		_oldPos = *_pos;
+
+	void increasePrlSimple() {
 		_ga->next(_pos);
 		_virtualPosPrl = _pos->second->pos.prl;
-		_ap.start(0.25);
 	}
-	void decreasePrl() {
-		_oldPos = *_pos;
+	void decreasePrlSimple() {
 		_ga->prev(_pos);
 		_virtualPosPrl = _pos->second->pos.prl;
-		_ap.start(0.25);
 	}
-	void increasePrp() {
-		_oldPos = *_pos;
+	void increasePrpSimple() {
 		while (true) {
 			GA::CharIterator nxt = _ga->next(*_pos, true);
 			if (nxt.first == _ga->end()) break;
-			if (nxt.second->pos.prp > _oldPos.second->pos.prp &&
+			if (nxt.second->pos.prp > _oldPos->second->pos.prp&&
 				nxt.second->pos.prl > _virtualPosPrl) {
 				if (gap(nxt) < gap(*_pos)) _ga->next(_pos);
 				break;
 			}
 			_ga->next(_pos);
 		}
-		_ap.start(0.25);
 	}
-	void decreasePrp() {
-		_oldPos = *_pos;
+	void decreasePrpSimple() {
 		while (true) {
 			if (*_pos == _ga->lineBegin(_ga->begin())) break;
 			GA::CharIterator prv = _ga->prev(*_pos, true);
-			if (prv.second->pos.prp < _oldPos.second->pos.prp &&
+			if (prv.second->pos.prp < _oldPos->second->pos.prp &&
 				prv.second->pos.prl < _virtualPosPrl) {
 				if (gap(prv) < gap(*_pos)) _ga->prev(_pos);
 				break;
 			}
 			_ga->prev(_pos);
 		}
-		_ap.start(0.25);
 	}
-	void move(TG::PointOnText deltaInChars) {
+public:
+	EditCursor(SP<GA> ga, GA::CharIterator pos)
+		: _ga(ga)
+		, _pos(_ga->registerItr(pos))
+		, _oldPos(_pos)
+		, _virtualPosPrl(_pos->second->pos.prl) { }
+	GA::CharIterator pos() const {
+		return *_pos;
+	}
+	TG::Vec2OnText drawingPos() {
+		TG::Vec2OnText p = _pos->second->pos.toTextVec2();
+		TG::Vec2OnText q = _oldPos->second->pos.toTextVec2();
+		return (p - q) * EaseOut(Easing::Expo, _ap.getProgress()) + q;
+	}
+	void increasePrl(bool animation = true) {
+		_oldPos = _pos;
+		increasePrlSimple();
+		_ap.start(animation ? 0.25 : 0);
+	}
+	void decreasePrl(bool animation = true) {
+		_oldPos = _pos;
+		decreasePrlSimple();
+		_ap.start(animation ? 0.25 : 0);
+	}
+	void increasePrp(bool animation = true) {
+		_oldPos = _pos;
+		increasePrpSimple();
+		_ap.start(animation ? 0.25 : 0);
+	}
+	void decreasePrp(bool animation = true) {
+		_oldPos = _pos;
+		decreasePrpSimple();
+		_ap.start(animation ? 0.25 : 0);
+	}
+	void move(TG::PointOnText deltaInChars, bool animation = true) {
+		_oldPos = _pos;
 		for (int i = 0; i < std::abs(deltaInChars.prp); i++) {
-			if (deltaInChars.prp > 0) increasePrp();
-			else decreasePrp();
+			if (deltaInChars.prp > 0) increasePrpSimple();
+			else decreasePrpSimple();
 		}
 		for (int i = 0; i < std::abs(deltaInChars.prl); i++) {
-			if (deltaInChars.prl > 0) increasePrl();
-			else increasePrl();
+			if (deltaInChars.prl > 0) increasePrlSimple();
+			else decreasePrlSimple();
 		}
+		_ap.start(animation ? 0.25 : 0);
 	}
 	void update() {
 		_ap.update();
@@ -460,45 +475,28 @@ public:
 
 
 class ScrollDelta {
-public:
-	enum class Step { NotScrolling, Scrolling, StoppingScroll };
 private:
 	int _direction;
 	int _used;
-	Step _step;
-	Stopwatch _sw;
+	AnimationProgress _ap;
 	const int _lineInterval;
 public:
-	ScrollDelta(int lineInterval) : _step(Step::NotScrolling), _lineInterval(lineInterval) {}
-	Step step() { return _step; }
+	ScrollDelta(int lineInterval) : _lineInterval(lineInterval) {}
+	bool isScrolling() { return _ap.isAnimating(); }
 	int direction() { return _direction; }
-	void startScroll(int direction) { //-1 or +1
-		_used = 0;
-		if (_step != Step::NotScrolling) {
-			_used = (_used - std::round(_used / _lineInterval)*_lineInterval)*(_direction*direction);
+	void scroll(int direction) { //-1 or +1
+		if (isScrolling()) {
+			_used = _used - _lineInterval * _direction;
 		}
+		else _used = 0;
 		_direction = direction;
-		_sw.restart();
-		_step = Step::Scrolling;
-	}
-	void stopScroll() {
-		if (_step != Step::Scrolling) return;
-		_step = Step::StoppingScroll;
+		_ap.start(0.5);
 	}
 	std::pair<int, double> useDelta() {
-		//y = log(x + a) + log(1 / a)ÇÃêœï™
-		auto f = [](double x) {
-			double a = 0.1;
-			return -x*std::log(a) + (x + a)*std::log(x + a) - x - a*std::log(a);
-		};
-		double t = _sw.sF();
-		double sum = _direction*1000*t;
-		if (_step == Step::StoppingScroll) {
-			sum = std::round(_used / _lineInterval) * _lineInterval;
-			_step = Step::NotScrolling;
-		}
-		//int p = 20*std::floor(sum/20);
-		//sum = EaseOut(Easing::Expo, p, p + 20, (sum - p)/20);
+		_ap.update();
+		if (!isScrolling()) return { 0, 0.0 };
+		double t = _ap.getProgress();
+		double sum = _direction * _lineInterval * EaseOut(Easing::Quad, t);
 		int ret = (int)sum - _used;
 		_used = (int)sum;
 		return { ret, sum - (double)(int)sum };
