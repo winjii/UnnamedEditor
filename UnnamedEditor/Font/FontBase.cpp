@@ -79,10 +79,12 @@ FTFaceWrapper FontBase::ftFace() {
 }
 
 double FontBase::ascender(double fontSize) const {
+	if (_isVertical) return fontSize / 2;
 	return fontSize * (_face->ascender / (double)_face->units_per_EM);
 }
 
 double FontBase::descender(double fontSize) const {
+	if (_isVertical) return -fontSize / 2;
 	return fontSize * (_face->descender / (double)_face->units_per_EM);
 }
 
