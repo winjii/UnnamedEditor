@@ -5,6 +5,7 @@
 #include "TextGeometry.h"
 #include <list>
 #include <cmath>
+#include <limits>
 
 
 namespace UnnamedEditor {
@@ -46,12 +47,20 @@ private:
 	double _animationTime, _progress;
 	Step _step;
 public:
-	AnimationProgress() : _animationTime(), _sw(), _progress(0), _step(Step::Inactive) {}
+	AnimationProgress(double progress) : _animationTime(), _sw(), _progress(progress)
+		, _step(Step::Inactive) { }
+	AnimationProgress() : AnimationProgress(0) {}
 	Step getStep() const { return _step; }
 	bool isAnimating() const { return _step == Step::Animating; }
 	bool isStable() const { return _step == Step::Stable; }
 	double getProgress() const { return _progress; }
 	void start(double animationTime) {
+		if (animationTime == 0) {
+			_progress = 1;
+			_step = Step::Stable;
+			_sw.reset();
+			return;
+		}
 		_animationTime = animationTime;
 		_progress = 0;
 		_sw.restart();
@@ -258,6 +267,7 @@ public:
 	void registerItr(SP<CharIterator> itr);
 	SP<CharIterator> registerItr(CharIterator citr);
 	void removeItr(SP<CharIterator> itr);
+	void moveItr(SP<CharIterator> itr, CharIterator citr);
 	LineIterator tryNext(LineIterator litr, int cnt = 1) const;
 	LineIterator tryPrev(LineIterator litr, int cnt = 1) const;
 	CharIterator insertText(CharIterator citr, const String &s);
@@ -266,8 +276,8 @@ public:
 	void scroll(int delta);
 	CharIterator next(CharIterator citr, bool overLine = false, int cnt = 1) const;
 	CharIterator prev(CharIterator citr, bool overLine = false, int cnt = 1) const;
-	void next(SP<CharIterator> citr); //管理されたイテレータを動かす
-	void prev(SP<CharIterator> citr); //管理されたイテレータを動かす
+	void next(SP<CharIterator> itr); //管理されたイテレータを動かす
+	void prev(SP<CharIterator> itr); //管理されたイテレータを動かす
 	LineIterator origin() const;
 	TG::PointOnText originPos() const;
 	LineIterator begin();
@@ -280,6 +290,8 @@ public:
 	double minimapScale() const;
 	void resetOrigin(LineIterator origin, TG::PointOnText pos);
 	TG::Direction textDirection() const;
+	CharIterator lineHead(CharIterator citr) const;
+	CharIterator nextLineHead(CharIterator citr) const;
 
 	//NULL文字を挿入すると番兵などに使える
 	//NULL文字はremoveItr時に参照が切れたら自動で削除される
@@ -330,7 +342,7 @@ class EditCursor {
 private:
 	SP<GA> _ga;
 	SP<GA::CharIterator> _pos;
-	SP<GA::CharIterator> _oldPos;
+	TG::PointOnText _oldPos;
 	AnimationProgress _ap;
 	double _virtualPosPrl;
 
@@ -338,86 +350,123 @@ private:
 		return std::abs(citr.second->pos.prl - _virtualPosPrl);
 	}
 
-	void increasePrlSimple() {
+	GA::CharIterator gapMin(GA::CharIterator first, GA::CharIterator last) {
+		auto ret = first;
+		int minGap = std::numeric_limits<int>::max();
+		for (auto citr = first; citr != last; citr = _ga->next(citr, true)) {
+			if (gap(citr) < minGap) {
+				ret = citr;
+				minGap = gap(citr);
+			}
+		}
+		return ret;
+	}
+
+	void increasePrlImpl() {
 		_ga->next(_pos);
 		_virtualPosPrl = _pos->second->pos.prl;
 	}
-	void decreasePrlSimple() {
+	void decreasePrlImpl() {
 		_ga->prev(_pos);
 		_virtualPosPrl = _pos->second->pos.prl;
 	}
-	void increasePrpSimple() {
-		while (true) {
-			GA::CharIterator nxt = _ga->next(*_pos, true);
-			if (nxt.first == _ga->end()) break;
-			if (nxt.second->pos.prp > _oldPos->second->pos.prp&&
-				nxt.second->pos.prl > _virtualPosPrl) {
-				if (gap(nxt) < gap(*_pos)) _ga->next(_pos);
-				break;
-			}
-			_ga->next(_pos);
+	void increasePrpImpl() {
+		auto nlh = _ga->nextLineHead(*_pos);
+		if (nlh.first == _ga->end()) {
+			_ga->moveItr(_pos, _ga->prev(nlh, true));
+			return;
 		}
+		auto nnlh = _ga->nextLineHead(nlh);
+		_ga->moveItr(_pos, gapMin(nlh, nnlh));
 	}
-	void decreasePrpSimple() {
-		while (true) {
-			if (*_pos == _ga->lineBegin(_ga->begin())) break;
-			GA::CharIterator prv = _ga->prev(*_pos, true);
-			if (prv.second->pos.prp < _oldPos->second->pos.prp &&
-				prv.second->pos.prl < _virtualPosPrl) {
-				if (gap(prv) < gap(*_pos)) _ga->prev(_pos);
-				break;
-			}
-			_ga->prev(_pos);
+	void decreasePrpImpl() {
+		auto lh = _ga->lineHead(*_pos);
+		if (lh == _ga->lineBegin(_ga->begin())) {
+			_ga->moveItr(_pos, lh);
+			return;
 		}
+		auto plh = _ga->lineHead(_ga->prev(lh, true));
+		_ga->moveItr(_pos, gapMin(plh, lh));
 	}
 public:
 	EditCursor(SP<GA> ga, GA::CharIterator pos)
 		: _ga(ga)
 		, _pos(_ga->registerItr(pos))
-		, _oldPos(_pos)
-		, _virtualPosPrl(_pos->second->pos.prl) { }
+		, _oldPos(0, 0)
+		, _virtualPosPrl(_pos->second->pos.prl)
+		, _ap(1) { }
 	GA::CharIterator pos() const {
 		return *_pos;
 	}
-	TG::Vec2OnText drawingPos() {
-		TG::Vec2OnText p = _pos->second->pos.toTextVec2();
-		TG::Vec2OnText q = _oldPos->second->pos.toTextVec2();
+	TG::Vec2OnText drawingPos(TG::PointOnText lineOrigin) {
+		TG::Vec2OnText p = (_pos->second->pos + lineOrigin).toTextVec2();
+		TG::Vec2OnText q = _oldPos.toTextVec2();
 		return (p - q) * EaseOut(Easing::Expo, _ap.getProgress()) + q;
 	}
-	void increasePrl(bool animation = true) {
-		_oldPos = _pos;
-		increasePrlSimple();
-		_ap.start(animation ? 0.25 : 0);
+	void increasePrl() {
+		increasePrlImpl();
+		_ap.start(0);
 	}
-	void decreasePrl(bool animation = true) {
-		_oldPos = _pos;
-		decreasePrlSimple();
-		_ap.start(animation ? 0.25 : 0);
+	void decreasePrl() {
+		decreasePrlImpl();
+		_ap.start(0);
 	}
-	void increasePrp(bool animation = true) {
-		_oldPos = _pos;
-		increasePrpSimple();
-		_ap.start(animation ? 0.25 : 0);
+	void increasePrp() {
+		increasePrpImpl();
+		_ap.start(0);
 	}
-	void decreasePrp(bool animation = true) {
-		_oldPos = _pos;
-		decreasePrpSimple();
-		_ap.start(animation ? 0.25 : 0);
+	void decreasePrp() {
+		decreasePrpImpl();
+		_ap.start(0);
 	}
-	void move(TG::PointOnText deltaInChars, bool animation = true) {
-		_oldPos = _pos;
+	void increasePrlAnimation(TG::PointOnText lineOrigin) {
+		_oldPos = lineOrigin + _pos->second->pos;
+		increasePrlImpl();
+		_ap.start(0.25);
+	}
+	void decreasePrlAnimation(TG::PointOnText lineOrigin) {
+		_oldPos = lineOrigin + _pos->second->pos;
+		decreasePrlImpl();
+		_ap.start(0.25);
+	}
+	void increasePrpAnimation(TG::PointOnText lineOrigin) {
+		_oldPos = lineOrigin + _pos->second->pos;
+		increasePrpImpl();
+		_ap.start(0.25);
+	}
+	void decreasePrpAnimation(TG::PointOnText lineOrigin) {
+		_oldPos = lineOrigin + _pos->second->pos;
+		decreasePrpImpl();
+		_ap.start(0.25);
+	}
+	void moveAnimation(TG::PointOnText deltaInChars, TG::PointOnText lineOrigin) {
+		_oldPos = lineOrigin + _pos->second->pos;
 		for (int i = 0; i < std::abs(deltaInChars.prp); i++) {
-			if (deltaInChars.prp > 0) increasePrpSimple();
-			else decreasePrpSimple();
+			if (deltaInChars.prp > 0) increasePrpImpl();
+			else decreasePrpImpl();
 		}
 		for (int i = 0; i < std::abs(deltaInChars.prl); i++) {
-			if (deltaInChars.prl > 0) increasePrlSimple();
-			else decreasePrlSimple();
+			if (deltaInChars.prl > 0) increasePrlImpl();
+			else decreasePrlImpl();
 		}
-		_ap.start(animation ? 0.25 : 0);
+		_ap.start(0.25);
+	}
+	void move(TG::PointOnText deltaInChars) {
+		for (int i = 0; i < std::abs(deltaInChars.prp); i++) {
+			if (deltaInChars.prp > 0) increasePrpImpl();
+			else decreasePrpImpl();
+		}
+		for (int i = 0; i < std::abs(deltaInChars.prl); i++) {
+			if (deltaInChars.prl > 0) increasePrlImpl();
+			else decreasePrlImpl();
+		}
+		_ap.start(0);
 	}
 	void update() {
 		_ap.update();
+	}
+	void scroll(int delta) {
+		_oldPos.prp += delta;
 	}
 };
 

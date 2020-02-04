@@ -18,11 +18,11 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 	const ScopedRenderTarget2D target(_maskee);
 	Point textOrigin = _textArea.origin - _textArea.realPos(_textDir);
 
-	auto drawCursor = [&](Vec2 pos) {
+	auto drawCursor = [&](TG::Vec2OnText tp) {
 		ScopedRenderTarget2D tmp(_foreground);
-		pos += _textArea.realPos(_textDir);
+		Vec2 p = tp.toRealPos(_textDir) + _textArea.origin;
 		double t = Scene::Time() * 2 * Math::Pi / 2.5;
-		_font->getCursor(pos).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
+		_font->getCursor(p).draw(1, Color(Palette::Black, (Sin(t) + 1) / 2 * 255));
 	};
 
 	using GA = GlyphArrangement2;
@@ -34,6 +34,10 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 	TG::Vec2OnText maskStart, maskEnd;
 
 	while (lineOrigin.prp < _textArea.size.prp +_lineInterval && litr != _ga->end()) {
+		if (_cursor->pos().first == litr) {
+			drawCursor(_cursor->drawingPos(lineOrigin));
+		}
+
 		auto citr = _ga->lineBegin(litr);
 		while (citr != _ga->lineEnd(litr)) {
 			if (!floating->isInactive() && floating->floatingBegin() == citr) flt = true;
@@ -49,10 +53,13 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 				else
 					citr.second->glyph->draw(p);
 			}
-			if (!floating->isInactive() && citr == cccursor->drawingPos().first) {
+			if (citr == _cursor->pos()) {
+				maskEnd = tp;
+			}
+			if (floating->isFloating() && citr == cccursor->drawingPos().first) {
 				//TODO: ‰¡‘‚«‘Î‰ž
 				TG::Vec2OnText cp = tp + TG::Vec2OnText(cccursor->drawingPos().second, 0);
-				drawCursor(cp.toRealPos(_textDir));
+				drawCursor(cp);
 				maskStart = cp;
 			}
 			citr = _ga->next(citr);
@@ -160,8 +167,19 @@ void WholeView::draw() {
 			_inputManager.stopInputting();
 		}
 	}
+	bool movesCursor = false;
 	if (!_inputManager.isInputing()) {
-		if (arrowKey.prl != 0 || arrowKey.prp != 0) _cursor->move(arrowKey);
+		if (arrowKey.prl != 0 || arrowKey.prp != 0) movesCursor = true;
+	}
+	if (movesCursor) {
+		auto litr = _ga->origin();
+		auto lineOrigin = _ga->originPos();
+		while (lineOrigin.prp < _textArea.size.prp +_lineInterval && litr != _ga->end()) {
+			if (_cursor->pos().first == litr) break;
+			lineOrigin.prp += litr->wrapCount * _lineInterval;
+			litr = _ga->tryNext(litr);
+		}
+		_cursor->moveAnimation(arrowKey, lineOrigin);
 	}
 
 	/*_floatingProgress.update();
@@ -184,12 +202,14 @@ void WholeView::draw() {
 		auto [delta, offset_] = _scrollDelta.useDelta();
 		offset = offset_;
 		_ga->scroll(-delta);
+		_cursor->scroll(-delta);
 	}
 
 	_inputManager.update(addend, editing);
 	if (!floating->isInactive()) cccursor->update(_tmpData);
 
 	_tmpData.update();
+	_cursor->update();
 
 	_masker.clear(Palette::White);
 	_maskee.clear(ColorF(0, 0, 0, 0));
@@ -397,6 +417,12 @@ void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 	initLine(itr->first);
 }
 
+void GlyphArrangement2::moveItr(SP<CharIterator> itr, CharIterator citr) {
+	removeItr(itr);
+	*itr = citr;
+	registerItr(itr);
+}
+
 GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TG::Direction textDir)
 : _font(font)
 , _blurredFont(new Font::FixedFont(font->ftLibrary(), font->ftFace(), font->getFontSize(), font->isVertical()))
@@ -525,20 +551,16 @@ GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr, bool 
 	return citr;
 }
 
-void GlyphArrangement2::next(SP<CharIterator> citr) {
-	if (citr->first == _data.end()) return;
-	CharIterator nxt = next(*citr, true);
-	removeItr(citr);
-	*citr = nxt;
-	citr->second->itrs.push_back(citr);
+void GlyphArrangement2::next(SP<CharIterator> itr) {
+	if (itr->first == _data.end()) return;
+	CharIterator nxt = next(*itr, true);
+	moveItr(itr, nxt);
 }
 
-void GlyphArrangement2::prev(SP<CharIterator> citr) {
-	if (*citr == lineBegin(begin())) return;
-	CharIterator prv = prev(*citr, true);
-	removeItr(citr);
-	*citr = prv;
-	citr->second->itrs.push_back(citr);
+void GlyphArrangement2::prev(SP<CharIterator> itr) {
+	if (*itr == lineBegin(begin())) return;
+	CharIterator prv = prev(*itr, true);
+	moveItr(itr, prv);
 }
 
 GlyphArrangement2::LineIterator GlyphArrangement2::origin() const {
@@ -591,6 +613,27 @@ void GlyphArrangement2::resetOrigin(LineIterator origin, TG::PointOnText pos) {
 
 TG::Direction GlyphArrangement2::textDirection() const {
 	return _textDir;
+}
+
+GlyphArrangement2::CharIterator GlyphArrangement2::lineHead(CharIterator citr) const {
+	while (citr != lineBegin(citr.first)) {
+		auto prv = prev(citr);
+		if (prv.second->pos.prp != citr.second->pos.prp) break;
+		citr = prv;
+	}
+	return citr;
+}
+
+GlyphArrangement2::CharIterator GlyphArrangement2::nextLineHead(CharIterator citr) const {
+	assert(citr.first != _data.end());
+	while (true) {
+		auto nxt = next(citr, true);
+		if (citr.first != nxt.first || citr.second->pos.prp != nxt.second->pos.prp) {
+			return nxt;
+		}
+		citr = nxt;
+	}
+	assert(false);
 }
 
 SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator citr) {
@@ -759,7 +802,7 @@ void InputManager::stopInputting() {
 void InputManager::startInputting() {
 	_isInputing = true;
 	auto null = _ga->makeNull(_cursor->pos());
-	_cursor->decreasePrl(false);
+	_cursor->decreasePrl();
 	_cccursor.reset(new CleanCopyCursor(_ga, _cursor));
 	_fa->startFloating(*_ga, _ga->next(_cursor->pos()));
 }
@@ -787,9 +830,10 @@ std::pair<GlyphArrangement2::CharIterator, double> CleanCopyCursor::drawingPos()
 }
 
 void CleanCopyCursor::changeItr(GA::CharIterator newItr) {
+	SP<GA::CharIterator> tmp(new GA::CharIterator(newItr));
+	_ga->registerItr(tmp);
 	_ga->removeItr(_drawingPos.first);
-	_drawingPos.first.reset(new GA::CharIterator(newItr));
-	_ga->registerItr(_drawingPos.first);
+	_drawingPos.first = tmp;
 }
 
 bool CleanCopyCursor::isStable() {
