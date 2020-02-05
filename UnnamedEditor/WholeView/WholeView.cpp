@@ -110,7 +110,7 @@ WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, TG::Direction te
 void WholeView::setText(const String &text) {
 	_ga->insertText(_cursor->pos(), U"ぽ");
 	auto itr = _cursor->pos();
-	_cursor->decreasePrl();
+	_cursor->decreasePrl(1);
 	_ga->insertText(itr, text);
 }
 
@@ -206,7 +206,7 @@ void WholeView::draw() {
 	}
 
 	_inputManager.update(addend, editing);
-	if (!floating->isInactive()) cccursor->update(_tmpData);
+	if (cccursor) cccursor->update(_tmpData);
 
 	_tmpData.update();
 	_cursor->update();
@@ -402,10 +402,23 @@ void GlyphArrangement2::registerItr(SP<CharIterator> itr) {
 	itr->second->itrs.push_back(itr);
 }
 
-SP<GlyphArrangement2::CharIterator> GlyphArrangement2::registerItr(CharIterator citr) {
-	SP<CharIterator> itr(new CharIterator(citr));
-	registerItr(itr);
-	return itr;
+void GlyphArrangement2::moveItr(SP<CharIterator> itr, CharIterator citr) {
+	if (*itr == lineBegin(begin())) VAIN_STATEMENT;
+	if (citr == lineBegin(begin())) VAIN_STATEMENT;
+	if (*itr == citr) return;
+	LineIterator oldLine = itr->first;
+	auto& itrs = itr->second->itrs;
+	for (auto i = itrs.begin(); i != itrs.end();) {
+		if (itr == *i) i = itrs.erase(i);
+		else ++i;
+	}
+	*itr = citr;
+	itr->second->itrs.push_back(itr);
+	initLine(oldLine);
+}
+
+GlyphArrangement2::ManagedIterator GlyphArrangement2::registerItr(CharIterator citr) {
+	return ManagedIterator(*this, citr);
 }
 
 void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
@@ -415,12 +428,6 @@ void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 		else ++i;
 	}
 	initLine(itr->first);
-}
-
-void GlyphArrangement2::moveItr(SP<CharIterator> itr, CharIterator citr) {
-	removeItr(itr);
-	*itr = citr;
-	registerItr(itr);
 }
 
 GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TG::Direction textDir)
@@ -551,18 +558,6 @@ GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr, bool 
 	return citr;
 }
 
-void GlyphArrangement2::next(SP<CharIterator> itr) {
-	if (itr->first == _data.end()) return;
-	CharIterator nxt = next(*itr, true);
-	moveItr(itr, nxt);
-}
-
-void GlyphArrangement2::prev(SP<CharIterator> itr) {
-	if (*itr == lineBegin(begin())) return;
-	CharIterator prv = prev(*itr, true);
-	moveItr(itr, prv);
-}
-
 GlyphArrangement2::LineIterator GlyphArrangement2::origin() const {
 	return _origin;
 }
@@ -675,7 +670,8 @@ bool FloatingAnimation::isFloating() const {
 }
 
 FloatingAnimation::GA::CharIterator FloatingAnimation::floatingBegin() const {
-	return *_floatingBegin;
+	if (_step == Step::Inactive) throw "inactive";
+	return *_floatingBegin.value();
 }
 
 bool FloatingAnimation::isStable() const {
@@ -685,8 +681,7 @@ bool FloatingAnimation::isStable() const {
 }
 
 void FloatingAnimation::startFloating(GA& ga, GA::CharIterator floatingBegin) {
-	_floatingBegin.reset(new GA::CharIterator(floatingBegin));
-	ga.registerItr(_floatingBegin);
+	_floatingBegin.emplace(ga.registerItr(floatingBegin));
 	GA::LineIterator head = floatingBegin.first;
 	_oldAdvance = _newAdvance = head->wrapCount * _lineInterval;
 	int size = std::distance(floatingBegin.second, head->cd.end());
@@ -710,16 +705,17 @@ void FloatingAnimation::updateTime() {
 	_updateAP.update();
 	if (_step == Step::Stopping && isStable()) {
 		_step = Step::Inactive;
+		_floatingBegin.reset();
 	}
 }
 
 void FloatingAnimation::updatePos(const GA& ga) {
 	if (_step == Step::Inactive) return;
-	GA::LineIterator head = _floatingBegin->first;
+	GA::LineIterator head = _floatingBegin.value()->first;
 	_oldAdvance = _newAdvance;
 	_newAdvance = head->wrapCount * _lineInterval;
 	for (int i = 0; i < _oldHeadPos.size(); i++) {
-		auto ritr = std::next(_floatingBegin->second, i);
+		auto ritr = std::next(_floatingBegin.value()->second, i);
 		//TODO: アニメーション位置をoldにするとなめらかに遷移できる
 		_oldHeadPos[i] = easeOverLine(_oldHeadPos[i], _newHeadPos[i], _updateAP.getProgress(), i);
 		_newHeadPos[i] = ritr->pos.toTextVec2();
@@ -737,12 +733,12 @@ TG::Vec2OnText FloatingAnimation::getPos(GA::CharIterator citr) {
 		d *= EaseIn(Easing::Expo, 1 - _inOutAP.getProgress());
 	}
 
-	if (citr.first != _floatingBegin->first) {
+	if (citr.first != _floatingBegin.value()->first) {
 		double t = _updateAP.getProgress();
 		TG::Vec2OnText e = TG::Vec2OnText(0, (-_oldAdvance) - (-_newAdvance)) * EaseOut(Easing::Expo, t);
 		return citr.second->pos.toTextVec2() + d + e;
 	}
-	int idx = citr.second - _floatingBegin->second;
+	int idx = citr.second - _floatingBegin.value()->second;
 	return easeOverLine(_oldHeadPos[idx], _newHeadPos[idx], _updateAP.getProgress(), idx) + d;
 }
 
@@ -797,12 +793,13 @@ void InputManager::stopInputting() {
 	_isInputing = false;
 	_editing = U"";
 	_fa->stopFloating();
+	_cccursor.reset();
 }
 
 void InputManager::startInputting() {
 	_isInputing = true;
 	auto null = _ga->makeNull(_cursor->pos());
-	_cursor->decreasePrl();
+	_cursor->decreasePrl(1);
 	_cccursor.reset(new CleanCopyCursor(_ga, _cursor));
 	_fa->startFloating(*_ga, _ga->next(_cursor->pos()));
 }
@@ -815,9 +812,8 @@ void InputManager::deleteLightChar() {
 CleanCopyCursor::CleanCopyCursor(SP<GA> ga, SP<EditCursor> editCursor)
 : _step(Step::Stable)
 , _ga(ga)
-, _editCursor(editCursor){
-	_drawingPos.first = ga->registerItr(editCursor->pos());
-	_drawingPos.second = 0;
+, _editCursor(editCursor)
+, _drawingPos(ga->registerItr(editCursor->pos()), 0) {
 }
 
 GlyphArrangement2::CharIterator CleanCopyCursor::pos() const {
@@ -830,10 +826,7 @@ std::pair<GlyphArrangement2::CharIterator, double> CleanCopyCursor::drawingPos()
 }
 
 void CleanCopyCursor::changeItr(GA::CharIterator newItr) {
-	SP<GA::CharIterator> tmp(new GA::CharIterator(newItr));
-	_ga->registerItr(tmp);
-	_ga->removeItr(_drawingPos.first);
-	_drawingPos.first = tmp;
+	_drawingPos.first.move(newItr);
 }
 
 bool CleanCopyCursor::isStable() {
@@ -849,7 +842,7 @@ void CleanCopyCursor::startAdvancing() {
 void CleanCopyCursor::startRetreating() {
 	if (*_drawingPos.first == _ga->lineBegin(_ga->begin())) return;
 	if (_step != Step::Retreating)
-		_ga->prev(_drawingPos.first);
+		_drawingPos.first.prev();
 	_step = Step::Retreating;
 	_drawingPos.second = 0;
 	_sw.restart();
@@ -857,7 +850,7 @@ void CleanCopyCursor::startRetreating() {
 
 void CleanCopyCursor::stop() {
 	if (_step == Step::Retreating && *_drawingPos.first != _editCursor->pos() && _sw.isRunning())
-		_ga->next(_drawingPos.first);
+		_drawingPos.first.next();
 	_step = Step::Stable;
 	_drawingPos.second = 0;
 	_sw.reset();
@@ -878,7 +871,7 @@ void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 			}
 			if (_drawingPos.second < advance) break;
 			registerPaint(tmpData, *_drawingPos.first);
-			_ga->next(_drawingPos.first);
+			_drawingPos.first.next();
 			_drawingPos.second -= advance;
 			_sw.set(_sw.elapsed() - SecondsF(advance / velocity));
 		}
@@ -894,7 +887,7 @@ void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 				_sw.pause();
 				return; //_stepはStableにしない
 			}
-			_ga->prev(_drawingPos.first);
+			_drawingPos.first.prev();
 			double newAdvance = _drawingPos.first->second->glyph->advance();
 			_drawingPos.second += newAdvance;
 			_sw.set(_sw.elapsed() - SecondsF(advance / velocity));

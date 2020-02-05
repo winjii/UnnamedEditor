@@ -5,6 +5,7 @@
 #include "TextGeometry.h"
 #include <list>
 #include <cmath>
+#include <optional>
 #include <limits>
 
 
@@ -223,6 +224,46 @@ public:
 	struct CharData;
 	using LineIterator = std::list<LineData>::iterator;
 	using CharIterator = std::pair<LineIterator, std::vector<CharData>::iterator>;
+	class ManagedIterator;
+	friend ManagedIterator;
+	class ManagedIterator {
+	private:
+		GlyphArrangement2& _ga;
+		SP<CharIterator> _itr;
+	public:
+		ManagedIterator(GlyphArrangement2& ga, CharIterator itr)
+			: _ga(ga), _itr(new CharIterator(itr)) {
+			_ga.registerItr(_itr);
+		}
+		ManagedIterator(const ManagedIterator& itr) = default;
+		~ManagedIterator() {
+			if (_itr.use_count() == 1) _ga.removeItr(_itr);
+		}
+		void move(CharIterator citr) {
+			_ga.moveItr(_itr, citr);
+		}
+		void next(int cnt) {
+			CharIterator newPos = *_itr;
+			for (int i = 0; i < cnt; i++) {
+				auto nxt = _ga.next(newPos, true);
+				if (nxt.first == _ga.end()) return;
+				newPos = nxt;
+			}
+			move(newPos);
+		}
+		void prev(int cnt) {
+			CharIterator newPos = *_itr;
+			for (int i = 0; i < cnt; i++) {
+				if (newPos == _ga.lineBegin(_ga.begin())) return;
+				newPos = _ga.prev(newPos, true);
+			}
+			move(newPos);
+		}
+		void next() { next(1); }
+		void prev() { prev(1); }
+		const CharIterator* operator->() const { return _itr.get(); }
+		const CharIterator& operator*() const { return *_itr; }
+	};
 	struct CharData {
 		char16_t code;
 		SP<const Font::Glyph> glyph;
@@ -260,14 +301,14 @@ private:
 	LineIterator initLine(LineIterator litr);
 
 	void initBucket(LineIterator first, LineIterator last);
+	void registerItr(SP<CharIterator> itr);
+	void moveItr(SP<CharIterator> itr, CharIterator citr);
+	void removeItr(SP<CharIterator> itr);
 public:
 	GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TG::Direction textDir);
 
 	SP<Font::FixedFont> font();
-	void registerItr(SP<CharIterator> itr);
-	SP<CharIterator> registerItr(CharIterator citr);
-	void removeItr(SP<CharIterator> itr);
-	void moveItr(SP<CharIterator> itr, CharIterator citr);
+	ManagedIterator registerItr(CharIterator citr);
 	LineIterator tryNext(LineIterator litr, int cnt = 1) const;
 	LineIterator tryPrev(LineIterator litr, int cnt = 1) const;
 	CharIterator insertText(CharIterator citr, const String &s);
@@ -309,7 +350,7 @@ private:
 	Step _step;
 	int _lineInterval;
 	int _maxLineLength;
-	SP<GA::CharIterator> _floatingBegin; //管理されたイテレータ
+	std::optional<GA::ManagedIterator> _floatingBegin;
 	AnimationProgress _inOutAP;
 	AnimationProgress _updateAP;
 	std::vector<TG::Vec2OnText> _oldHeadPos;
@@ -323,7 +364,7 @@ public:
 	Step step() const;
 	bool isInactive() const;
 	bool isFloating() const;
-	GA::CharIterator floatingBegin() const;
+	GA::CharIterator floatingBegin() const; //Inactiveで呼び出さない
 	bool isStable() const; //文字が整数座標に静止しているか
 	void startFloating(GA& ga, GA::CharIterator floatingBegin);
 	void stopFloating();
@@ -341,7 +382,7 @@ class EditCursor {
 	using GA = GlyphArrangement2;
 private:
 	SP<GA> _ga;
-	SP<GA::CharIterator> _pos;
+	GA::ManagedIterator _pos;
 	TG::PointOnText _oldPos;
 	AnimationProgress _ap;
 	double _virtualPosPrl;
@@ -362,31 +403,31 @@ private:
 		return ret;
 	}
 
-	void increasePrlImpl() {
-		_ga->next(_pos);
+	void increasePrlImpl(int cnt) {
+		_pos.next(cnt);
 		_virtualPosPrl = _pos->second->pos.prl;
 	}
-	void decreasePrlImpl() {
-		_ga->prev(_pos);
+	void decreasePrlImpl(int cnt) {
+		_pos.prev(cnt);
 		_virtualPosPrl = _pos->second->pos.prl;
 	}
 	void increasePrpImpl() {
 		auto nlh = _ga->nextLineHead(*_pos);
 		if (nlh.first == _ga->end()) {
-			_ga->moveItr(_pos, _ga->prev(nlh, true));
+			_pos.move(_ga->prev(nlh, true));
 			return;
 		}
 		auto nnlh = _ga->nextLineHead(nlh);
-		_ga->moveItr(_pos, gapMin(nlh, nnlh));
+		_pos.move(gapMin(nlh, nnlh));
 	}
 	void decreasePrpImpl() {
 		auto lh = _ga->lineHead(*_pos);
 		if (lh == _ga->lineBegin(_ga->begin())) {
-			_ga->moveItr(_pos, lh);
+			_pos.move(lh);
 			return;
 		}
 		auto plh = _ga->lineHead(_ga->prev(lh, true));
-		_ga->moveItr(_pos, gapMin(plh, lh));
+		_pos.move(gapMin(plh, lh));
 	}
 public:
 	EditCursor(SP<GA> ga, GA::CharIterator pos)
@@ -403,12 +444,12 @@ public:
 		TG::Vec2OnText q = _oldPos.toTextVec2();
 		return (p - q) * EaseOut(Easing::Expo, _ap.getProgress()) + q;
 	}
-	void increasePrl() {
-		increasePrlImpl();
+	void increasePrl(int cnt) {
+		increasePrlImpl(cnt);
 		_ap.start(0);
 	}
-	void decreasePrl() {
-		decreasePrlImpl();
+	void decreasePrl(int cnt) {
+		decreasePrlImpl(cnt);
 		_ap.start(0);
 	}
 	void increasePrp() {
@@ -419,14 +460,14 @@ public:
 		decreasePrpImpl();
 		_ap.start(0);
 	}
-	void increasePrlAnimation(TG::PointOnText lineOrigin) {
+	void increasePrlAnimation(int cnt, TG::PointOnText lineOrigin) {
 		_oldPos = lineOrigin + _pos->second->pos;
-		increasePrlImpl();
+		increasePrlImpl(cnt);
 		_ap.start(0.25);
 	}
-	void decreasePrlAnimation(TG::PointOnText lineOrigin) {
+	void decreasePrlAnimation(int cnt, TG::PointOnText lineOrigin) {
 		_oldPos = lineOrigin + _pos->second->pos;
-		decreasePrlImpl();
+		decreasePrlImpl(cnt);
 		_ap.start(0.25);
 	}
 	void increasePrpAnimation(TG::PointOnText lineOrigin) {
@@ -445,10 +486,8 @@ public:
 			if (deltaInChars.prp > 0) increasePrpImpl();
 			else decreasePrpImpl();
 		}
-		for (int i = 0; i < std::abs(deltaInChars.prl); i++) {
-			if (deltaInChars.prl > 0) increasePrlImpl();
-			else decreasePrlImpl();
-		}
+		if (deltaInChars.prl > 0) increasePrlImpl(deltaInChars.prl);
+		else if (deltaInChars.prl < 0) decreasePrlImpl(-deltaInChars.prl);
 		_ap.start(0.25);
 	}
 	void move(TG::PointOnText deltaInChars) {
@@ -456,10 +495,8 @@ public:
 			if (deltaInChars.prp > 0) increasePrpImpl();
 			else decreasePrpImpl();
 		}
-		for (int i = 0; i < std::abs(deltaInChars.prl); i++) {
-			if (deltaInChars.prl > 0) increasePrlImpl();
-			else decreasePrlImpl();
-		}
+		if (deltaInChars.prl > 0) increasePrlImpl(deltaInChars.prl);
+		else if (deltaInChars.prl < 0) decreasePrlImpl(-deltaInChars.prl);
 		_ap.start(0);
 	}
 	void update() {
@@ -479,7 +516,7 @@ public:
 	};
 private:
 	Step _step;
-	std::pair<SP<GA::CharIterator>, double> _drawingPos;
+	std::pair<GA::ManagedIterator, double> _drawingPos;
 	Stopwatch _sw;
 	SP<GA> _ga;
 	SP<EditCursor> _editCursor;
