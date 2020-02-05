@@ -26,24 +26,24 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 	};
 
 	using GA = GlyphArrangement2;
-	auto litr = _ga->origin();
+	auto sitr = _ga->origin();
 	bool flt = false;
 	SP<FloatingAnimation> floating = _inputManager.floatingAnimation();
 	auto cccursor = _inputManager.cleanCopyCursor();
-	TG::PointOnText lineOrigin = _ga->originPos();
+	TG::PointOnText sectionOrigin = _ga->originPos();
 	TG::Vec2OnText maskStart, maskEnd;
 
-	while (lineOrigin.prp < _textArea.size.prp +_lineInterval && litr != _ga->end()) {
-		if (_cursor->pos().first == litr) {
-			drawCursor(_cursor->drawingPos(lineOrigin));
+	while (sectionOrigin.prp < _textArea.size.prp +_lineInterval && sitr != _ga->end()) {
+		if (_cursor->pos().first == sitr) {
+			drawCursor(_cursor->drawingPos(sectionOrigin));
 		}
 
-		auto citr = _ga->lineBegin(litr);
-		while (citr != _ga->lineEnd(litr)) {
+		auto citr = _ga->sectionBegin(sitr);
+		while (citr != _ga->sectionEnd(sitr)) {
 			if (!floating->isInactive() && floating->floatingBegin() == citr) flt = true;
 
-			TG::Vec2OnText tp = (lineOrigin + citr.second->pos).toTextVec2();
-			if (flt) tp = lineOrigin.toTextVec2() + floating->getPos(citr);
+			TG::Vec2OnText tp = (sectionOrigin + citr.second->pos).toTextVec2();
+			if (flt) tp = sectionOrigin.toTextVec2() + floating->getPos(citr);
 			Vec2 p = tp.toRealPos(_textDir) + textOrigin;
 			//Circle(p, 3).draw(Palette::Red);
 			if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
@@ -64,8 +64,8 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 			}
 			citr = _ga->next(citr);
 		}
-		lineOrigin.prp += litr->wrapCount * _lineInterval;
-		litr = _ga->tryNext(litr);
+		sectionOrigin.prp += sitr->wrapCount * _lineInterval;
+		sitr = _ga->tryNext(sitr);
 	}
 	return { maskStart, maskEnd };
 }
@@ -98,7 +98,7 @@ WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, TG::Direction te
 , _ga(new GlyphArrangement2(_font, _lineInterval, _textArea.size.prl, textDir))
 , _ju()
 , _scrollDelta(_lineInterval)
-, _cursor(new EditCursor(_ga, _ga->lineBegin(_ga->begin())))
+, _cursor(new EditCursor(_ga, _ga->sectionBegin(_ga->begin())))
 , _inputManager(_ga, _cursor, _lineInterval, _textArea.size.prl)
 , _masker(_textArea.realSize(textDir))
 , _maskee(_textArea.realSize(textDir))
@@ -172,14 +172,14 @@ void WholeView::draw() {
 		if (arrowKey.prl != 0 || arrowKey.prp != 0) movesCursor = true;
 	}
 	if (movesCursor) {
-		auto litr = _ga->origin();
-		auto lineOrigin = _ga->originPos();
-		while (lineOrigin.prp < _textArea.size.prp +_lineInterval && litr != _ga->end()) {
-			if (_cursor->pos().first == litr) break;
-			lineOrigin.prp += litr->wrapCount * _lineInterval;
-			litr = _ga->tryNext(litr);
+		auto sitr = _ga->origin();
+		auto sectionOrigin = _ga->originPos();
+		while (sectionOrigin.prp < _textArea.size.prp +_lineInterval && sitr != _ga->end()) {
+			if (_cursor->pos().first == sitr) break;
+			sectionOrigin.prp += sitr->wrapCount * _lineInterval;
+			sitr = _ga->tryNext(sitr);
 		}
-		_cursor->moveAnimation(arrowKey, lineOrigin);
+		_cursor->moveAnimation(arrowKey, sectionOrigin);
 	}
 
 	/*_floatingProgress.update();
@@ -277,15 +277,15 @@ SP<GlyphArrangement2> WholeView::glyphArrangement() const {
 	return _ga;
 }
 
-void WholeView::jump(GlyphArrangement2::LineIterator litr) {
-	_ga->resetOrigin(litr, TG::PointOnText(0, _textArea.size.prp / 2));
+void WholeView::jump(GlyphArrangement2::SectionIterator sitr) {
+	_ga->resetOrigin(sitr, TG::PointOnText(0, _textArea.size.prp / 2));
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
+GlyphArrangement2::SectionIterator GlyphArrangement2::initSection(SectionIterator sitr) {
 	TG::PointOnText pen(0, 0);
-	decltype(litr->cd)::iterator itr = litr->cd.begin();
+	decltype(sitr->cd)::iterator itr = sitr->cd.begin();
 	int wrapCount = 0;
-	while (itr != litr->cd.end()) {
+	while (itr != sitr->cd.end()) {
 		if (pen.parallel > _maxLineLnegth - _font->getFontSize()) {
 			pen = TG::PointOnText(0, pen.perpendicular + _lineInterval);
 			wrapCount++;
@@ -304,21 +304,21 @@ GlyphArrangement2::LineIterator GlyphArrangement2::initLine(LineIterator litr) {
 		for (auto itrtrtritrtr = itr->itrs.begin(); itrtrtritrtr != itr->itrs.end();) {
 			if (itrtrtritrtr->use_count() <= 1) itrtrtritrtr = itr->itrs.erase(itrtrtritrtr);
 			else {
-				**itrtrtritrtr = CharIterator(litr, itr);
+				**itrtrtritrtr = CharIterator(sitr, itr);
 				++itrtrtritrtr;
 			}
 		}
 		if (itr->code == Text::Text::NULL_CHAR && itr->itrs.empty()) { //—v‚ç‚È‚­‚È‚Á‚½NULL•¶Žš‚Ìíœ
-			itr = litr->cd.erase(itr);
+			itr = sitr->cd.erase(itr);
 		}
 		else itr = std::next(itr);
 	}
-	if (litr->cd.empty()) return _data.erase(litr);
-	litr->wrapCount = wrapCount + 1;
-	return litr;
+	if (sitr->cd.empty()) return _data.erase(sitr);
+	sitr->wrapCount = wrapCount + 1;
+	return sitr;
 }
 
-void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
+void GlyphArrangement2::initBucket(SectionIterator first, SectionIterator last) {
 	int fs = _font->getFontSize();
 	double fs_ = _minimapFontSize;
 	double sr = ((double)fs_) / fs;
@@ -327,23 +327,23 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 	if (first == last) return;
 	first = bucket(first);
 	last = nextBucket(last);
-	LineIterator prevBucket = bucket(tryPrev(first));
+	SectionIterator prevBucket = bucket(tryPrev(first));
 	if (first->bucketHeader && prevBucket->bucketHeader &&
 		first->bucketHeader->wrapCount + prevBucket->bucketHeader->wrapCount < normalSize) {
 		first = prevBucket;
 	}
 
-	LineIterator head = first;
+	SectionIterator head = first;
 	bool checkedLast = false;
 	while (head != end() && !checkedLast) {
 		head->bucketHeader.reset(new BucketHeader());
-		LineIterator bl = head;
+		SectionIterator bl = head;
 		int size = head->wrapCount;
 		bl = tryNext(bl);
 		while (bl != end()) {
 			if (bl == last) checkedLast = true;
 			int add = bl->wrapCount;
-			LineIterator next = tryNext(bl);
+			SectionIterator next = tryNext(bl);
 			if (bl->bucketHeader) {
 				add = bl->bucketHeader->wrapCount;
 				next = nextBucket(next);
@@ -366,14 +366,14 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 			bs.srcAlpha = Blend::One;
 			bs.dstAlpha = Blend::InvSrcAlpha;
 			const ScopedRenderStates2D state(bs);
-			LineIterator b = head;
-			TG::Vec2OnText lineOrigin(0, ascender);
+			SectionIterator b = head;
+			TG::Vec2OnText sectionOrigin(0, ascender);
 			while (b != bl) {
 				for (auto c : b->cd) {
-					TG::Vec2OnText tp = (lineOrigin + c.pos.toTextVec2() * sr);
+					TG::Vec2OnText tp = (sectionOrigin + c.pos.toTextVec2() * sr);
 					c.blurred->draw(ta.origin + tp.toRealPos(_textDir), Palette::White, 0, sr);
 				}
-				lineOrigin.prp += sr * b->wrapCount * _lineInterval;
+				sectionOrigin.prp += sr * b->wrapCount * _lineInterval;
 				b = tryNext(b);
 			}
 		}
@@ -388,14 +388,14 @@ void GlyphArrangement2::initBucket(LineIterator first, LineIterator last) {
 	}
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::tryNext(LineIterator litr, int cnt) const {
-	for (int i = 0; i < cnt && litr != _data.end(); i++) ++litr;
-	return litr;
+GlyphArrangement2::SectionIterator GlyphArrangement2::tryNext(SectionIterator sitr, int cnt) const {
+	for (int i = 0; i < cnt && sitr != _data.end(); i++) ++sitr;
+	return sitr;
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::tryPrev(LineIterator litr, int cnt) const {
-	for (int i = 0; i < cnt && litr != _data.begin(); i++) --litr;
-	return litr;
+GlyphArrangement2::SectionIterator GlyphArrangement2::tryPrev(SectionIterator sitr, int cnt) const {
+	for (int i = 0; i < cnt && sitr != _data.begin(); i++) --sitr;
+	return sitr;
 }
 
 void GlyphArrangement2::registerItr(SP<CharIterator> itr) {
@@ -403,10 +403,10 @@ void GlyphArrangement2::registerItr(SP<CharIterator> itr) {
 }
 
 void GlyphArrangement2::moveItr(SP<CharIterator> itr, CharIterator citr) {
-	if (*itr == lineBegin(begin())) VAIN_STATEMENT;
-	if (citr == lineBegin(begin())) VAIN_STATEMENT;
+	if (*itr == sectionBegin(begin())) VAIN_STATEMENT;
+	if (citr == sectionBegin(begin())) VAIN_STATEMENT;
 	if (*itr == citr) return;
-	LineIterator oldLine = itr->first;
+	SectionIterator oldSection = itr->first;
 	auto& itrs = itr->second->itrs;
 	for (auto i = itrs.begin(); i != itrs.end();) {
 		if (itr == *i) i = itrs.erase(i);
@@ -414,7 +414,7 @@ void GlyphArrangement2::moveItr(SP<CharIterator> itr, CharIterator citr) {
 	}
 	*itr = citr;
 	itr->second->itrs.push_back(itr);
-	initLine(oldLine);
+	initSection(oldSection);
 }
 
 GlyphArrangement2::ManagedIterator GlyphArrangement2::registerItr(CharIterator citr) {
@@ -427,7 +427,7 @@ void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 		if (itr == *i) i = itrs.erase(i);
 		else ++i;
 	}
-	initLine(itr->first);
+	initSection(itr->first);
 }
 
 GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TG::Direction textDir)
@@ -439,7 +439,7 @@ GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval,
 , _textDir(textDir)
 , _origin()
 , _originPos(0, 0) {
-	_data.push_back(LineData());
+	_data.push_back(SectionData());
 	CharData cd;
 	cd.code = Text::Text::NEWLINE;
 	_data.back().cd.push_back(cd);
@@ -452,36 +452,36 @@ GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval,
 
 GlyphArrangement2::CharIterator GlyphArrangement2::insertText(CharIterator citr, const String& s) {
 	if (s.empty()) return citr;
-	LineIterator litr = citr.first;
+	SectionIterator sitr = citr.first;
 	if (!s.includes(Text::Text::NEWLINE)) {
 		std::vector<CharData> cds;
 		for (auto c : s) {
 			cds.push_back(CharData());
 			cds.back().code = c;
 		}
-		citr.second = litr->cd.insert(citr.second, cds.begin(), cds.end());
-		initLine(litr);
-		initBucket(litr, tryNext(litr));
+		citr.second = sitr->cd.insert(citr.second, cds.begin(), cds.end());
+		initSection(sitr);
+		initBucket(sitr, tryNext(sitr));
 		return citr;
 	}
-	std::vector<CharData> tail(citr.second, litr->cd.end());
-	int idx = citr.second - litr->cd.begin();
-	litr->cd.erase(citr.second, litr->cd.end());
-	LineIterator ret0 = litr;
+	std::vector<CharData> tail(citr.second, sitr->cd.end());
+	int idx = citr.second - sitr->cd.begin();
+	sitr->cd.erase(citr.second, sitr->cd.end());
+	SectionIterator ret0 = sitr;
 	for (auto c : s) {
 		CharData cd;
 		cd.code = c;
-		litr->cd.push_back(cd);
+		sitr->cd.push_back(cd);
 		if (c == Text::Text::NEWLINE) {
-			initLine(litr);
-			litr = std::next(litr);
-			LineData ld;
-			litr = _data.insert(litr, ld);
+			initSection(sitr);
+			sitr = std::next(sitr);
+			SectionData ld;
+			sitr = _data.insert(sitr, ld);
 		}
 	}
-	litr->cd.insert(litr->cd.end(), tail.begin(), tail.end());
-	initLine(litr);
-	initBucket(citr.first, tryNext(litr));
+	sitr->cd.insert(sitr->cd.end(), tail.begin(), tail.end());
+	initSection(sitr);
+	initBucket(citr.first, tryNext(sitr));
 	return { ret0, ret0->cd.begin() + idx };
 }
 
@@ -497,19 +497,19 @@ GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first,
 	}
 	if (first.first == last.first) {
 		auto ret1 = first.first->cd.erase(first.second, last.second);
-		auto litr = initLine(first.first);
-		initBucket(litr, tryNext(litr));
-		return { litr, ret1 };
+		auto sitr = initSection(first.first);
+		initBucket(sitr, tryNext(sitr));
+		return { sitr, ret1 };
 	}
-	LineIterator litr = std::next(first.first);
-	while (litr != last.first) {
-		litr = _data.erase(litr);
+	SectionIterator sitr = std::next(first.first);
+	while (sitr != last.first) {
+		sitr = _data.erase(sitr);
 	}
 	first.first->cd.erase(first.second, first.first->cd.end());
-	auto lfirst = initLine(first.first);
+	auto lfirst = initSection(first.first);
 	auto ret1 = last.first->cd.erase(last.first->cd.begin(), last.second);
 	if (last.first->cd.empty()) ret1 = std::next(last.first->cd.begin());
-	auto llast = initLine(last.first);
+	auto llast = initSection(last.first);
 	initBucket(lfirst, tryNext(llast));
 	return { llast, ret1 };
 }
@@ -532,11 +532,11 @@ void GlyphArrangement2::scroll(int delta) {
 	}
 }
 
-GlyphArrangement2::CharIterator GlyphArrangement2::next(CharIterator citr, bool overLine, int cnt) const {
+GlyphArrangement2::CharIterator GlyphArrangement2::next(CharIterator citr, bool overSection, int cnt) const {
 	for (int i = 0; i < cnt; i++) {
 		assert(citr.first != _data.end());
 		citr.second = std::next(citr.second);
-		if (overLine && citr.second == citr.first->cd.end()) {
+		if (overSection && citr.second == citr.first->cd.end()) {
 			citr.first = std::next(citr.first);
 			citr.second = citr.first->cd.begin();
 		}
@@ -544,9 +544,9 @@ GlyphArrangement2::CharIterator GlyphArrangement2::next(CharIterator citr, bool 
 	return citr;
 }
 
-GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr, bool overLine, int cnt) const {
+GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr, bool overSection, int cnt) const {
 	for (int i = 0; i < cnt; i++) {
-		assert(!(!overLine && citr.second == citr.first->cd.begin()));
+		assert(!(!overSection && citr.second == citr.first->cd.begin()));
 		if (citr.second == citr.first->cd.begin()) {
 			citr.first = std::prev(citr.first);
 			citr.second = std::prev(citr.first->cd.end());
@@ -558,7 +558,7 @@ GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr, bool 
 	return citr;
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::origin() const {
+GlyphArrangement2::SectionIterator GlyphArrangement2::origin() const {
 	return _origin;
 }
 
@@ -566,30 +566,30 @@ TG::PointOnText GlyphArrangement2::originPos() const {
 	return _originPos;
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::begin() {
+GlyphArrangement2::SectionIterator GlyphArrangement2::begin() {
 	return _data.begin();
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::end() {
+GlyphArrangement2::SectionIterator GlyphArrangement2::end() {
 	return _data.end();
 }
 
-GlyphArrangement2::CharIterator GlyphArrangement2::lineBegin(LineIterator litr) const {
-	return { litr, litr->cd.begin() };
+GlyphArrangement2::CharIterator GlyphArrangement2::sectionBegin(SectionIterator sitr) const {
+	return { sitr, sitr->cd.begin() };
 }
 
-GlyphArrangement2::CharIterator GlyphArrangement2::lineEnd(LineIterator litr) const {
-	return { litr, litr->cd.end() };
+GlyphArrangement2::CharIterator GlyphArrangement2::sectionEnd(SectionIterator sitr) const {
+	return { sitr, sitr->cd.end() };
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::bucket(LineIterator i) const {
+GlyphArrangement2::SectionIterator GlyphArrangement2::bucket(SectionIterator i) const {
 	while (i != _data.begin() && !i->bucketHeader) {
 		i = tryPrev(i);
 	}
 	return i;
 }
 
-GlyphArrangement2::LineIterator GlyphArrangement2::nextBucket(LineIterator i) const {
+GlyphArrangement2::SectionIterator GlyphArrangement2::nextBucket(SectionIterator i) const {
 	while (i != _data.end() && !i->bucketHeader) {
 		i = tryNext(i);
 	}
@@ -600,7 +600,7 @@ double GlyphArrangement2::minimapLineInterval() const {
 	return _minimapFontSize / (double)_font->getFontSize() * _lineInterval;
 }
 
-void GlyphArrangement2::resetOrigin(LineIterator origin, TG::PointOnText pos) {
+void GlyphArrangement2::resetOrigin(SectionIterator origin, TG::PointOnText pos) {
 	_origin = origin;
 	_originPos = pos;
 	scroll(0);
@@ -611,7 +611,7 @@ TG::Direction GlyphArrangement2::textDirection() const {
 }
 
 GlyphArrangement2::CharIterator GlyphArrangement2::lineHead(CharIterator citr) const {
-	while (citr != lineBegin(citr.first)) {
+	while (citr != sectionBegin(citr.first)) {
 		auto prv = prev(citr);
 		if (prv.second->pos.prp != citr.second->pos.prp) break;
 		citr = prv;
@@ -637,7 +637,7 @@ SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator cit
 	citr.second = citr.first->cd.insert(citr.second, cd);
 	SP<CharIterator> ret(new CharIterator(citr));
 	registerItr(ret);
-	initLine(citr.first);
+	initSection(citr.first);
 	return ret;
 }
 
@@ -682,7 +682,7 @@ bool FloatingAnimation::isStable() const {
 
 void FloatingAnimation::startFloating(GA& ga, GA::CharIterator floatingBegin) {
 	_floatingBegin.emplace(ga.registerItr(floatingBegin));
-	GA::LineIterator head = floatingBegin.first;
+	GA::SectionIterator head = floatingBegin.first;
 	_oldAdvance = _newAdvance = head->wrapCount * _lineInterval;
 	int size = std::distance(floatingBegin.second, head->cd.end());
 	_oldHeadPos.resize(size);
@@ -711,7 +711,7 @@ void FloatingAnimation::updateTime() {
 
 void FloatingAnimation::updatePos(const GA& ga) {
 	if (_step == Step::Inactive) return;
-	GA::LineIterator head = _floatingBegin.value()->first;
+	GA::SectionIterator head = _floatingBegin.value()->first;
 	_oldAdvance = _newAdvance;
 	_newAdvance = head->wrapCount * _lineInterval;
 	for (int i = 0; i < _oldHeadPos.size(); i++) {
@@ -840,7 +840,7 @@ void CleanCopyCursor::startAdvancing() {
 }
 
 void CleanCopyCursor::startRetreating() {
-	if (*_drawingPos.first == _ga->lineBegin(_ga->begin())) return;
+	if (*_drawingPos.first == _ga->sectionBegin(_ga->begin())) return;
 	if (_step != Step::Retreating)
 		_drawingPos.first.prev();
 	_step = Step::Retreating;
@@ -882,7 +882,7 @@ void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 			_drawingPos.second = advance - velocity * _sw.sF();
 			if (_drawingPos.second > 0) break;
 			registerUnpaint(tmpData, *_drawingPos.first);
-			if (*_drawingPos.first == _ga->lineBegin(_ga->begin())) {
+			if (*_drawingPos.first == _ga->sectionBegin(_ga->begin())) {
 				_drawingPos.second = 0;
 				_sw.pause();
 				return; //_step‚ÍStable‚É‚µ‚È‚¢
@@ -918,8 +918,8 @@ MinimapView::MinimapView(RectF area, SP<GA> ga)
 , _body(area, _mapDir) {
 }
 
-GlyphArrangement2::LineIterator MinimapView::draw() {
-	GA::LineIterator ret = _ga->end();
+GlyphArrangement2::SectionIterator MinimapView::draw() {
+	GA::SectionIterator ret = _ga->end();
 
 	BlendState bs = BlendState::Default;
 	bs.srcAlpha = Blend::One;
@@ -934,13 +934,13 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 		//ScopedColorAdd2D colorAdd(c);
 		//ScopedColorMul2D colorMul(ColorF(1, 1, 1) - c);
 		double li = _ga->minimapLineInterval();
-		GA::LineIterator bucket = _ga->begin();
+		GA::SectionIterator bucket = _ga->begin();
 		TG::PointOnText pen(0, 0);
 		//Circle(pen.toRealPos(_mapDir), 100).draw(ColorF(Palette::Red, 0.4));
 		//Circle(Cursor::Pos(), 100).draw(ColorF(Palette::Red, 0.4));
 		while (bucket != _ga->end()) {
 			if (_body.size.prp < pen.prp) break;
-			GA::LineIterator nextBucket = _ga->nextBucket(_ga->tryNext(bucket));
+			GA::SectionIterator nextBucket = _ga->nextBucket(_ga->tryNext(bucket));
 			SP<GA::BucketHeader> header = bucket->bucketHeader;
 			const auto& map = header->minimap;
 			
@@ -952,27 +952,27 @@ GlyphArrangement2::LineIterator MinimapView::draw() {
 				if (mapRect.toRealRect(_mapDir).contains(Cursor::Pos())) {
 					//header->minimap.region(pen + Point(delta - header->minimap.width(), 0)).draw(Palette::Orange);
 					//RectF(xBegin, pen.y, xEnd - xBegin, map.height()).draw(Palette::Red);
-					GA::LineIterator litr = bucket;
+					GA::SectionIterator sitr = bucket;
 					double prl = pen.prl;
 					double nprl = prl;
-					while (litr != nextBucket) {
-						nprl = prl + litr->wrapCount * li;
+					while (sitr != nextBucket) {
+						nprl = prl + sitr->wrapCount * li;
 						if (nprl > TG::Vec2OnText(Cursor::PosF(), _mapDir).prl) break;
 						prl = nprl;
-						litr = _ga->tryNext(litr);
+						sitr = _ga->tryNext(sitr);
 					}
 
-					if (litr != nextBucket) {
-						ret = litr;
-						if (MinimapHighlight::IsEmpty(litr->highlight)) {
+					if (sitr != nextBucket) {
+						ret = sitr;
+						if (MinimapHighlight::IsEmpty(sitr->highlight)) {
 							TG::RectFOnText tr(TG::Vec2OnText(prl, pen.prp) - mapRect.pos.toTextVec2(), TG::Vec2OnText(nprl - prl, mapRect.size.prp));
 							RectF r = TG::RectFOnText(TG::Vec2OnText(prl, pen.prp), TG::Vec2OnText(nprl - prl, mapRect.size.prp)).toRealRect(_mapDir);
 							//Circle(r.pos, 3).draw(Palette::Red);
 							RectF region = r.movedBy(-mapRect.toRealRect(_mapDir).pos);
-							litr->highlight.reset(new MinimapHighlight(map, region, r.pos));
-							_tmpManager.registerPointer(litr->highlight);
+							sitr->highlight.reset(new MinimapHighlight(map, region, r.pos));
+							_tmpManager.registerPointer(sitr->highlight);
 						}
-						litr->highlight->keep();
+						sitr->highlight->keep();
 					}
 				}
 				if (pen.prl + mapRect.size.prl <= _body.size.prl) break;

@@ -213,17 +213,17 @@ public:
 class GlyphArrangement2 {
 
 	//ミニマップについて:
-	//あるlineからn（1000とか10000とか）文字以下のlineまでのミニマップをキャッシュ（バケット法）
-	//↑line1つのミニマップもキャッシュ
+	//あるsectionからn（1000とか10000とか）文字以下のsectionまでのミニマップをキャッシュ（バケット法）
+	//↑section1つのミニマップもキャッシュ
 	//↑ミニマップ描画をshortcutできるイメージ
 	//↑文字列編集されたときはどうする？
 	//↑あるバケットが更新されたらその一つ手前のバケットから再計算→統合できるのにされていない隣接バケットが生まれない→例えばn=1000だとしたら、最悪ケースでも500と501や1000と1のバケットが交互に並ぶだけ→バケットの最大個数は2√nくらいで抑えられる
 
 public:
-	struct LineData;
+	struct SectionData;
 	struct CharData;
-	using LineIterator = std::list<LineData>::iterator;
-	using CharIterator = std::pair<LineIterator, std::vector<CharData>::iterator>;
+	using SectionIterator = std::list<SectionData>::iterator;
+	using CharIterator = std::pair<SectionIterator, std::vector<CharData>::iterator>;
 	class ManagedIterator;
 	friend ManagedIterator;
 	class ManagedIterator {
@@ -254,7 +254,7 @@ public:
 		void prev(int cnt) {
 			CharIterator newPos = *_itr;
 			for (int i = 0; i < cnt; i++) {
-				if (newPos == _ga.lineBegin(_ga.begin())) return;
+				if (newPos == _ga.sectionBegin(_ga.begin())) return;
 				newPos = _ga.prev(newPos, true);
 			}
 			move(newPos);
@@ -269,7 +269,7 @@ public:
 		SP<const Font::Glyph> glyph;
 		SP<const Font::Glyph> blurred;
 		std::list<SP<CharIterator>> itrs;
-		TG::PointOnText pos; //line内での相対的な位置
+		TG::PointOnText pos; //section内での相対的な位置
 		SP<CharAnimation> animation;
 	};
 	struct BucketHeader {
@@ -277,7 +277,7 @@ public:
 		MSRenderTexture minimap;
 		int advance;
 	};
-	struct LineData {
+	struct SectionData {
 		std::vector<CharData> cd; //テキスト末尾に改行
 		int wrapCount;
 		SP<BucketHeader> bucketHeader;
@@ -286,21 +286,21 @@ public:
 private:
 	SP<Font::FixedFont> _font;
 	SP<Font::FixedFont> _blurredFont;
-	std::list<LineData> _data;
+	std::list<SectionData> _data;
 	int _lineInterval;
 	int _maxLineLnegth;
 	TG::Direction _textDir;
 
-	LineIterator _origin;
+	SectionIterator _origin;
 	TG::PointOnText _originPos;
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
 	const double _minimapFontSize = 0.8;
 
 	//glyph, posを計算する。cd.empty()だったら削除
-	LineIterator initLine(LineIterator litr);
+	SectionIterator initSection(SectionIterator sitr);
 
-	void initBucket(LineIterator first, LineIterator last);
+	void initBucket(SectionIterator first, SectionIterator last);
 	void registerItr(SP<CharIterator> itr);
 	void moveItr(SP<CharIterator> itr, CharIterator citr);
 	void removeItr(SP<CharIterator> itr);
@@ -309,27 +309,27 @@ public:
 
 	SP<Font::FixedFont> font();
 	ManagedIterator registerItr(CharIterator citr);
-	LineIterator tryNext(LineIterator litr, int cnt = 1) const;
-	LineIterator tryPrev(LineIterator litr, int cnt = 1) const;
+	SectionIterator tryNext(SectionIterator sitr, int cnt = 1) const;
+	SectionIterator tryPrev(SectionIterator sitr, int cnt = 1) const;
 	CharIterator insertText(CharIterator citr, const String &s);
 	CharIterator eraseText(CharIterator first, CharIterator last); //管理されたイテレータはlastにどかす
 	CharIterator replaceText(CharIterator first, CharIterator last, const String& s);
 	void scroll(int delta);
-	CharIterator next(CharIterator citr, bool overLine = false, int cnt = 1) const;
-	CharIterator prev(CharIterator citr, bool overLine = false, int cnt = 1) const;
+	CharIterator next(CharIterator citr, bool overSection = false, int cnt = 1) const;
+	CharIterator prev(CharIterator citr, bool overSection = false, int cnt = 1) const;
 	void next(SP<CharIterator> itr); //管理されたイテレータを動かす
 	void prev(SP<CharIterator> itr); //管理されたイテレータを動かす
-	LineIterator origin() const;
+	SectionIterator origin() const;
 	TG::PointOnText originPos() const;
-	LineIterator begin();
-	LineIterator end();
-	CharIterator lineBegin(LineIterator litr) const;
-	CharIterator lineEnd(LineIterator litr) const;
-	LineIterator bucket(LineIterator litr) const;
-	LineIterator nextBucket(LineIterator litr) const;
+	SectionIterator begin();
+	SectionIterator end();
+	CharIterator sectionBegin(SectionIterator sitr) const;
+	CharIterator sectionEnd(SectionIterator sitr) const;
+	SectionIterator bucket(SectionIterator sitr) const;
+	SectionIterator nextBucket(SectionIterator sitr) const;
 	double minimapLineInterval() const;
 	double minimapScale() const;
-	void resetOrigin(LineIterator origin, TG::PointOnText pos);
+	void resetOrigin(SectionIterator origin, TG::PointOnText pos);
 	TG::Direction textDirection() const;
 	CharIterator lineHead(CharIterator citr) const;
 	CharIterator nextLineHead(CharIterator citr) const;
@@ -422,7 +422,7 @@ private:
 	}
 	void decreasePrpImpl() {
 		auto lh = _ga->lineHead(*_pos);
-		if (lh == _ga->lineBegin(_ga->begin())) {
+		if (lh == _ga->sectionBegin(_ga->begin())) {
 			_pos.move(lh);
 			return;
 		}
@@ -439,8 +439,8 @@ public:
 	GA::CharIterator pos() const {
 		return *_pos;
 	}
-	TG::Vec2OnText drawingPos(TG::PointOnText lineOrigin) {
-		TG::Vec2OnText p = (_pos->second->pos + lineOrigin).toTextVec2();
+	TG::Vec2OnText drawingPos(TG::PointOnText sectionOrigin) {
+		TG::Vec2OnText p = (_pos->second->pos + sectionOrigin).toTextVec2();
 		TG::Vec2OnText q = _oldPos.toTextVec2();
 		return (p - q) * EaseOut(Easing::Expo, _ap.getProgress()) + q;
 	}
@@ -460,28 +460,28 @@ public:
 		decreasePrpImpl();
 		_ap.start(0);
 	}
-	void increasePrlAnimation(int cnt, TG::PointOnText lineOrigin) {
-		_oldPos = lineOrigin + _pos->second->pos;
+	void increasePrlAnimation(int cnt, TG::PointOnText sectionOrigin) {
+		_oldPos = sectionOrigin + _pos->second->pos;
 		increasePrlImpl(cnt);
 		_ap.start(0.25);
 	}
-	void decreasePrlAnimation(int cnt, TG::PointOnText lineOrigin) {
-		_oldPos = lineOrigin + _pos->second->pos;
+	void decreasePrlAnimation(int cnt, TG::PointOnText sectionOrigin) {
+		_oldPos = sectionOrigin + _pos->second->pos;
 		decreasePrlImpl(cnt);
 		_ap.start(0.25);
 	}
-	void increasePrpAnimation(TG::PointOnText lineOrigin) {
-		_oldPos = lineOrigin + _pos->second->pos;
+	void increasePrpAnimation(TG::PointOnText sectionOrigin) {
+		_oldPos = sectionOrigin + _pos->second->pos;
 		increasePrpImpl();
 		_ap.start(0.25);
 	}
-	void decreasePrpAnimation(TG::PointOnText lineOrigin) {
-		_oldPos = lineOrigin + _pos->second->pos;
+	void decreasePrpAnimation(TG::PointOnText sectionOrigin) {
+		_oldPos = sectionOrigin + _pos->second->pos;
 		decreasePrpImpl();
 		_ap.start(0.25);
 	}
-	void moveAnimation(TG::PointOnText deltaInChars, TG::PointOnText lineOrigin) {
-		_oldPos = lineOrigin + _pos->second->pos;
+	void moveAnimation(TG::PointOnText deltaInChars, TG::PointOnText sectionOrigin) {
+		_oldPos = sectionOrigin + _pos->second->pos;
 		for (int i = 0; i < std::abs(deltaInChars.prp); i++) {
 			if (deltaInChars.prp > 0) increasePrpImpl();
 			else decreasePrpImpl();
@@ -619,7 +619,7 @@ public:
 	void draw();
 	void minimapTest();
 	SP<GlyphArrangement2> glyphArrangement() const;
-	void jump(GlyphArrangement2::LineIterator litr);
+	void jump(GlyphArrangement2::SectionIterator litr);
 };
 
 
@@ -633,7 +633,7 @@ private:
 	TemporaryData::Manager _tmpManager;
 public:
 	MinimapView(RectF area, SP<GA> ga);
-	GA::LineIterator draw();
+	GA::SectionIterator draw();
 };
 
 
