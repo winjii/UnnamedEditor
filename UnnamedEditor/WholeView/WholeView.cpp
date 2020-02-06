@@ -641,19 +641,16 @@ SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator cit
 	return ret;
 }
 
-TG::Vec2OnText FloatingAnimation::easeOverLine(TG::Vec2OnText source, TG::Vec2OnText target, double t, int i) {
-	double rate = EaseOut(Easing::Expo, 3.0, 1.0, std::min(1.0, i / 200.0));
-	t = std::min(1.0, t * rate);
-
-	int lineDiff = std::round((target.prp - source.prp) / _lineInterval);
-	double sum = target.prl + _maxLineLength * lineDiff - source.prl;
-	double delta = EaseInOut(Easing::Sine, t) * sum;
-	double flr = std::floor((delta + source.prl) / _maxLineLength);
-	return TG::Vec2OnText(source.prl + delta - flr * _maxLineLength, source.prp + flr * _lineInterval);
+TG::Vec2OnText FloatingAnimation::easeOverLine(TG::Vec2OnText current, TG::Vec2OnText target, double& velocity) {
+	int lineDiff = std::round((target.prp - current.prp) / _lineInterval);
+	double sum = target.prl + _maxLineLength * lineDiff - current.prl;
+	double delta = Math::SmoothDamp(0, sum, velocity, 0.3, Scene::DeltaTime());
+	double flr = std::floor((delta + current.prl) / _maxLineLength);
+	return TG::Vec2OnText(current.prl + delta - flr * _maxLineLength, current.prp + flr * _lineInterval);
 }
 
-FloatingAnimation::FloatingAnimation(int lineInterval, int maxLineLength)
-: _lineInterval(lineInterval), _maxLineLength(maxLineLength) {
+FloatingAnimation::FloatingAnimation(SP<GA> ga, int lineInterval, int maxLineLength)
+: _ga(ga), _lineInterval(lineInterval), _maxLineLength(maxLineLength) {
 	
 }
 
@@ -674,22 +671,16 @@ FloatingAnimation::GA::CharIterator FloatingAnimation::floatingBegin() const {
 	return *_floatingBegin.value();
 }
 
-bool FloatingAnimation::isStable() const {
-	bool b0 = _inOutAP.getStep() == AnimationProgress::Step::Stable;
-	bool b1 = _updateAP.getStep() == AnimationProgress::Step::Stable;
-	return b0 && b1;
-}
-
 void FloatingAnimation::startFloating(GA& ga, GA::CharIterator floatingBegin) {
 	_floatingBegin.emplace(ga.registerItr(floatingBegin));
 	GA::SectionIterator head = floatingBegin.first;
-	_oldAdvance = _newAdvance = head->wrapCount * _lineInterval;
+	_tailPrp = 0;
 	int size = std::distance(floatingBegin.second, head->cd.end());
-	_oldHeadPos.resize(size);
-	_newHeadPos.resize(size);
+	_headPos.resize(size);
+	_headVelocity.resize(size);
 	for (int i = 0; i < size; i++) {
 		auto ritr = std::next(floatingBegin.second, i);
-		_oldHeadPos[i] = _newHeadPos[i] = ritr->pos.toTextVec2();
+		_headPos[i] = ritr->pos.toTextVec2();
 	}
 	_step = Step::Floating;
 	_inOutAP.start(1.5);
@@ -700,27 +691,18 @@ void FloatingAnimation::stopFloating() {
 	_inOutAP.start(1.5);
 }
 
-void FloatingAnimation::updateTime() {
-	_inOutAP.update();
-	_updateAP.update();
-	if (_step == Step::Stopping && isStable()) {
-		_step = Step::Inactive;
-		_floatingBegin.reset();
-	}
-}
-
-void FloatingAnimation::updatePos(const GA& ga) {
+void FloatingAnimation::update() {
 	if (_step == Step::Inactive) return;
 	GA::SectionIterator head = _floatingBegin.value()->first;
-	_oldAdvance = _newAdvance;
-	_newAdvance = head->wrapCount * _lineInterval;
-	for (int i = 0; i < _oldHeadPos.size(); i++) {
+	int newAdvance = head->wrapCount * _lineInterval;
+	_tailPrp -= newAdvance - _oldAdvance;
+	_tailPrp = Math::SmoothDamp(_tailPrp, 0, _tailVelocity, 0.3, Scene::DeltaTime());
+	_oldAdvance = newAdvance;
+	for (int i = 0; i < _headPos.size(); i++) {
 		auto ritr = std::next(_floatingBegin.value()->second, i);
-		//TODO: アニメーション位置をoldにするとなめらかに遷移できる
-		_oldHeadPos[i] = easeOverLine(_oldHeadPos[i], _newHeadPos[i], _updateAP.getProgress(), i);
-		_newHeadPos[i] = ritr->pos.toTextVec2();
+		_headPos[i] = easeOverLine(_headPos[i], ritr->pos.toTextVec2(), _headVelocity[i]);
 	}
-	_updateAP.start(2.0);
+	_inOutAP.update();
 }
 
 TG::Vec2OnText FloatingAnimation::getPos(GA::CharIterator citr) {
@@ -734,16 +716,14 @@ TG::Vec2OnText FloatingAnimation::getPos(GA::CharIterator citr) {
 	}
 
 	if (citr.first != _floatingBegin.value()->first) {
-		double t = _updateAP.getProgress();
-		TG::Vec2OnText e = TG::Vec2OnText(0, (-_oldAdvance) - (-_newAdvance)) * EaseOut(Easing::Expo, t);
-		return citr.second->pos.toTextVec2() + d + e;
+		return citr.second->pos.toTextVec2() + d + TG::Vec2OnText(0, _tailPrp);
 	}
 	int idx = citr.second - _floatingBegin.value()->second;
-	return easeOverLine(_oldHeadPos[idx], _newHeadPos[idx], _updateAP.getProgress(), idx) + d;
+	return _headPos[idx] + d;
 }
 
 InputManager::InputManager(SP<GA> ga, SP<EditCursor> cursor, int lineInterval, int maxLineLength)
-: _fa(new FloatingAnimation(lineInterval, maxLineLength))
+: _fa(new FloatingAnimation(ga, lineInterval, maxLineLength))
 , _ga(ga)
 , _cursor(cursor) {
 
@@ -754,7 +734,6 @@ bool InputManager::isInputing() const {
 }
 
 SP<FloatingAnimation> InputManager::floatingAnimation() const {
-	_fa->updateTime();
 	return _fa;
 }
 
@@ -784,9 +763,9 @@ void InputManager::update(String addend, String editing) {
 		if (flg) {
 			_cccursor->changeItr(newItr);
 		}
-		_fa->updatePos(*_ga);
 	}
 	_editing = editing;
+	_fa->update();
 }
 
 void InputManager::stopInputting() {
@@ -806,7 +785,6 @@ void InputManager::startInputting() {
 
 void InputManager::deleteLightChar() {
 	_cccursor->changeItr(_ga->eraseText(_cccursor->pos(), _cursor->pos()));
-	_fa->updatePos(*_ga);
 }
 
 CleanCopyCursor::CleanCopyCursor(SP<GA> ga, SP<EditCursor> editCursor)

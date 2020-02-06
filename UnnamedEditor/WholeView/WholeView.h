@@ -347,29 +347,36 @@ public:
 		Inactive, Floating, Stopping
 	};
 private:
+	SP<GA> _ga;
 	Step _step;
 	int _lineInterval;
 	int _maxLineLength;
 	std::optional<GA::ManagedIterator> _floatingBegin;
+	std::vector<TG::Vec2OnText> _headPos;
+	std::vector<double> _headVelocity;
 	AnimationProgress _inOutAP;
-	AnimationProgress _updateAP;
-	std::vector<TG::Vec2OnText> _oldHeadPos;
-	std::vector<TG::Vec2OnText> _newHeadPos;
-	double _oldAdvance; //headのadvance
-	double _newAdvance;
+	int _oldAdvance;
+	double _tailPrp;
+	double _tailVelocity;
 
-	TG::Vec2OnText easeOverLine(TG::Vec2OnText source, TG::Vec2OnText target, double t, int i);
+	TG::Vec2OnText easeOverLine(TG::Vec2OnText current, TG::Vec2OnText target, double &velocity);
 public:
-	FloatingAnimation(int lineInterval, int maxLineLength);
+	FloatingAnimation(SP<GA> ga, int lineInterval, int maxLineLength);
 	Step step() const;
 	bool isInactive() const;
 	bool isFloating() const;
 	GA::CharIterator floatingBegin() const; //Inactiveで呼び出さない
-	bool isStable() const; //文字が整数座標に静止しているか
+	//bool isStable() const; //文字が整数座標に静止しているか
 	void startFloating(GA& ga, GA::CharIterator floatingBegin);
 	void stopFloating();
-	void updateTime();
-	void updatePos(const GA& ga); //変更が起きたときのみ呼び出す
+
+	//GA::CharIterator progressOfCalc();
+
+	////各行の行頭の静止座標からの相対位置を返す（描画する側で行頭の静止座標を足す）
+	//TG::Vec2OnText resetCalc();
+	//TG::Vec2OnText advanceCalc();
+
+	void update();
 
 	//citrはfloatingStart以降であること
 	//Inactiveのときに呼び出さない
