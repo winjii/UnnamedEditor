@@ -36,10 +36,8 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 	while (sectionOrigin.prp < _textArea.size.prp +_lineInterval && sitr != _ga->end()) {
 		if (_cursor->pos().first == sitr) {
 			drawCursor(_cursor->drawingPos(sectionOrigin));
-			if (!_scrollDelta.isScrolling()) {
-				auto cp = sectionOrigin + _cursor->pos().second->pos;
-				_scrollDelta.scroll((cp.prp - _textArea.size.prp / 2) / _lineInterval);
-			}
+			auto cp = sectionOrigin + _cursor->pos().second->pos;
+			_scrollDelta.scroll((cp.prp - _textArea.size.prp / 2) / _lineInterval);
 		}
 
 		auto citr = _ga->sectionBegin(sitr);
@@ -50,7 +48,7 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 			if (flt) tp = sectionOrigin.toTextVec2() + floating->getPos(citr);
 			Vec2 p = tp.toRealPos(_textDir) + textOrigin;
 			//Circle(p, 3).draw(Palette::Red);
-			if (_maskee.region().stretched(_lineInterval, 0).contains(p)) {
+			if (_maskee.region().stretched(_lineInterval, _font->getFontSize()).contains(p)) {
 				if (!CharAnimation::IsEmpty(citr.second->animation)) {
 					citr.second->animation->draw(p, citr.second->glyph);
 				}
@@ -653,7 +651,7 @@ TG::Vec2OnText FloatingAnimation::easeOverLine(TG::Vec2OnText current, TG::Vec2O
 	int lineDiff = std::round((target.prp - current.prp) / _lineInterval);
 	double sum = target.prl + _maxLineLength * lineDiff - current.prl;
 	double delta = Math::SmoothDamp(0, sum, velocity, 0.3, Scene::DeltaTime());
-	double flr = std::floor((delta + current.prl) / _maxLineLength);
+	double flr = std::floor((delta + current.prl + 1) / _maxLineLength);
 	return TG::Vec2OnText(current.prl + delta - flr * _maxLineLength, current.prp + flr * _lineInterval);
 }
 
