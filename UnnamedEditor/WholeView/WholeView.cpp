@@ -36,6 +36,10 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 	while (sectionOrigin.prp < _textArea.size.prp +_lineInterval && sitr != _ga->end()) {
 		if (_cursor->pos().first == sitr) {
 			drawCursor(_cursor->drawingPos(sectionOrigin));
+			if (!_scrollDelta.isScrolling()) {
+				auto cp = sectionOrigin + _cursor->pos().second->pos;
+				_scrollDelta.scroll((cp.prp - _textArea.size.prp / 2) / _lineInterval);
+			}
 		}
 
 		auto citr = _ga->sectionBegin(sitr);
@@ -211,6 +215,8 @@ void WholeView::draw() {
 	_tmpData.update();
 	_cursor->update();
 
+	if (addend.includes(U'\n')) _inputManager.stopInputting();
+
 	_masker.clear(Palette::White);
 	_maskee.clear(ColorF(0, 0, 0, 0));
 	_area.draw(Palette::White);
@@ -278,7 +284,9 @@ SP<GlyphArrangement2> WholeView::glyphArrangement() const {
 }
 
 void WholeView::jump(GlyphArrangement2::SectionIterator sitr) {
+	if (_inputManager.isInputing()) _inputManager.stopInputting();
 	_ga->resetOrigin(sitr, TG::PointOnText(0, _textArea.size.prp / 2));
+	_cursor->move(_ga->sectionBegin(sitr));
 }
 
 GlyphArrangement2::SectionIterator GlyphArrangement2::initSection(SectionIterator sitr) {

@@ -506,6 +506,10 @@ public:
 		else if (deltaInChars.prl < 0) decreasePrlImpl(-deltaInChars.prl);
 		_ap.start(0);
 	}
+	void move(GA::CharIterator citr) {
+		_pos.move(citr);
+		_ap.start(0);
+	}
 	void update() {
 		_ap.update();
 	}
@@ -569,27 +573,28 @@ public:
 
 class ScrollDelta {
 private:
-	int _direction;
+	int _delta;
 	int _used;
 	AnimationProgress _ap;
 	const int _lineInterval;
 public:
 	ScrollDelta(int lineInterval) : _lineInterval(lineInterval) {}
 	bool isScrolling() { return _ap.isAnimating(); }
-	int direction() { return _direction; }
-	void scroll(int direction) { //-1 or +1
+	int direction() { return _delta; }
+	void scroll(int delta) {
+		if (delta == 0) return;
 		if (isScrolling()) {
-			_used = _used - _lineInterval * _direction;
+			_used = _used - _lineInterval * _delta;
 		}
 		else _used = 0;
-		_direction = direction;
+		_delta = delta;
 		_ap.start(0.5);
 	}
 	std::pair<int, double> useDelta() {
 		_ap.update();
 		if (!isScrolling()) return { 0, 0.0 };
 		double t = _ap.getProgress();
-		double sum = _direction * _lineInterval * EaseOut(Easing::Quad, t);
+		double sum = _delta * _lineInterval * EaseOut(Easing::Quad, t);
 		int ret = (int)sum - _used;
 		_used = (int)sum;
 		return { ret, sum - (double)(int)sum };
