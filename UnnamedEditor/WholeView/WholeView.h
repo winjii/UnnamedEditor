@@ -632,6 +632,7 @@ public:
 	void minimapTest();
 	SP<GlyphArrangement2> glyphArrangement() const;
 	void jump(GlyphArrangement2::SectionIterator litr);
+	SP<const EditCursor> cursor() const;
 };
 
 

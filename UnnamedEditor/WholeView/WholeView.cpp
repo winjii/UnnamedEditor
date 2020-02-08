@@ -288,9 +288,14 @@ SP<GlyphArrangement2> WholeView::glyphArrangement() const {
 }
 
 void WholeView::jump(GlyphArrangement2::SectionIterator sitr) {
+	if (sitr == _ga->end()) sitr = _ga->tryPrev(sitr);
 	if (_inputManager.isInputing()) _inputManager.stopInputting();
 	_ga->resetOrigin(sitr, TG::PointOnText(0, _textArea.size.prp / 2));
 	_cursor->move(_ga->sectionBegin(sitr));
+}
+
+SP<const EditCursor> WholeView::cursor() const {
+	return _cursor;
 }
 
 GlyphArrangement2::SectionIterator GlyphArrangement2::initSection(SectionIterator sitr) {
