@@ -110,10 +110,8 @@ WholeView::WholeView(const Rect area, SP<Font::FixedFont> font, TG::Direction te
 }
 
 void WholeView::setText(const String &text) {
-	_ga->insertText(_cursor->pos(), U"‚Û");
-	auto itr = _cursor->pos();
-	_cursor->decreasePrl(1);
-	_ga->insertText(itr, text);
+	auto citr = _ga->insertText(_cursor->pos(), text);
+	_cursor->move(citr);
 }
 
 void WholeView::draw() {
@@ -648,12 +646,11 @@ GlyphArrangement2::CharIterator GlyphArrangement2::nextLineHead(CharIterator cit
 	assert(false);
 }
 
-SP<GlyphArrangement2::CharIterator> GlyphArrangement2::makeNull(CharIterator citr) {
+GlyphArrangement2::ManagedIterator GlyphArrangement2::makeNull(CharIterator citr) {
 	CharData cd;
 	cd.code = Text::Text::NULL_CHAR;
 	citr.second = citr.first->cd.insert(citr.second, cd);
-	SP<CharIterator> ret(new CharIterator(citr));
-	registerItr(ret);
+	auto ret = registerItr(citr);
 	initSection(citr.first);
 	return ret;
 }

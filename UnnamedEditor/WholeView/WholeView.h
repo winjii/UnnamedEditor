@@ -335,8 +335,8 @@ public:
 	CharIterator nextLineHead(CharIterator citr) const;
 
 	//NULL•¶š‚ğ‘}“ü‚·‚é‚Æ”Ô•º‚È‚Ç‚Ég‚¦‚é
-	//NULL•¶š‚ÍremoveItr‚ÉQÆ‚ªØ‚ê‚½‚ç©“®‚Åíœ‚³‚ê‚é
-	SP<CharIterator> makeNull(CharIterator citr);
+	//NULL•¶š‚ÍQÆ‚ªØ‚ê‚½‚ç©“®‚Åíœ‚³‚ê‚é
+	ManagedIterator makeNull(CharIterator citr);
 };
 
 
