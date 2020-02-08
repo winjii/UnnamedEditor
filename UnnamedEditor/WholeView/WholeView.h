@@ -245,7 +245,7 @@ public:
 		void next(int cnt) {
 			CharIterator newPos = *_itr;
 			for (int i = 0; i < cnt; i++) {
-				auto nxt = _ga.next(newPos, true);
+				auto nxt = _ga.tryNext(newPos, true);
 				if (nxt.first == _ga.end()) return;
 				newPos = nxt;
 			}
@@ -255,7 +255,7 @@ public:
 			CharIterator newPos = *_itr;
 			for (int i = 0; i < cnt; i++) {
 				if (newPos == _ga.sectionBegin(_ga.begin())) return;
-				newPos = _ga.prev(newPos, true);
+				newPos = _ga.tryPrev(newPos, true);
 			}
 			move(newPos);
 		}
@@ -296,6 +296,8 @@ private:
 	SP<MSRenderTexture> _bufferTexture0;
 	SP<RenderTexture> _bufferTexture1;
 	const double _minimapFontSize = 0.8;
+	ManagedIterator _lastNewline;
+	ManagedIterator _endChar;
 
 	//glyph, posを計算する。cd.empty()だったら削除
 	SectionIterator initSection(SectionIterator sitr);
@@ -309,30 +311,31 @@ public:
 
 	SP<Font::FixedFont> font();
 	ManagedIterator registerItr(CharIterator citr);
-	SectionIterator tryNext(SectionIterator sitr, int cnt = 1) const;
-	SectionIterator tryPrev(SectionIterator sitr, int cnt = 1) const;
+	SectionIterator tryNext(SectionIterator sitr, int cnt = 1);
+	SectionIterator tryPrev(SectionIterator sitr, int cnt = 1);
 	CharIterator insertText(CharIterator citr, const String &s);
 	CharIterator eraseText(CharIterator first, CharIterator last); //管理されたイテレータはlastにどかす
 	CharIterator replaceText(CharIterator first, CharIterator last, const String& s);
 	void scroll(int delta);
-	CharIterator next(CharIterator citr, bool overSection = false, int cnt = 1) const;
-	CharIterator prev(CharIterator citr, bool overSection = false, int cnt = 1) const;
-	void next(SP<CharIterator> itr); //管理されたイテレータを動かす
-	void prev(SP<CharIterator> itr); //管理されたイテレータを動かす
+	CharIterator tryNext(CharIterator citr, bool overSection = false, int cnt = 1);
+	CharIterator tryPrev(CharIterator citr, bool overSection = false, int cnt = 1);
 	SectionIterator origin() const;
 	TG::PointOnText originPos() const;
 	SectionIterator begin();
 	SectionIterator end();
 	CharIterator sectionBegin(SectionIterator sitr) const;
 	CharIterator sectionEnd(SectionIterator sitr) const;
-	SectionIterator bucket(SectionIterator sitr) const;
-	SectionIterator nextBucket(SectionIterator sitr) const;
+	CharIterator beginChar();
+	CharIterator endChar();
+	CharIterator lastNewline();
+	SectionIterator bucket(SectionIterator sitr);
+	SectionIterator nextBucket(SectionIterator sitr);
 	double minimapLineInterval() const;
 	double minimapScale() const;
 	void resetOrigin(SectionIterator origin, TG::PointOnText pos);
 	TG::Direction textDirection() const;
-	CharIterator lineHead(CharIterator citr) const;
-	CharIterator nextLineHead(CharIterator citr) const;
+	CharIterator lineHead(CharIterator citr);
+	CharIterator nextLineHead(CharIterator citr); //最終行ではendChar()を返す
 
 	//NULL文字を挿入すると番兵などに使える
 	//NULL文字は参照が切れたら自動で削除される
@@ -401,7 +404,7 @@ private:
 	GA::CharIterator gapMin(GA::CharIterator first, GA::CharIterator last) {
 		auto ret = first;
 		int minGap = std::numeric_limits<int>::max();
-		for (auto citr = first; citr != last; citr = _ga->next(citr, true)) {
+		for (auto citr = first; citr != last; citr = _ga->tryNext(citr, true)) {
 			if (gap(citr) < minGap) {
 				ret = citr;
 				minGap = gap(citr);
@@ -412,6 +415,7 @@ private:
 
 	void increasePrlImpl(int cnt) {
 		_pos.next(cnt);
+		if (*_pos == _ga->endChar()) _pos.move(_ga->lastNewline());
 		_virtualPosPrl = _pos->second->pos.prl;
 	}
 	void decreasePrlImpl(int cnt) {
@@ -420,8 +424,8 @@ private:
 	}
 	void increasePrpImpl() {
 		auto nlh = _ga->nextLineHead(*_pos);
-		if (nlh.first == _ga->end()) {
-			_pos.move(_ga->prev(nlh, true));
+		if (nlh == _ga->endChar()) {
+			_pos.move(_ga->lastNewline());
 			return;
 		}
 		auto nnlh = _ga->nextLineHead(nlh);
@@ -429,11 +433,11 @@ private:
 	}
 	void decreasePrpImpl() {
 		auto lh = _ga->lineHead(*_pos);
-		if (lh == _ga->sectionBegin(_ga->begin())) {
+		if (lh == _ga->beginChar()) {
 			_pos.move(lh);
 			return;
 		}
-		auto plh = _ga->lineHead(_ga->prev(lh, true));
+		auto plh = _ga->lineHead(_ga->tryPrev(lh, true));
 		_pos.move(gapMin(plh, lh));
 	}
 public:

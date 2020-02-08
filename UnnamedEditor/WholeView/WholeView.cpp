@@ -65,7 +65,7 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 				drawCursor(cp);
 				maskStart = cp;
 			}
-			citr = _ga->next(citr);
+			citr = _ga->tryNext(citr);
 		}
 		sectionOrigin.prp += sitr->wrapCount * _lineInterval;
 		sitr = _ga->tryNext(sitr);
@@ -141,12 +141,12 @@ void WholeView::draw() {
 		if (KeyDown.down()) p.y++;
 		return TG::PointOnText(p, _textDir);
 	}();
-	if (arrowKey.prp > 0 && _ga->nextLineHead(_cursor->pos()).first == _ga->end()) {
-		arrowKey.prp = 0;
-	}
-	if (arrowKey.prp < 0 && _ga->lineHead(_cursor->pos()) == _ga->sectionBegin(_ga->begin())) {
-		arrowKey.prp = 0;
-	}
+	//if (arrowKey.prp > 0 && _ga->nextLineHead(_cursor->pos()).first == _ga->end()) {
+	//	arrowKey.prp = 0;
+	//}
+	//if (arrowKey.prp < 0 && _ga->lineHead(_cursor->pos()) == _ga->sectionBegin(_ga->begin())) {
+	//	arrowKey.prp = 0;
+	//}
 
 	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0 || KeyBackspace.down())) {
 		_inputManager.startInputting();
@@ -401,13 +401,13 @@ void GlyphArrangement2::initBucket(SectionIterator first, SectionIterator last) 
 	}
 }
 
-GlyphArrangement2::SectionIterator GlyphArrangement2::tryNext(SectionIterator sitr, int cnt) const {
-	for (int i = 0; i < cnt && sitr != _data.end(); i++) ++sitr;
+GlyphArrangement2::SectionIterator GlyphArrangement2::tryNext(SectionIterator sitr, int cnt) {
+	for (int i = 0; i < cnt && sitr != end(); i++) ++sitr;
 	return sitr;
 }
 
-GlyphArrangement2::SectionIterator GlyphArrangement2::tryPrev(SectionIterator sitr, int cnt) const {
-	for (int i = 0; i < cnt && sitr != _data.begin(); i++) --sitr;
+GlyphArrangement2::SectionIterator GlyphArrangement2::tryPrev(SectionIterator sitr, int cnt) {
+	for (int i = 0; i < cnt && sitr != begin(); i++) --sitr;
 	return sitr;
 }
 
@@ -444,18 +444,25 @@ void GlyphArrangement2::removeItr(SP<CharIterator> itr) {
 }
 
 GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval, int maxLineLength, TG::Direction textDir)
-: _font(font)
-, _blurredFont(new Font::FixedFont(font->ftLibrary(), font->ftFace(), font->getFontSize(), font->isVertical()))
-, _data()
-, _lineInterval(lineInterval)
-, _maxLineLnegth(maxLineLength)
-, _textDir(textDir)
-, _origin()
-, _originPos(0, 0) {
-	_data.push_back(SectionData());
-	CharData cd;
-	cd.code = Text::Text::NEWLINE;
-	_data.back().cd.push_back(cd);
+	: _font(font)
+	, _blurredFont(new Font::FixedFont(font->ftLibrary(), font->ftFace(), font->getFontSize(), font->isVertical()))
+	, _data()
+	, _lineInterval(lineInterval)
+	, _maxLineLnegth(maxLineLength)
+	, _textDir(textDir)
+	, _origin()
+	, _originPos(0, 0)
+	, _lastNewline([&]() {
+		_data.push_back(SectionData());
+		CharData cd;
+		cd.code = Text::Text::NEWLINE;
+		_data.back().cd.push_back(cd);
+		return registerItr(sectionBegin(--_data.end()));
+	}())
+	, _endChar([&]() {
+		_data.push_back(SectionData());
+		return makeNull(sectionEnd(--_data.end()));
+	}()) {
 
 	auto blur = [&](Image& img) {
 		img.gaussianBlur(2, 2);
@@ -502,7 +509,7 @@ GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first,
 	if (first == last) return first;
 	
 	//管理されたイテレータの退避
-	for (auto itr = first; itr != last; itr = next(itr, true)) {
+	for (auto itr = first; itr != last; itr = tryNext(itr, true)) {
 		for (auto managedItr : itr.second->itrs) {
 			*managedItr = last;
 			last.second->itrs.push_back(managedItr);
@@ -545,9 +552,10 @@ void GlyphArrangement2::scroll(int delta) {
 	}
 }
 
-GlyphArrangement2::CharIterator GlyphArrangement2::next(CharIterator citr, bool overSection, int cnt) const {
+GlyphArrangement2::CharIterator GlyphArrangement2::tryNext(CharIterator citr, bool overSection, int cnt) {
 	for (int i = 0; i < cnt; i++) {
-		assert(citr.first != _data.end());
+		if (citr == sectionEnd(citr.first)) return citr;
+		if (overSection && citr == *_endChar) return citr;
 		citr.second = std::next(citr.second);
 		if (overSection && citr.second == citr.first->cd.end()) {
 			citr.first = std::next(citr.first);
@@ -557,9 +565,10 @@ GlyphArrangement2::CharIterator GlyphArrangement2::next(CharIterator citr, bool 
 	return citr;
 }
 
-GlyphArrangement2::CharIterator GlyphArrangement2::prev(CharIterator citr, bool overSection, int cnt) const {
+GlyphArrangement2::CharIterator GlyphArrangement2::tryPrev(CharIterator citr, bool overSection, int cnt) {
 	for (int i = 0; i < cnt; i++) {
-		assert(!(!overSection && citr.second == citr.first->cd.begin()));
+		if (citr == beginChar()) return citr;
+		if (!overSection && citr.second == citr.first->cd.begin()) return citr;
 		if (citr.second == citr.first->cd.begin()) {
 			citr.first = std::prev(citr.first);
 			citr.second = std::prev(citr.first->cd.end());
@@ -584,7 +593,7 @@ GlyphArrangement2::SectionIterator GlyphArrangement2::begin() {
 }
 
 GlyphArrangement2::SectionIterator GlyphArrangement2::end() {
-	return _data.end();
+	return _endChar->first;
 }
 
 GlyphArrangement2::CharIterator GlyphArrangement2::sectionBegin(SectionIterator sitr) const {
@@ -595,15 +604,27 @@ GlyphArrangement2::CharIterator GlyphArrangement2::sectionEnd(SectionIterator si
 	return { sitr, sitr->cd.end() };
 }
 
-GlyphArrangement2::SectionIterator GlyphArrangement2::bucket(SectionIterator i) const {
+GlyphArrangement2::CharIterator GlyphArrangement2::beginChar() {
+	return sectionBegin(begin());
+}
+
+GlyphArrangement2::CharIterator GlyphArrangement2::endChar() {
+	return *_endChar;
+}
+
+GlyphArrangement2::CharIterator GlyphArrangement2::lastNewline() {
+	return *_lastNewline;
+}
+
+GlyphArrangement2::SectionIterator GlyphArrangement2::bucket(SectionIterator i) {
 	while (i != _data.begin() && !i->bucketHeader) {
 		i = tryPrev(i);
 	}
 	return i;
 }
 
-GlyphArrangement2::SectionIterator GlyphArrangement2::nextBucket(SectionIterator i) const {
-	while (i != _data.end() && !i->bucketHeader) {
+GlyphArrangement2::SectionIterator GlyphArrangement2::nextBucket(SectionIterator i) {
+	while (i != end() && !i->bucketHeader) {
 		i = tryNext(i);
 	}
 	return i;
@@ -623,19 +644,19 @@ TG::Direction GlyphArrangement2::textDirection() const {
 	return _textDir;
 }
 
-GlyphArrangement2::CharIterator GlyphArrangement2::lineHead(CharIterator citr) const {
+GlyphArrangement2::CharIterator GlyphArrangement2::lineHead(CharIterator citr) {
 	while (citr != sectionBegin(citr.first)) {
-		auto prv = prev(citr);
+		auto prv = tryPrev(citr);
 		if (prv.second->pos.prp != citr.second->pos.prp) break;
 		citr = prv;
 	}
 	return citr;
 }
 
-GlyphArrangement2::CharIterator GlyphArrangement2::nextLineHead(CharIterator citr) const {
+GlyphArrangement2::CharIterator GlyphArrangement2::nextLineHead(CharIterator citr) {
 	assert(citr.first != _data.end());
 	while (true) {
-		auto nxt = next(citr, true);
+		auto nxt = tryNext(citr, true);
 		if (citr.first != nxt.first || citr.second->pos.prp != nxt.second->pos.prp) {
 			return nxt;
 		}
@@ -770,7 +791,7 @@ void InputManager::update(String addend, String editing) {
 	replaced += editing.dropped(Max(0, prefixLength - (int)addend.size()));
 	int eraseSize = _editing.size() - prefixLength;
 	if (eraseSize > 0 || !replaced.empty()) {
-		auto first = _ga->prev(_cursor->pos(), true, eraseSize);
+		auto first = _ga->tryPrev(_cursor->pos(), true, eraseSize);
 		bool flg = first == _cccursor->pos();
 		auto newItr = _ga->replaceText(first, _cursor->pos(), replaced);
 		if (flg) {
@@ -794,7 +815,7 @@ void InputManager::startInputting() {
 	auto null = _ga->makeNull(_cursor->pos());
 	_cursor->decreasePrl(1);
 	_cccursor.reset(new CleanCopyCursor(_ga, _cursor));
-	_fa->startFloating(*_ga, _ga->next(_cursor->pos()));
+	_fa->startFloating(*_ga, _ga->tryNext(_cursor->pos()));
 }
 
 void InputManager::deleteLightChar() {
@@ -810,7 +831,7 @@ CleanCopyCursor::CleanCopyCursor(SP<GA> ga, SP<EditCursor> editCursor)
 
 GlyphArrangement2::CharIterator CleanCopyCursor::pos() const {
 	if (_step != Step::Retreating) return *_drawingPos.first;
-	return _ga->next(*_drawingPos.first);
+	return _ga->tryNext(*_drawingPos.first);
 }
 
 std::pair<GlyphArrangement2::CharIterator, double> CleanCopyCursor::drawingPos() const {
