@@ -141,18 +141,29 @@ void WholeView::draw() {
 		if (KeyDown.down()) p.y++;
 		return TG::PointOnText(p, _textDir);
 	}();
-	//if (arrowKey.prp > 0 && _ga->nextLineHead(_cursor->pos()).first == _ga->end()) {
-	//	arrowKey.prp = 0;
-	//}
-	//if (arrowKey.prp < 0 && _ga->lineHead(_cursor->pos()) == _ga->sectionBegin(_ga->begin())) {
-	//	arrowKey.prp = 0;
-	//}
 
-	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0 || KeyBackspace.down())) {
+	//if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0 || KeyBackspace.down()))
+	if (_cursor->pos() != _ga->beginChar() && KeyBackspace.down()) {
+		auto prv = _ga->tryPrev(_cursor->pos(), true);
+		if (prv.second->code == Text::Text::NEWLINE) {
+			if (_inputManager.isInputing()) _inputManager.stopInputting();
+			_ga->eraseText(prv, _cursor->pos());
+			addend = U"";
+			editing = U"";
+		}
+		else if (!_inputManager.isInputing()) {
+			_inputManager.startInputting();
+		}
+	}
+	if (!_inputManager.isInputing() && KeyEnter.down()) {
+		_ga->insertText(_cursor->pos(), String(1, Text::Text::NEWLINE));
+		addend = U"";
+		editing = U"";
+	}
+	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0)) {
 		_inputManager.startInputting();
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
-
 	if (_inputManager.isInputing() && editing.size() == 0) {
 		bool onEnd = _cursor->pos() == cccursor->drawingPos().first && cccursor->isStable();
 		if (!cccursor->isStable()) addend = U"";
@@ -463,6 +474,8 @@ GlyphArrangement2::GlyphArrangement2(SP<Font::FixedFont> font, int lineInterval,
 		_data.push_back(SectionData());
 		return makeNull(sectionEnd(--_data.end()));
 	}()) {
+	initSection(begin());
+	initBucket(begin(), end());
 
 	auto blur = [&](Image& img) {
 		img.gaussianBlur(2, 2);
