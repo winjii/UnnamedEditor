@@ -906,15 +906,16 @@ void CleanCopyCursor::registerUnpaint(TemporaryData::Manager& tmpData, GA::CharI
 	tmpData.registerPointer(citr.second->animation);
 }
 
-MinimapView::MinimapView(RectF area, SP<GA> ga)
+MinimapView::MinimapView(Rect area, SP<GA> ga)
 : _area(area)
 , _ga(ga)
 , _mapDir(TG::SwapAxis(ga->textDirection()))
-, _body(area, _mapDir) {
+, _body(area.stretched(-10), _mapDir) {
 }
 
-GlyphArrangement2::SectionIterator MinimapView::draw() {
+GlyphArrangement2::SectionIterator MinimapView::draw(GA::SectionIterator editSction) {
 	GA::SectionIterator ret = _ga->end();
+	Rect editRect;
 
 	BlendState bs = BlendState::Default;
 	bs.srcAlpha = Blend::One;
@@ -931,6 +932,7 @@ GlyphArrangement2::SectionIterator MinimapView::draw() {
 		double li = _ga->minimapLineInterval();
 		GA::SectionIterator bucket = _ga->begin();
 		TG::PointOnText pen(0, 0);
+		GA::SectionIterator editBucket = _ga->bucket(editSction);
 		//Circle(pen.toRealPos(_mapDir), 100).draw(ColorF(Palette::Red, 0.4));
 		//Circle(Cursor::Pos(), 100).draw(ColorF(Palette::Red, 0.4));
 		while (bucket != _ga->end()) {
@@ -944,6 +946,15 @@ GlyphArrangement2::SectionIterator MinimapView::draw() {
 				TG::RectOnText mapRect(pen, G::Abs(TG::PointOnText(map.size(), _mapDir)));
 				map.draw(mapRect.toRealRect(_mapDir).pos, Palette::Black);
 				//mapRect.toRealRect(_mapDir).drawFrame(2.0, Palette::Red);
+				if (bucket == editBucket) {
+					GA::SectionIterator sitr = bucket;
+					double prl = pen.prl;
+					while (sitr != editSction) {
+						prl += sitr->wrapCount * li;
+						sitr = _ga->tryNext(sitr);
+					}
+					editRect = TG::RectFOnText(TG::Vec2OnText(prl, pen.prp), TG::Vec2OnText(sitr->wrapCount * li, mapRect.size.prp)).toRealRect(_mapDir);
+				}
 				if (mapRect.toRealRect(_mapDir).contains(Cursor::Pos())) {
 					//header->minimap.region(pen + Point(delta - header->minimap.width(), 0)).draw(Palette::Orange);
 					//RectF(xBegin, pen.y, xEnd - xBegin, map.height()).draw(Palette::Red);
@@ -960,7 +971,7 @@ GlyphArrangement2::SectionIterator MinimapView::draw() {
 					if (sitr != nextBucket) {
 						ret = sitr;
 						if (MinimapHighlight::IsEmpty(sitr->highlight)) {
-							TG::RectFOnText tr(TG::Vec2OnText(prl, pen.prp) - mapRect.pos.toTextVec2(), TG::Vec2OnText(nprl - prl, mapRect.size.prp));
+							//TG::RectFOnText tr(TG::Vec2OnText(prl, pen.prp) - mapRect.pos.toTextVec2(), TG::Vec2OnText(nprl - prl, mapRect.size.prp));
 							RectF r = TG::RectFOnText(TG::Vec2OnText(prl, pen.prp), TG::Vec2OnText(nprl - prl, mapRect.size.prp)).toRealRect(_mapDir);
 							//Circle(r.pos, 3).draw(Palette::Red);
 							RectF region = r.movedBy(-mapRect.toRealRect(_mapDir).pos);
@@ -979,6 +990,14 @@ GlyphArrangement2::SectionIterator MinimapView::draw() {
 		}
 		_tmpManager.update();
 	}
+
+	double t = Scene::Time() * 2 * Math::Pi / 2.5;
+	ScopedViewport2D viewport(_area);
+	const Transformer2D inv(Mat3x2::Translate(-_area.pos), Mat3x2::Identity());
+	ColorF c = Palette::Blueviolet;
+	const Transformer2D transformer(Mat3x2::Translate(_body.origin), Mat3x2::Translate(_body.origin));
+	editRect.drawShadow(Vec2::Zero(), 25, 0, Color(Palette::Black, (Sin(t) + 1) / 2 * 192));
+
 	return ret;
 }
 

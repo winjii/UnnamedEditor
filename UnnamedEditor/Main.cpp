@@ -55,7 +55,7 @@ void Run() {
 		}
 		if (!(mode == 1 && ap.isStable())) {
 			ScopedRenderTarget2D target(msrt1);
-			auto clicked = mview.draw();
+			auto clicked = mview.draw(wholeView.cursor()->pos().first);
 			if (mode == 0 && MouseL.down()) {
 				wholeView.jump(clicked);
 				nextMode = 1;
@@ -444,7 +444,7 @@ void MinimapViewTest() {
 
 	const ScopedRenderStates2D state(SamplerState::ClampLinear);
 	while (System::Update()) {
-		mview.draw();
+		mview.draw(wholeView.cursor()->pos().first);
 	}
 }
 

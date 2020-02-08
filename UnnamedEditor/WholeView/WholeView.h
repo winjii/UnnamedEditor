@@ -142,7 +142,7 @@ private:
 			_color = EaseOut(Easing::Linear, Palette::Black, Palette::Orangered, t);
 			if (_step != _nextStep) {
 				_sw.pause();
-				_sw.set((SecondsF)(maxTime - _sw.sF()));
+				_sw.set((SecondsF)(maxTime - std::max(_sw.sF(), maxTime)));
 				_sw.start();
 			}
 			_step = _nextStep;
@@ -639,14 +639,14 @@ public:
 class MinimapView {
 	using GA = GlyphArrangement2;
 private:
-	RectF _area;
+	Rect _area;
 	SP<GA> _ga;
 	TG::Direction _mapDir;
 	TG::TextArea _body;
 	TemporaryData::Manager _tmpManager;
 public:
-	MinimapView(RectF area, SP<GA> ga);
-	GA::SectionIterator draw();
+	MinimapView(Rect area, SP<GA> ga);
+	GA::SectionIterator draw(GA::SectionIterator editSection);
 };
 
 
