@@ -168,7 +168,7 @@ void WholeView::draw() {
 		}
 		else if (KeyBackspace.up()) cccursor->stop();
 		if (!cccursor->isStable()) addend = U"";
-		if (KeyDown.down() || KeyUp.down()) {
+		if (arrowKey.prl != 0 || arrowKey.prp != 0) {
 			_inputManager.deleteLightChar();
 			_inputManager.stopInputting();
 		}
@@ -787,6 +787,7 @@ void InputManager::stopInputting() {
 	_editing = U"";
 	_fa->stopFloating();
 	_cccursor.reset();
+	_cursor->increasePrl(1);
 }
 
 void InputManager::startInputting() {
