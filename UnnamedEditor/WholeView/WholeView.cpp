@@ -142,6 +142,12 @@ void WholeView::draw() {
 		if (KeyDown.down()) p.y++;
 		return TG::PointOnText(p, _textDir);
 	}();
+	if (arrowKey.prp > 0 && _ga->nextLineHead(_cursor->pos()).first == _ga->end()) {
+		arrowKey.prp = 0;
+	}
+	if (arrowKey.prp < 0 && _ga->lineHead(_cursor->pos()) == _ga->sectionBegin(_ga->begin())) {
+		arrowKey.prp = 0;
+	}
 
 	if (!_inputManager.isInputing() && (addend.size() > 0 || editing.size() > 0 || KeyBackspace.down())) {
 		_inputManager.startInputting();
