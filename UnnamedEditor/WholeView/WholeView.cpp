@@ -32,6 +32,7 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 	auto cccursor = _inputManager.cleanCopyCursor();
 	TG::PointOnText sectionOrigin = _ga->originPos();
 	TG::Vec2OnText maskStart, maskEnd;
+	//Print << sectionOrigin.prp;
 
 	while (sectionOrigin.prp < _textArea.size.prp +_lineInterval && sitr != _ga->end()) {
 		if (_cursor->pos().first == sitr) {
@@ -152,9 +153,6 @@ void WholeView::draw() {
 	}
 	auto cccursor = _inputManager.cleanCopyCursor();
 
-	if (floating->step() != FloatingAnimation::Step::Floating) {
-		if (arrowKey.prp != 0) _scrollDelta.scroll(arrowKey.prp);
-	}
 	if (_inputManager.isInputing() && editing.size() == 0) {
 		bool onEnd = _cursor->pos() == cccursor->drawingPos().first && cccursor->isStable();
 		if (!cccursor->isStable()) addend = U"";
@@ -689,6 +687,7 @@ void FloatingAnimation::startFloating(GA& ga, GA::CharIterator floatingBegin) {
 	_floatingBegin.emplace(ga.registerItr(floatingBegin));
 	GA::SectionIterator head = floatingBegin.first;
 	_tailPrp = 0;
+	_oldAdvance = head->wrapCount * _lineInterval;
 	int size = std::distance(floatingBegin.second, head->cd.end());
 	_headPos.resize(size);
 	_headVelocity.resize(size);
@@ -875,7 +874,7 @@ void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 			_drawingPos.second = advance - velocity * _sw.sF();
 			if (_drawingPos.second > 0) break;
 			registerUnpaint(tmpData, *_drawingPos.first);
-			if (*_drawingPos.first == _ga->sectionBegin(_ga->begin())) {
+			if (*_drawingPos.first == _ga->sectionBegin(_drawingPos.first->first)) {
 				_drawingPos.second = 0;
 				_sw.pause();
 				return; //_step‚ÍStable‚É‚µ‚È‚¢

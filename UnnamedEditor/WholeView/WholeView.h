@@ -578,8 +578,8 @@ private:
 	AnimationProgress _ap;
 	const int _lineInterval;
 public:
-	ScrollDelta(int lineInterval) : _lineInterval(lineInterval) {}
-	bool isScrolling() { return _ap.isAnimating(); }
+	ScrollDelta(int lineInterval) : _lineInterval(lineInterval), _delta(0), _used(0) {}
+	bool isScrolling() { return _used != _delta * _lineInterval; }
 	int direction() { return _delta; }
 	void scroll(int delta) {
 		if (delta == 0) return;
@@ -591,8 +591,13 @@ public:
 		_ap.start(0.5);
 	}
 	std::pair<int, double> useDelta() {
-		_ap.update();
 		if (!isScrolling()) return { 0, 0.0 };
+		_ap.update();
+		if (_ap.isStable()) {
+			int ret = _delta * _lineInterval - _used;
+			_used = _delta * _lineInterval;
+			return { ret, 0.0 };
+		}
 		double t = _ap.getProgress();
 		double sum = _delta * _lineInterval * EaseOut(Easing::Quad, t);
 		int ret = (int)sum - _used;
