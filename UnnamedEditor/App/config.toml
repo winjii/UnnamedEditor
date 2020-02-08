@@ -1,0 +1,3 @@
+isVertical = true
+windowSize = { x = 800, y = 640 }
+fontSize = 16

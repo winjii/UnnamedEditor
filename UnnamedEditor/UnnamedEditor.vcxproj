@@ -244,6 +244,7 @@
     <ClCompile Include="Workspace\Workspace.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Config.h" />
     <ClInclude Include="FairCopyField\FairCopyField.h" />
     <ClInclude Include="Font\ChangeableFont.h" />
     <ClInclude Include="Font\FixedFont.h" />
