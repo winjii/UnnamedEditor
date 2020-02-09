@@ -530,11 +530,12 @@ GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first,
 	}
 
 	//origin‚Ì‘Þ”ð
-	for (auto itr = first.first; itr != last.first; itr = tryNext(itr)) {
+	for (auto itr = first.first; ; itr = tryNext(itr)) {
 		if (itr == _origin) {
 			_originPos.prp += _origin->wrapCount* _lineInterval;
 			_origin = tryNext(_origin);
 		}
+		if (itr == last.first) break;
 	}
 	
 	CharIterator ret = [&]() {
