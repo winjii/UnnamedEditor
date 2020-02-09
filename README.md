@@ -3,6 +3,7 @@ UnnamedEditorは創造的な文章を書くことに特化した横書き/縦書
 
 言葉を考えるのがちょっと楽しくなるエディタを目指しています。
 
+![result](https://github.com/winjii/UnnamedEditor/blob/media/README/top.gif)
 
 対応OS: Windows 10
 
