@@ -146,8 +146,7 @@ void WholeView::draw() {
 	if (KeyControl.pressed() && KeyV.down()) {
 		String s;
 		Clipboard::GetText(s);
-		_ga->eraseText();
-		_ga->insertText(_ga->lastNewline(), s);
+		_ga->insertText(_cursor->pos(), s);
 	}
 
 	TG::PointOnText arrowKey = [&]() {
