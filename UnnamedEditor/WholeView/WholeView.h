@@ -315,6 +315,7 @@ public:
 	SectionIterator tryPrev(SectionIterator sitr, int cnt = 1);
 	CharIterator insertText(CharIterator citr, const String &s);
 	CharIterator eraseText(CharIterator first, CharIterator last); //管理されたイテレータはlastにどかす
+	void eraseText();
 	CharIterator replaceText(CharIterator first, CharIterator last, const String& s);
 	void scroll(int delta);
 	CharIterator tryNext(CharIterator citr, bool overSection = false, int cnt = 1);
@@ -336,6 +337,9 @@ public:
 	TG::Direction textDirection() const;
 	CharIterator lineHead(CharIterator citr);
 	CharIterator nextLineHead(CharIterator citr); //最終行ではendChar()を返す
+	String toStr(CharIterator first, CharIterator last);
+	String toStr();
+	TG::PointOnText find(SectionIterator citr);
 
 	//NULL文字を挿入すると番兵などに使える
 	//NULL文字は参照が切れたら自動で削除される

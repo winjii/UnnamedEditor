@@ -32,13 +32,18 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 	auto cccursor = _inputManager.cleanCopyCursor();
 	TG::PointOnText sectionOrigin = _ga->originPos();
 	TG::Vec2OnText maskStart, maskEnd;
-	//Print << sectionOrigin.prp;
+
+	{
+		auto sectionOrigin = _ga->find(_cursor->pos().first);
+		auto cp = sectionOrigin + _cursor->pos().second->pos;
+		_scrollDelta.scroll((cp.prp - _textArea.size.prp / 2) / _lineInterval);
+	}
 
 	while (sectionOrigin.prp < _textArea.size.prp +_lineInterval && sitr != _ga->end()) {
 		if (_cursor->pos().first == sitr) {
 			drawCursor(_cursor->drawingPos(sectionOrigin));
-			auto cp = sectionOrigin + _cursor->pos().second->pos;
-			_scrollDelta.scroll((cp.prp - _textArea.size.prp / 2) / _lineInterval);
+			//auto cp = sectionOrigin + _cursor->pos().second->pos;
+			//_scrollDelta.scroll((cp.prp - _textArea.size.prp / 2) / _lineInterval);
 		}
 
 		auto citr = _ga->sectionBegin(sitr);
@@ -132,6 +137,18 @@ void WholeView::draw() {
 
 	//if (KeyDown.down()) _textWindow.cursorNext();
 	//if (KeyUp.down()) _textWindow.cursorPrev();
+
+	if (KeyControl.pressed() && KeyX.down()) {
+		String s = _ga->toStr();
+		_ga->eraseText();
+		Clipboard::SetText(s);
+	}
+	if (KeyControl.pressed() && KeyV.down()) {
+		String s;
+		Clipboard::GetText(s);
+		_ga->eraseText();
+		_ga->insertText(_ga->lastNewline(), s);
+	}
 
 	TG::PointOnText arrowKey = [&]() {
 		Point p(0, 0);
@@ -507,7 +524,7 @@ GlyphArrangement2::CharIterator GlyphArrangement2::insertText(CharIterator citr,
 		sitr->cd.push_back(cd);
 		if (c == Text::Text::NEWLINE) {
 			initSection(sitr);
-			sitr = std::next(sitr);
+			sitr = tryNext(sitr);
 			SectionData ld;
 			sitr = _data.insert(sitr, ld);
 		}
@@ -530,12 +547,13 @@ GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first,
 	}
 
 	//origin‚Ì‘Þ”ð
-	for (auto itr = first.first; ; itr = tryNext(itr)) {
+	bool updatesOrigin = false;
+	for (auto itr = last.first; itr != first.first; itr = tryPrev(itr)) {
 		if (itr == _origin) {
-			_originPos.prp += _origin->wrapCount* _lineInterval;
-			_origin = tryNext(_origin);
+			_origin = tryPrev(_origin);
+			_originPos.prp -= _origin->wrapCount* _lineInterval;
+			updatesOrigin = true;
 		}
-		if (itr == last.first) break;
 	}
 	
 	CharIterator ret = [&]() {
@@ -563,8 +581,13 @@ GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first,
 		return CharIterator(first.first, ret1);
 	}();
 
+	if (updatesOrigin) _origin = ret.first;
 	scroll(0);
 	return ret;
+}
+
+void GlyphArrangement2::eraseText() {
+	eraseText(beginChar(), lastNewline());
 }
 
 //TODO: ‚æ‚èŒø—¦“I‚ÈŽÀ‘•‚ð‚·‚×‚«‚©‚à‚µ‚ê‚È‚¢
@@ -575,12 +598,12 @@ GlyphArrangement2::CharIterator GlyphArrangement2::replaceText(CharIterator firs
 
 void GlyphArrangement2::scroll(int delta) {
 	_originPos.prp += delta;
-	while (_origin != _data.end() && -_lineInterval > _originPos.prp + _origin->wrapCount * _lineInterval) {
+	while (_origin != end() && -_lineInterval > _originPos.prp + _origin->wrapCount * _lineInterval) {
 		_originPos.prp += _origin->wrapCount * _lineInterval;
-		_origin = std::next(_origin);
+		_origin = tryNext(_origin);
 	}
-	while (_origin != _data.begin() && _lineInterval < _originPos.prp) {
-		_origin = std::prev(_origin);
+	while (_origin != begin() && _lineInterval < _originPos.prp) {
+		_origin = tryPrev(_origin);
 		_originPos.prp -= _origin->wrapCount * _lineInterval;
 	}
 }
@@ -696,6 +719,36 @@ GlyphArrangement2::CharIterator GlyphArrangement2::nextLineHead(CharIterator cit
 		citr = nxt;
 	}
 	assert(false);
+}
+
+String GlyphArrangement2::toStr(CharIterator first, CharIterator last) {
+	if (first == sectionEnd(first.first) || last == sectionEnd(last.first)) {
+		throw "invalid iterator";
+	}
+	String ret;
+	for (auto i = first; i != last; i = tryNext(i, true)) {
+		ret.push_back(i.second->code);
+	}
+	return ret;
+}
+
+String GlyphArrangement2::toStr() {
+	return toStr(beginChar(), lastNewline());
+}
+
+TG::PointOnText GlyphArrangement2::find(SectionIterator sitr) {
+	SectionIterator front = _origin;
+	SectionIterator back = _origin;
+	TG::PointOnText frontPos = _originPos;
+	TG::PointOnText backPos = _originPos;
+	while (true) {
+		if (front == sitr) return frontPos;
+		if (back == sitr) return backPos;
+		front = tryPrev(front);
+		frontPos -= TG::PointOnText(0, front->wrapCount * _lineInterval);
+		backPos += TG::PointOnText(0, back->wrapCount * _lineInterval);
+		back = tryNext(back);
+	}
 }
 
 GlyphArrangement2::ManagedIterator GlyphArrangement2::makeNull(CharIterator citr) {
