@@ -36,7 +36,7 @@ private:
 		//TODO:コレクションの場合でも適当に0番目のfaceを選択している
 		//これをちゃんとするには、そもそもフォントファイルをregisterしてから名前で呼び出す感じの実装が必要？ 
 		FT_Face face;
-		FT_New_Face(lib.raw(), fontPath.c_str(), 0, &face);
+		int code = FT_New_Face(lib.raw(), fontPath.c_str(), 0, &face);
 		return face;
 	}
 
