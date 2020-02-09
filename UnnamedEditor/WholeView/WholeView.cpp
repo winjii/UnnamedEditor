@@ -34,12 +34,12 @@ std::pair<TG::Vec2OnText, TG::Vec2OnText> WholeView::drawBody(const RenderTextur
 	TG::Vec2OnText maskStart, maskEnd;
 
 	{
-		auto sectionOrigin = _ga->find(_cursor->pos().first);
-		auto cp = sectionOrigin + _cursor->pos().second->pos;
-		_scrollDelta.scroll((cp.prp - _textArea.size.prp / 2) / _lineInterval);
+		int sectionPrp = _ga->find(_cursor->pos().first).prp;
+		auto cprp = sectionPrp + _cursor->pos().second->pos.prp -_scrollDelta.remain();
+		_scrollDelta.scroll((cprp - _textArea.size.prp / 2) / _lineInterval);
 	}
 
-	while (sectionOrigin.prp < _textArea.size.prp +_lineInterval && sitr != _ga->end()) {
+	while (sectionOrigin.prp < _textArea.size.prp + _lineInterval && sitr != _ga->end()) {
 		if (_cursor->pos().first == sitr) {
 			drawCursor(_cursor->drawingPos(sectionOrigin));
 			//auto cp = sectionOrigin + _cursor->pos().second->pos;

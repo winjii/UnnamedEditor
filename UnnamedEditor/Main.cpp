@@ -21,12 +21,14 @@ namespace UnnamedEditor {
 
 
 void Run() {
+	Console.open();
 	Config config(TOMLReader(U"config.toml"));
 
 	Window::Resize(config.windowSize);
 
 	Font::FTLibraryWrapper lib;
 	SP<Font::FixedFont> font(new Font::FixedFont(lib, "C:/Windows/Fonts/msmincho.ttc", config.fontSize, config.isVertical));
+	//SP<Font::FixedFont> font(new Font::FixedFont(lib, "SourceHanSerif-Regular.otf", config.fontSize, config.isVertical));
 	WholeView::WholeView wholeView(Rect(Window::ClientSize()), font, TextGeometry::DownLeft);
 	String IamACat = TextReader(U"IamACat.txt").readAll();
 	wholeView.setText(IamACat);

@@ -592,12 +592,13 @@ public:
 	void scroll(int delta) {
 		if (delta == 0) return;
 		if (isScrolling()) {
-			_used = _used - _lineInterval * _delta;
+			_used = (_used - _lineInterval * _delta) * (_delta * delta);
 		}
 		else _used = 0;
 		_delta = delta;
 		_ap.start(0.5);
 	}
+	int remain() { return _delta * _lineInterval - _used; }
 	std::pair<int, double> useDelta() {
 		if (!isScrolling()) return { 0, 0.0 };
 		_ap.update();
