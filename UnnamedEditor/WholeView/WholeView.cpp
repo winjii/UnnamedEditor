@@ -457,6 +457,10 @@ void GlyphArrangement2::moveItr(SP<CharIterator> itr, CharIterator citr) {
 	initSection(oldSection);
 }
 
+SP<Font::FixedFont> GlyphArrangement2::font() {
+	return _font;
+}
+
 GlyphArrangement2::ManagedIterator GlyphArrangement2::registerItr(CharIterator citr) {
 	return ManagedIterator(*this, citr);
 }
@@ -956,7 +960,7 @@ void CleanCopyCursor::stop() {
 
 void CleanCopyCursor::update(TemporaryData::Manager& tmpData) {
 	if (isStable()) return;
-	double velocity = 30; //TODO: フォントサイズに比例
+	double velocity = 1.2 * _ga->font()->getFontSize();
 	if (_step == Step::Retreating) velocity *= 4;
 	if (_step == Step::Advancing) {
 		while (true) {
