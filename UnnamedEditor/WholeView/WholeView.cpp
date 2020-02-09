@@ -528,28 +528,42 @@ GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first,
 			last.second->itrs.push_back(managedItr);
 		}
 	}
-	if (first.first == last.first) {
-		auto ret1 = first.first->cd.erase(first.second, last.second);
-		auto sitr = initSection(first.first);
-		initBucket(sitr, tryNext(sitr));
-		return { sitr, ret1 };
+
+	//origin‚Ì‘Þ”ð
+	for (auto itr = first.first; itr != last.first; itr = tryNext(itr)) {
+		if (itr == _origin) {
+			_originPos.prp += _origin->wrapCount* _lineInterval;
+			_origin = tryNext(_origin);
+		}
 	}
-	SectionIterator sitr = std::next(first.first);
-	while (sitr != last.first) {
-		sitr = _data.erase(sitr);
-	}
-	first.first->cd.erase(first.second, first.first->cd.end());
-	last.first->cd.erase(last.first->cd.begin(), last.second);
-	auto ret1 = first.first->cd.insert(first.first->cd.end(), last.first->cd.begin(), last.first->cd.end());
-	_data.erase(last.first);
-	if (first.first->cd.empty()) {
-		auto ret = _data.erase(first.first);
-		initBucket(ret, ret);
-		return { ret, ret->cd.begin() };
-	}
-	initSection(first.first);
-	initBucket(first.first, tryNext(first.first));
-	return { first.first, ret1 };
+	
+	CharIterator ret = [&]() {
+		if (first.first == last.first) {
+			auto ret1 = first.first->cd.erase(first.second, last.second);
+			auto sitr = initSection(first.first);
+			initBucket(sitr, tryNext(sitr));
+			return CharIterator(sitr, ret1);
+		}
+		SectionIterator sitr = std::next(first.first);
+		while (sitr != last.first) {
+			sitr = _data.erase(sitr);
+		}
+		first.first->cd.erase(first.second, first.first->cd.end());
+		last.first->cd.erase(last.first->cd.begin(), last.second);
+		auto ret1 = first.first->cd.insert(first.first->cd.end(), last.first->cd.begin(), last.first->cd.end());
+		_data.erase(last.first);
+		if (first.first->cd.empty()) {
+			auto ret = _data.erase(first.first);
+			initBucket(ret, ret);
+			return CharIterator(ret, ret->cd.begin());
+		}
+		initSection(first.first);
+		initBucket(first.first, tryNext(first.first));
+		return CharIterator(first.first, ret1);
+	}();
+
+	scroll(0);
+	return ret;
 }
 
 //TODO: ‚æ‚èŒø—¦“I‚ÈŽÀ‘•‚ð‚·‚×‚«‚©‚à‚µ‚ê‚È‚¢
