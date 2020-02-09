@@ -181,6 +181,7 @@ void WholeView::draw() {
 			_inputManager.deleteLightChar();
 			_inputManager.stopInputting();
 		}
+		cccursor = _inputManager.cleanCopyCursor();
 	}
 	bool movesCursor = false;
 	if (!_inputManager.isInputing()) {

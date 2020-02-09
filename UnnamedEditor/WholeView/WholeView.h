@@ -237,7 +237,7 @@ public:
 		}
 		ManagedIterator(const ManagedIterator& itr) = default;
 		~ManagedIterator() {
-			if (_itr.use_count() == 1) _ga.removeItr(_itr);
+			if (_itr.use_count() <= 2) _ga.removeItr(_itr);
 		}
 		void move(CharIterator citr) {
 			_ga.moveItr(_itr, citr);
