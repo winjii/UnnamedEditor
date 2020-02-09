@@ -348,7 +348,6 @@ void GlyphArrangement2::initBucket(SectionIterator first, SectionIterator last) 
 	double sr = ((double)fs_) / fs;
 	int normalSize = 1000 * fs / _maxLineLnegth;
 
-	if (first == last) return;
 	first = bucket(first);
 	last = nextBucket(last);
 	SectionIterator prevBucket = bucket(tryPrev(first));
@@ -539,12 +538,17 @@ GlyphArrangement2::CharIterator GlyphArrangement2::eraseText(CharIterator first,
 		sitr = _data.erase(sitr);
 	}
 	first.first->cd.erase(first.second, first.first->cd.end());
-	auto lfirst = initSection(first.first);
-	auto ret1 = last.first->cd.erase(last.first->cd.begin(), last.second);
-	if (last.first->cd.empty()) ret1 = std::next(last.first->cd.begin());
-	auto llast = initSection(last.first);
-	initBucket(lfirst, tryNext(llast));
-	return { llast, ret1 };
+	last.first->cd.erase(last.first->cd.begin(), last.second);
+	auto ret1 = first.first->cd.insert(first.first->cd.end(), last.first->cd.begin(), last.first->cd.end());
+	_data.erase(last.first);
+	if (first.first->cd.empty()) {
+		auto ret = _data.erase(first.first);
+		initBucket(ret, ret);
+		return { ret, ret->cd.begin() };
+	}
+	initSection(first.first);
+	initBucket(first.first, tryNext(first.first));
+	return { first.first, ret1 };
 }
 
 //TODO: ‚æ‚èŒø—¦“I‚ÈŽÀ‘•‚ð‚·‚×‚«‚©‚à‚µ‚ê‚È‚¢
