@@ -9,6 +9,9 @@ UnnamedEditorは創造的な文章を書くことに特化した横書き/縦書
 
 対応言語: 日本語/英語
 
+# ダウンロード
+https://github.com/winjii/UnnamedEditor/releases/tag/v0.1
+
 # 機能
 Ver.0.1時点では機能はかなり限定されています。
 
