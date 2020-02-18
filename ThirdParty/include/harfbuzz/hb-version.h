@@ -1,5 +1,4 @@
 /*
- * Copyright © 2009  Red Hat, Inc.
  * Copyright © 2011  Google, Inc.
  *
  *  This is part of HarfBuzz, a text shaping library.
@@ -22,31 +21,46 @@
  * ON AN "AS IS" BASIS, AND THE COPYRIGHT HOLDER HAS NO OBLIGATION TO
  * PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
  *
- * Red Hat Author(s): Behdad Esfahbod
  * Google Author(s): Behdad Esfahbod
  */
 
-#ifndef HB_ICU_H
-#define HB_ICU_H
+#ifndef HB_H_IN
+#error "Include <hb.h> instead."
+#endif
 
-#include "hb.h"
+#ifndef HB_VERSION_H
+#define HB_VERSION_H
 
-#include <unicode/uscript.h>
+#include "hb-common.h"
 
 HB_BEGIN_DECLS
 
 
-HB_EXTERN hb_script_t
-hb_icu_script_to_script (UScriptCode script);
+#define HB_VERSION_MAJOR 1
+#define HB_VERSION_MINOR 4
+#define HB_VERSION_MICRO 6
 
-HB_EXTERN UScriptCode
-hb_icu_script_from_script (hb_script_t script);
+#define HB_VERSION_STRING "1.4.6"
+
+#define HB_VERSION_ATLEAST(major,minor,micro) \
+	((major)*10000+(minor)*100+(micro) <= \
+	 HB_VERSION_MAJOR*10000+HB_VERSION_MINOR*100+HB_VERSION_MICRO)
 
 
-HB_EXTERN hb_unicode_funcs_t *
-hb_icu_get_unicode_funcs (void);
+HB_EXTERN void
+hb_version (unsigned int *major,
+	    unsigned int *minor,
+	    unsigned int *micro);
+
+HB_EXTERN const char *
+hb_version_string (void);
+
+HB_EXTERN hb_bool_t
+hb_version_atleast (unsigned int major,
+		    unsigned int minor,
+		    unsigned int micro);
 
 
 HB_END_DECLS
 
-#endif /* HB_ICU_H */
+#endif /* HB_VERSION_H */
