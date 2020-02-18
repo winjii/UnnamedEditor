@@ -263,9 +263,6 @@
     <ProjectReference Include="..\FontDataPicker\FontDataPicker.vcxproj">
       <Project>{56baa270-50db-4ac9-9fbe-776d302fd7d9}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\freetype-2.10.1\builds\windows\vc2010\freetype.vcxproj">
-      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
