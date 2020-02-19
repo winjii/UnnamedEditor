@@ -7,30 +7,24 @@ namespace UnnamedEditor {
 namespace Font {
 
 
-class FTLibraryWrapper {
+class FTLibraryWrapper : public Util::PointerWrapperBase<FT_Library> {
 	//FT_Face = FT_FaceRec_*
+	using Base = Util::PointerWrapperBase<FT_Library>;
 private:
 	static FT_Library CreateLibrary() {
 		FT_Library lib;
 		FT_Init_FreeType(&lib);
 		return lib;
 	}
-	
-	struct Inner {
-		FT_Library _lib;
-		Inner(FT_Library lib) : _lib(lib) {}
-		~Inner() { FT_Done_FreeType(_lib); }
-	};
-	SP<Inner> _inner;
+	virtual void destroy(FT_Library lib) const { FT_Done_FreeType(lib); }
 public:
-	FTLibraryWrapper() : FTLibraryWrapper(CreateLibrary()) {}
-	FTLibraryWrapper(FT_Library lib) : _inner(new Inner(lib)) {}
-	FT_Library operator->() const { return _inner->_lib; }
-	FT_Library raw() { return _inner->_lib; }
+	FTLibraryWrapper() : Base(CreateLibrary()) {}
+	FTLibraryWrapper(FT_Library lib) : Base(lib) {}
 };
 
-class FTFaceWrapper {
+class FTFaceWrapper : public Util::PointerWrapperBase<FT_Face> {
 	//FT_Face = FT_FaceRec_*
+	using Base = Util::PointerWrapperBase<FT_Face>;
 private:
 	static FT_Face CreateFace(FTLibraryWrapper lib, const std::string &fontPath) {
 		//TODO:コレクションの場合でも適当に0番目のfaceを選択している
@@ -39,19 +33,10 @@ private:
 		int code = FT_New_Face(lib.raw(), fontPath.c_str(), 0, &face);
 		return face;
 	}
-
-	struct Inner {
-		FT_Face _face;
-		Inner(FT_Face face) : _face(face) {}
-		~Inner() { FT_Done_Face(_face); }
-	};
-	SP<Inner> _inner;
+	virtual void destroy(FT_Face face) const { FT_Done_Face(face); }
 public:
-	FTFaceWrapper(FTLibraryWrapper lib, const std::string &fontPath)
-		: _inner(new Inner(CreateFace(lib, fontPath))) {}
-	FTFaceWrapper(FT_Face face) : _inner(new Inner(face)) {}
-	FT_Face operator->() const { return _inner->_face; }
-	FT_Face raw() { return _inner->_face; }
+	FTFaceWrapper(FTLibraryWrapper lib, const std::string &fontPath) : Base(CreateFace(lib, fontPath)) {}
+	FTFaceWrapper(FT_Face face) : Base(face) {}
 };
 
 
