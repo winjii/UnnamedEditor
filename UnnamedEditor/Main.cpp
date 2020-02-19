@@ -14,6 +14,9 @@
 #include "WholeView\WholeView.h"
 #include "Font\ChangeableFont.h"
 #include "Config.h"
+#include <harfbuzz/hb.h>
+#include <harfbuzz/hb-ft.h>
+#include <harfbuzz/hb-ot.h>
 
 using namespace FontDataPicker;
 
@@ -486,6 +489,80 @@ void TransparentRenderTest() {
 	}
 }
 
+void HarfBuzzTest() {
+	FT_Library ftLib;
+	FT_Init_FreeType(&ftLib);
+	FT_Face ftFace;
+	FT_New_Face(ftLib, "SourceHanSerif-Regular.otf", 0, &ftFace);
+	FT_Set_Pixel_Sizes(ftFace, 32, 32);
+	//force_ucs2_charmap(ftFace);
+	FT_Set_Char_Size(ftFace, 0, 32*64, 72, 72);
+	hb_font_t* hbFont = hb_ft_font_create(ftFace, NULL);
+	hb_buffer_t* buf = hb_buffer_create();
+	hb_buffer_reset(buf);
+	hb_buffer_set_direction(buf, HB_DIRECTION_LTR);
+	hb_buffer_set_script(buf, HB_SCRIPT_LATIN);
+	hb_buffer_set_language(buf, hb_language_from_string("en", 2));
+	//hb_buffer_set_language(buf, hb_language_from_string("", strlen("ch")));
+	//std::u8string text = u8"午̷̖̺͈̆͛͝前̧̢̖̫̊3̘̦時̗͡の̶̛̘̙̤̙̌̉͢い̷゙̊̈̓̓̅ば̬̬̩͈̊͡ら゙̜̩̹ぎ̫̺̓ͣ̕͡げ̧̛̩̞̽ん゙̨̼̗̤̂̄";
+	//std::u8string text = u8"あ　いうえお";
+	std::u8string text = u8"ff";
+	hb_buffer_add_utf8(buf, (const char*)text.c_str(), text.size(), 0, text.size());
+	hb_buffer_guess_segment_properties(buf);
+
+	hb_feature_t userfeatures[1];
+	userfeatures[0].tag = HB_TAG('d', 'l', 'i', 'g');
+	userfeatures[0].value = 1;
+	userfeatures[0].start = 0;
+	userfeatures[0].end = std::numeric_limits<unsigned int>::max();
+
+	hb_shape(hbFont, buf, userfeatures, 1);
+	unsigned int glyphCount;
+	hb_glyph_position_t* glyphPos = hb_buffer_get_glyph_positions(buf, &glyphCount);
+	hb_glyph_info_t* glyphInfo = hb_buffer_get_glyph_infos(buf, &glyphCount);
+	std::vector<DynamicTexture> textures;
+	for (int i = 0; i < glyphCount; i++) {
+		Print << glyphInfo[i].cluster << U" " << glyphInfo[i].codepoint;
+
+		FT_Load_Glyph(ftFace, glyphInfo[i].codepoint, FT_LOAD_NO_BITMAP);
+		FT_Render_Glyph(ftFace->glyph, FT_Render_Mode::FT_RENDER_MODE_NORMAL);
+		const FT_Bitmap& bitmap = ftFace->glyph->bitmap;
+		bool valid = (bool)(bitmap.rows*bitmap.width);
+		Image image = valid ? Image(bitmap.width, bitmap.rows) : Image();
+		for (int r = 0; r < bitmap.rows; r++) {
+			for (int c = 0; c < bitmap.width; c++) {
+				HSV gray(Color(bitmap.buffer[r * bitmap.width + c]));
+				image[r][c] = Color(Palette::White, 255 * gray.v);
+			}
+		}
+		textures.push_back(DynamicTexture(image));
+	}
+	/*hb_position_t carets[3];
+	unsigned int caretCount = 3;
+	hb_ot_layout_get_ligature_carets(hbFont, HB_DIRECTION_LTR, glyphInfo[0].codepoint, 0, &caretCount, carets);
+	Print << U"caretCount: " << caretCount;
+	for (int i = 0; i < caretCount; i++) {
+		Print << carets[i];
+	}*/
+
+	BlendState bs = BlendState::Default;
+	bs.srcAlpha = Blend::One;
+	bs.dstAlpha = Blend::InvSrcAlpha;
+	const ScopedRenderStates2D state(SamplerState::ClampLinear, bs);
+	Scene::SetBackground(Palette::White);
+	s3d::Font font(32);
+	while (System::Update()) {
+		Point p = Window::ClientCenter();
+		for (int i = 0; i < glyphCount; i++) {
+			if (!textures[i].isEmpty())
+				textures[i].draw(p, Palette::Red);
+			p.x += glyphPos[i].x_advance / 64;
+			p.y += glyphPos[i].y_advance / 64;
+		}
+		font(U"あ いうえお").draw(Arg::center(Window::ClientCenter() + Point(0, 32)), Palette::Black);
+	}
+}
+
 }
 
 void Main() {
@@ -509,7 +586,8 @@ void Main() {
 		TextInputTest,
 		MinimapViewTest,
 		TransparentRenderTest,
-	} runMode = RunMode::Run;
+		HarfBuzzTest,
+	} runMode = RunMode::HarfBuzzTest;
 
 	if (runMode == RunMode::Run) {
 		UnnamedEditor::Run();
@@ -567,5 +645,8 @@ void Main() {
 	}
 	else if (runMode == RunMode::TransparentRenderTest) {
 		UnnamedEditor::TransparentRenderTest();
+	}
+	else if (runMode == RunMode::HarfBuzzTest) {
+		UnnamedEditor::HarfBuzzTest();
 	}
 }
